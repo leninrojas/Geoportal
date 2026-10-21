@@ -15,7 +15,39 @@
   #side h1 { margin:0; padding:16px 14px 4px; font-size:20px; color:#fff; background:linear-gradient(135deg,#0c2340,#1e4a7a); }
   #online { margin:0; padding:6px 14px 12px; font-size:12px; color:#dbeafe; background:linear-gradient(135deg,#0c2340,#1e4a7a); }
   #online b { color:#86efac; }
-  #mapwrap { flex:1; position:relative; min-width:0; }
+  #btn-menu { display:none; }
+  @media (max-width: 800px) {
+    body { flex-direction: column; }
+    #btn-menu {
+      display: block;
+      position: fixed;
+      top: 8px; left: 8px;
+      z-index: 2000;
+      background: #0c2340;
+      color: #fff;
+      border: 0;
+      border-radius: 8px;
+      padding: 8px 12px;
+      font-size: 14px;
+      font-weight: 600;
+      box-shadow: 0 2px 8px rgba(0,0,0,.3);
+    }
+    #side {
+      display: none;
+      width: 100%;
+      max-height: 55vh;
+      position: fixed;
+      top: 0; left: 0; right: 0;
+      z-index: 1900;
+      box-shadow: 0 8px 24px rgba(0,0,0,.25);
+    }
+    #side.abierto { display: block; }
+    #mapwrap { flex: 1; width: 100%; height: 100vh; min-height: 100vh; }
+    #toolbar { top: 8px; left: 90px; right: 8px; flex-wrap: wrap; gap: 4px; }
+    #toolbar button { padding: 6px 8px; font-size: 12px; }
+    .pnl { left: 8px; right: 8px; width: auto; top: 52px; max-height: calc(100% - 70px); }
+    #basemaps { top: 52px; right: 8px; }
+  }
   #map { position:absolute; top:0; right:0; bottom:0; left:0; background:#e5e7eb; }
   /* Galería de mapas base (derecha) — se despliega al clic */
   #basemaps {
@@ -154,6 +186,7 @@
 </style>
 </head>
 <body>
+<button type="button" id="btn-menu">☰ Capas</button>
 <div id="side">
   <h1>Geo Portal</h1>
   <div id="online">Usuarios en línea: <b id="online-n">—</b></div>
@@ -1626,6 +1659,12 @@ document.querySelectorAll('.tabs button').forEach(function(b) {
   const el = $(id); L.DomEvent.disableClickPropagation(el); L.DomEvent.disableScrollPropagation(el);
 });
 
+$('btn-menu').onclick = function() {
+  const side = $('side');
+  const abierto = side.classList.toggle('abierto');
+  this.textContent = abierto ? '✕ Cerrar' : '☰ Capas';
+  setTimeout(function() { map.invalidateSize(); }, 200);
+};
 map.on('zoomend moveend', onMoveEnd);
 dibujarLista();
 dibujarLeyenda();
