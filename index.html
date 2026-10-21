@@ -9,46 +9,12 @@
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 <style>
-  html, body { height:100%; margin:0; font-family:'Segoe UI',system-ui,sans-serif; font-size:14px; color:#1e293b; background:#f4f7fb; }
-  body { display:flex; }
-  #side { width:320px; overflow:auto; background:#fff; box-sizing:border-box; flex:none; border-right:1px solid #e2e8f0; box-shadow:0 4px 20px rgba(12,35,64,.08); }
-  #side h1 { margin:0; padding:16px 14px 4px; font-size:20px; color:#fff; background:linear-gradient(135deg,#0c2340,#1e4a7a); }
-  #online { margin:0; padding:6px 14px 12px; font-size:12px; color:#dbeafe; background:linear-gradient(135deg,#0c2340,#1e4a7a); }
-  #online b { color:#86efac; }
-  #btn-menu { display:none; }
-  @media (max-width: 800px) {
-    body { flex-direction: column; }
-    #btn-menu {
-      display: block;
-      position: fixed;
-      top: 8px; left: 8px;
-      z-index: 2000;
-      background: #0c2340;
-      color: #fff;
-      border: 0;
-      border-radius: 8px;
-      padding: 8px 12px;
-      font-size: 14px;
-      font-weight: 600;
-      box-shadow: 0 2px 8px rgba(0,0,0,.3);
-    }
-    #side {
-      display: none;
-      width: 100%;
-      max-height: 55vh;
-      position: fixed;
-      top: 0; left: 0; right: 0;
-      z-index: 1900;
-      box-shadow: 0 8px 24px rgba(0,0,0,.25);
-    }
-    #side.abierto { display: block; }
-    #mapwrap { flex: 1; width: 100%; height: 100vh; min-height: 100vh; }
-    #toolbar { top: 8px; left: 90px; right: 8px; flex-wrap: wrap; gap: 4px; }
-    #toolbar button { padding: 6px 8px; font-size: 12px; }
-    .pnl { left: 8px; right: 8px; width: auto; top: 52px; max-height: calc(100% - 70px); }
-    #basemaps { top: 52px; right: 8px; }
-  }
+  html, body { height:100%; margin:0; font-family:'Segoe UI',Arial,sans-serif; font-size:14px; color:#1f2937; }
+  body { display:flex; background:#ffffff; }
+  #side { width:300px; overflow:auto; padding:10px; background:#f8fafc; box-sizing:border-box; flex:none; border-right:1px solid #e2e8f0; color:#1f2937; }
+  #mapwrap { flex:1; position:relative; min-width:0; }
   #map { position:absolute; top:0; right:0; bottom:0; left:0; background:#e5e7eb; }
+  h1 { font-size:18px; margin:0 0 8px; color:#1a365d; font-weight:700; }
   /* Galería de mapas base (derecha) — se despliega al clic */
   #basemaps {
     position:absolute; top:10px; right:10px; z-index:1100;
@@ -83,12 +49,12 @@
   #online b { color:#16a34a; }
 
   /* Secciones del panel lateral */
-  details.sec { background:#fff; border:1px solid #e2e8f0; border-radius:12px; margin:0 10px 8px; overflow:hidden; }
-  details.sec > summary { cursor:pointer; padding:10px 12px; font-weight:600; color:#123056; list-style:none; background:#eff6ff; }
+  details.sec { background:#ffffff; border:1px solid #cbd5e0; border-radius:6px; margin:0 0 8px; }
+  details.sec > summary { cursor:pointer; padding:8px 10px; font-weight:600; color:#1a365d; list-style:none; }
   details.sec > summary::-webkit-details-marker { display:none; }
-  details.sec > summary:before { content:'▸'; display:inline-block; width:16px; color:#2563eb; transition:transform .15s; }
+  details.sec > summary:before { content:'▸'; display:inline-block; width:14px; transition:transform .15s; color:#64748b; }
   details.sec[open] > summary:before { transform:rotate(90deg); }
-  details.sec > .cuerpo { padding:8px 12px 12px; }
+  details.sec > .cuerpo { padding:0 10px 10px; }
 
   .capa { margin:6px 0; padding:8px; background:#f8fafc; border:1px solid #e2e8f0; border-radius:6px; }
   .capa label { cursor:pointer; font-weight:500; color:#1f2937; }
@@ -101,11 +67,9 @@
 
   #coord { position:absolute; bottom:6px; left:8px; z-index:1000; background:rgba(255,255,255,.95); color:#1f2937; padding:3px 8px; font-size:12px; border-radius:3px; border:1px solid #e2e8f0; }
 
-  .pt-cod { background: none !important; border: none !important; }
-  .pt-dot { width: 10px; height: 10px; border-radius: 50%; border: 2px solid #fff; box-shadow: 0 0 0 1px rgba(0,0,0,.35); position: absolute; left: -5px; top: -5px; }
-  .pt-lbl { position: absolute; left: 8px; top: -6px; background: transparent; color: #ffffff; font-size: 11px; font-weight: 700; padding: 0; white-space: nowrap; border: 0; text-shadow: none; }
-  .leaflet-tooltip.etiqueta { background:transparent; border:none; box-shadow:none; color:#ffffff; font-weight:700; font-size:10px; pointer-events:none; text-shadow:none; padding:0; }
-  .leaflet-tooltip.etiqueta.et-dep { font-size:12px; color:#ffffff; text-shadow:none; }
+  .leaflet-tooltip.etiqueta { background:transparent; border:none; box-shadow:none; color:#111; font-weight:700; font-size:10px; pointer-events:none;
+    text-shadow:0 0 4px #fff, 0 0 4px #fff, 1px 1px 2px #fff; padding:0; }
+  .leaflet-tooltip.etiqueta.et-dep { font-size:12px; }
   .leaflet-tooltip.etiqueta:before { display:none; }
   #map.off-dep .et-dep { display:none; }
 
@@ -128,10 +92,10 @@
 
   /* Barra superior (Leyenda / Add Data / Consultas) */
   #toolbar { position:absolute; top:10px; left:56px; z-index:1100; display:flex; gap:6px; }
-  #toolbar button { background:#fff; border:1px solid #e2e8f0; border-radius:8px; padding:8px 12px; font-size:13px; cursor:pointer;
-    box-shadow:0 4px 12px rgba(12,35,64,.08); color:#123056; font-weight:500; }
-  #toolbar button:hover { background:#eff6ff; }
-  #toolbar button.on { background:#1e4a7a; color:#fff; border-color:#1e4a7a; }
+  #toolbar button { background:#ffffff; border:1px solid #d1d5db; border-radius:6px; padding:7px 12px; font-size:13px; cursor:pointer;
+    box-shadow:0 1px 3px rgba(0,0,0,.15); color:#1f2937; }
+  #toolbar button:hover { background:#f3f4f6; }
+  #toolbar button.on { background:#1a365d; color:#fff; border-color:#1a365d; }
 
   /* Paneles flotantes */
   .pnl { position:absolute; top:54px; left:56px; width:350px; max-height:calc(100% - 100px); overflow:auto; background:#ffffff; border-radius:8px;
@@ -145,8 +109,8 @@
   .pnl .fila { display:flex; gap:6px; }
   .pnl .fila > * { flex:1; min-width:0; }
   .pnl .bloque { border:1px solid #e5e7eb; border-radius:6px; padding:10px; margin:0 0 10px; background:#fafafa; }
-  .btn { margin-top:8px; padding:8px 12px; border:0; background:#2563eb; color:#fff; border-radius:8px; cursor:pointer; font-size:13px; font-weight:600; }
-  .btn:hover { background:#1e4a7a; }
+  .btn { margin-top:8px; padding:7px 12px; border:1px solid #2563eb; background:#2563eb; color:#fff; border-radius:4px; cursor:pointer; font-size:13px; }
+  .btn:hover { background:#1d4ed8; }
   .btn:disabled { background:#e5e7eb; border-color:#d1d5db; color:#9ca3af; cursor:not-allowed; }
   .btn.sec { background:#ffffff; color:#2563eb; border-color:#2563eb; }
   .btn.sec:hover { background:#eff6ff; }
@@ -186,7 +150,6 @@
 </style>
 </head>
 <body>
-<button type="button" id="btn-menu">☰ Capas</button>
 <div id="side">
   <h1>Geo Portal</h1>
   <div id="online">Usuarios en línea: <b id="online-n">—</b></div>
@@ -228,10 +191,10 @@
     </div>
   </details>
 
-  <details class="sec">
+  <details class="sec" open>
     <summary>Ecosistemas Frágiles</summary>
     <div class="cuerpo">
-      <p class="placeholder-sec">Capas de ecosistemas frágiles / áreas sensibles. Próximamente o vía Add Data.</p>
+      <p class="placeholder-sec">Inventario de bofedales sincronizado desde la GDB. Otras capas: agrégalas con «Add Data».</p>
       <div id="lista-ecosistemas"></div>
     </div>
   </details>
@@ -265,8 +228,6 @@
       <div class="bm" data-bm="imagenes" title="Imágenes"><img src="https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/4/7/5" alt=""><span class="lbl">Imágenes</span></div>
       <div class="bm" data-bm="topografico" title="Topográfico"><img src="https://server.arcgisonline.com/ArcGIS/rest/services/World_Topo_Map/MapServer/tile/4/7/5" alt=""><span class="lbl">Topográfico</span></div>
       <div class="bm" data-bm="calles" title="Calles"><img src="https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/4/7/5" alt=""><span class="lbl">Calles</span></div>
-      <div class="bm" data-bm="terreno" title="Terreno"><img src="https://server.arcgisonline.com/ArcGIS/rest/services/World_Terrain_Base/MapServer/tile/4/7/5" alt=""><span class="lbl">Terreno</span></div>
-      <div class="bm" data-bm="lona" title="Lona gris"><img src="https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Light_Gray_Base/MapServer/tile/4/7/5" alt=""><span class="lbl">Lona</span></div>
     </div>
   </div>
 
@@ -274,7 +235,6 @@
     <button type="button" data-pnl="leyenda">☰ Leyenda</button>
     <button type="button" data-pnl="add">＋ Add Data</button>
     <button type="button" data-pnl="query">🔎 Consultas</button>
-    <button type="button" data-pnl="reporte">📍 Reporte</button>
   </div>
 
   <!-- Leyenda -->
@@ -313,7 +273,7 @@
 
     <div class="tabpane on" id="tab-archivo">
       <label>Archivo local</label>
-      <input type="file" id="add-file" multiple accept=".geojson,.json,.kml,.kmz,.gpx,.zip,.csv,.txt,.tsv,.xlsx,.xls">
+      <input type="file" id="add-file" multiple accept=".geojson,.json,.kml,.kmz,.gpx,.zip,.csv,.txt,.tsv">
       <label>Si es CSV/TXT: sistema de coordenadas</label>
       <select id="add-crs">
         <option value="auto">Automático (WGS84 o, si no, UTM 18S)</option>
@@ -324,7 +284,7 @@
       </select>
       <button class="btn" id="add-file-btn" type="button" disabled>Agregar archivo</button>
       <p class="nota" style="margin-top:8px">
-        Formatos: GeoJSON · KML · KMZ · Excel/CSV con Este y Norte · etiqueta: SONDAJE, o PLATAFORMA, o CODIGO.
+        Formatos: GeoJSON · KML · KMZ · GPX · Shapefile (.zip con .shp, .dbf y .prj) · CSV/TXT con columnas lon/lat o este/norte (x/y).
       </p>
     </div>
 
@@ -344,32 +304,26 @@
       <select id="q-capa"></select>
       <label>Campo</label>
       <select id="q-campo"></select>
-      <label>Valor</label>
-      <select id="q-valor-lista">
-        <option value="">— Seleccione o escriba —</option>
-      </select>
       <div class="fila" style="margin-top:6px">
         <select id="q-op">
-          <option value="eq">es igual a</option>
           <option value="has">contiene</option>
-          <option value="sw">empieza con</option>
+          <option value="eq">es igual a</option>
           <option value="ne">es distinto de</option>
+          <option value="sw">empieza con</option>
           <option value="gt">mayor que</option>
           <option value="ge">mayor o igual que</option>
           <option value="lt">menor que</option>
           <option value="le">menor o igual que</option>
         </select>
-        <input type="text" id="q-valor" placeholder="escriba o elija de la lista" list="q-valores-dl" autocomplete="off">
-        <datalist id="q-valores-dl"></datalist>
+        <input type="text" id="q-valor" placeholder="valor">
       </div>
-      <p class="nota" id="q-valor-hint" style="margin:4px 0 0">Al elegir un campo se cargan sus valores únicos.</p>
       <button class="btn" id="q-ejecutar" type="button">Consultar</button>
       <button class="btn sec" id="q-limpiar" type="button">Limpiar</button>
     </div>
 
     <div class="bloque">
-      <h3>2. Cruce espacial</h3>
-      <p class="nota" style="margin:0 0 4px">Cruza una capa agregada (KMZ, GeoJSON, etc.) con límites o con concesiones mineras. El Excel incluye atributos de ambas capas.</p>
+      <h3>2. Cruce espacial con límites</h3>
+      <p class="nota" style="margin:0 0 4px">Asigna a cada elemento de una capa agregada el departamento, provincia y distrito donde se ubica, y suma esas columnas a su tabla.</p>
       <label>Capa agregada</label>
       <select id="x-capa"></select>
       <label>Cruzar con</label>
@@ -377,7 +331,6 @@
         <option value="dist">Distritos (incluye provincia y departamento)</option>
         <option value="prov">Provincias (incluye departamento)</option>
         <option value="dep">Departamentos</option>
-        <option value="cat">Concesiones Mineras</option>
       </select>
       <button class="btn" id="x-ejecutar" type="button">Cruzar</button>
     </div>
@@ -387,30 +340,7 @@
     <div id="q-acc"></div>
   </div>
 
-  <!-- Reporte de campo (navegador / celular) -->
-  <div class="pnl" id="pnl-reporte" style="width:340px">
-    <button class="x" data-close title="Cerrar">✕</button>
-    <h2>Nuevo reporte</h2>
-    <p class="nota">Desde el navegador o el celular. Usa tu ubicación o un clic en el mapa. Luego activa la capa <b>Reportes</b> en el panel izquierdo para ver los puntos.</p>
-    <label>Tipo</label>
-    <select id="rep-tipo">
-      <option value="observacion">Observación</option>
-      <option value="incidente">Incidente</option>
-      <option value="hallazgo">Hallazgo</option>
-      <option value="otro">Otro</option>
-    </select>
-    <label>Descripción</label>
-    <textarea id="rep-desc" rows="3" placeholder="Describe el reporte..." style="width:100%;resize:vertical"></textarea>
-    <label>Autor</label>
-    <input type="text" id="rep-autor" placeholder="Tu nombre">
-    <div class="fila" style="margin-top:8px">
-      <button class="btn" type="button" id="rep-gps">📍 Mi ubicación</button>
-      <button class="btn sec" type="button" id="rep-click">Clic en mapa</button>
-    </div>
-    <p class="nota" id="rep-coord">Sin ubicación aún.</p>
-    <button class="btn" type="button" id="rep-enviar" disabled>Enviar reporte</button>
-    <div class="msg" id="rep-msg"></div>
-  </div>
+  <div id="coord"></div>
 </div>
 
 <script>
@@ -439,9 +369,29 @@ const CAPAS = [
     etiqueta:null, minZoom:10, labelZoom:99, porVista:true, max:6000, weight:1, borde:'#7e22ce', dash:null, fillOpacity:0.12, esperado:null,
     canvas:true, zoomEnPlace:true },
 
-  { key:'rep', grupo:'reportes', tabla:'reportes', nombre:'Reportes', leyenda:'Reporte de campo', color:'#dc2626', pane:'p_add',
-    campos:[{key:'tipo',label:'Tipo'},{key:'descripcion',label:'Descripción'},{key:'autor',label:'Autor'},{key:'created_at',label:'Fecha'}],
-    etiqueta:null, minZoom:null, labelZoom:12, porVista:true, max:2000, weight:2, borde:'#b91c1c', dash:null, fillOpacity:0.4, esperado:null }
+  // ---- Ecosistemas Frágiles (tabla invent_bof_inaigem_2023, GDB: Invent_Bof_INAIGEM_2023_v2) ----
+  { key:'bof', grupo:'ecosistemas', tabla:'invent_bof_inaigem_2023', nombre:'Bofedales (INAIGEM 2023)', leyenda:'Bofedal - Inventario INAIGEM 2023', color:'#14b8a6', pane:'p_bof',
+    campos:[{key:'desc_cober',label:'Cobertura'},{key:'macrozona',label:'Macrozona'},{key:'vertiente',label:'Vertiente'},{key:'nomb_dep',label:'Departamento'},{key:'nomb_prov',label:'Provincia'},{key:'nomb_dist',label:'Distrito'},{key:'nomb_uh',label:'Unidad hidrográfica'},{key:'area_ha',label:'Área (ha)'},{key:'id',label:'ID'}],
+    etiqueta:null, minZoom:10, labelZoom:99, porVista:true, max:6000, weight:1, borde:'#0f766e', dash:null, fillOpacity:0.35, esperado:null,
+    canvas:true, zoomEnPlace:true },
+
+  { key:'lag', grupo:'ecosistemas', tabla:'lagos_lagunas_ign', nombre:'Lagos y lagunas IGN', leyenda:'Lago / laguna IGN', color:'#0284c7', pane:'p_lag',
+    campos:[{key:'nom_lag',label:'Nombre'},{key:'codigo',label:'Código'}],
+    etiqueta:null, minZoom:8, labelZoom:11, porVista:true, max:4000, weight:1, borde:'#0369a1', dash:null, fillOpacity:0.35, esperado:null,
+    canvas:true, zoomEnPlace:true },
+
+  { key:'hum', grupo:'ecosistemas', tabla:'humedales_costeros_serfor', nombre:'Humedales costeros SERFOR', leyenda:'Humedal costero', color:'#0d9488', pane:'p_hum',
+    campos:[{key:'nomef',label:'Nombre'},{key:'nomdep',label:'Departamento'},{key:'nompro',label:'Provincia'},{key:'nomdis',label:'Distrito'},{key:'nomloc',label:'Localidad'},{key:'supaha',label:'Área (ha)'},{key:'fuente',label:'Fuente'},{key:'docleg',label:'Doc. legal'}],
+    etiqueta:null, minZoom:8, labelZoom:11, porVista:true, max:100, weight:1.2, borde:'#115e59', dash:null, fillOpacity:0.35, esperado:4 },
+
+  { key:'lom', grupo:'ecosistemas', tabla:'lomas_costeras_serfor', nombre:'Lomas costeras SERFOR', leyenda:'Loma costera', color:'#65a30d', pane:'p_lom',
+    campos:[{key:'nomef',label:'Nombre'},{key:'nomdep',label:'Departamento'},{key:'nompro',label:'Provincia'},{key:'nomdis',label:'Distrito'},{key:'nomloc',label:'Localidad'},{key:'supaha',label:'Área (ha)'},{key:'altmin',label:'Alt. mín.'},{key:'altmax',label:'Alt. máx.'},{key:'fuente',label:'Fuente'},{key:'docleg',label:'Doc. legal'}],
+    etiqueta:null, minZoom:8, labelZoom:11, porVista:true, max:200, weight:1.2, borde:'#3f6212', dash:null, fillOpacity:0.3, esperado:46 },
+
+  { key:'gla', grupo:'ecosistemas', tabla:'invent_glaciar_inaigem_2020', nombre:'Glaciares INAIGEM 2020', leyenda:'Glaciar', color:'#38bdf8', pane:'p_gla',
+    campos:[{key:'cod_glac',label:'Código'},{key:'cordillera',label:'Cordillera'},{key:'depart',label:'Departamento'},{key:'prov',label:'Provincia'},{key:'distr',label:'Distrito'},{key:'cuenca',label:'Cuenca'},{key:'tipo',label:'Tipo'},{key:'area_km2',label:'Área (km²)'},{key:'alt_min',label:'Alt. mín.'},{key:'alt_max',label:'Alt. máx.'},{key:'id_glims',label:'ID GLIMS'}],
+    etiqueta:null, minZoom:8, labelZoom:12, porVista:true, max:3000, weight:1, borde:'#0284c7', dash:null, fillOpacity:0.4, esperado:null,
+    canvas:true, zoomEnPlace:true }
 ];
 
 const $ = id => document.getElementById(id);
@@ -476,7 +426,7 @@ const map = L.map('map', { layers: [imagenesEtiquetas], maxZoom: 20, minZoom: 4,
   .setView([-9.5, -75], 6);
 
 // Paneles de dibujo: lo más pequeño queda encima (clic en distrito antes que en departamento)
-[['p_dep',410],['p_prov',420],['p_dist',430],['p_cat',440],['p_add',450],['p_hl',470]].forEach(function(p) {
+[['p_dep',410],['p_prov',420],['p_dist',430],['p_bof',435],['p_lag',436],['p_hum',437],['p_lom',438],['p_gla',439],['p_cat',440],['p_add',450],['p_hl',470]].forEach(function(p) {
   map.createPane(p[0]).style.zIndex = p[1];
 });
 
@@ -484,9 +434,7 @@ const BASEMAPS = {
   imagenes: imagenes,
   imagenesEtiquetas: imagenesEtiquetas,
   topografico: topografico,
-  calles: calles,
-  terreno: terrenoEtiquetas,
-  lona: lonaGris
+  calles: calles
 };
 let basemapActual = imagenesEtiquetas;
 L.control.scale({ metric: true, imperial: false }).addTo(map);
@@ -611,12 +559,22 @@ function valorCampo(props, clave) {
 
 function popupHTML(c, props) {
   const filas = [];
+  const vistos = {};
+  const ocultar = { geom: 1, geom_s: 1, shape: 1 };
   c.campos.forEach(function(cpo) {
     const v = valorCampo(props, cpo.key);
+    vistos[cpo.key] = 1;
     if (v !== '') filas.push('<tr><td><b>' + esc(cpo.label) + '</b></td><td>' + esc(v) + '</td></tr>');
   });
-  if (!filas.length) return '<i>Sin atributos en la base de datos. Ejecuta de nuevo sync_gdb_to_supabase.py.</i>';
-  return '<table class="popup-tabla">' + filas.join('') + '</table>';
+  Object.keys(props || {}).forEach(function(k) {
+    const low = k.toLowerCase();
+    if (vistos[low] || ocultar[low] || low.indexOf('geom') === 0) return;
+    const v = props[k];
+    if (v == null || v === '' || typeof v === 'object') return;
+    filas.push('<tr><td><b>' + esc(k) + '</b></td><td>' + esc(v) + '</td></tr>');
+  });
+  if (!filas.length) return '<i>Sin atributos. Activa la capa y acércate, o vuelve a sincronizar.</i>';
+  return '<div class="popup-titulo">' + esc(c.nombre) + '</div><table class="popup-tabla">' + filas.join('') + '</table>';
 }
 
 async function pedirCapa(c, b, zoom, max) {
@@ -774,7 +732,7 @@ function swatch(tipo, o) {
 
 function dibujarLeyenda() {
   let h = '';
-  [['limites', 'Límite Político Administrativo'], ['catastro', 'Catastro Minero'], ['reportes', 'Reportes']].forEach(function(g) {
+  [['limites', 'Límite Político Administrativo'], ['catastro', 'Catastro Minero'], ['ecosistemas', 'Ecosistemas Frágiles']].forEach(function(g) {
     h += '<div class="lg-sec">' + g[1] + '</div>';
     CAPAS.filter(function(c) { return (c.grupo || 'limites') === g[0]; }).forEach(function(c) {
       h += '<div class="lg-sub">' + esc(c.nombre) + '</div>' +
@@ -804,6 +762,7 @@ function dibujarLeyenda() {
 function dibujarLista() {
   $('lista').innerHTML = '';
   $('lista-catastro').innerHTML = '';
+  $('lista-ecosistemas').innerHTML = '';
   CAPAS.forEach(function(c) {
     const d = document.createElement('div');
     d.className = 'capa';
@@ -828,7 +787,7 @@ function dibujarLista() {
       if (c.minZoom != null && map.getZoom() < c.minZoom) map.setZoom(c.minZoom);
       else if (!c.porVista && c._bounds && c._bounds.isValid()) map.fitBounds(c._bounds, { padding: [20, 20], maxZoom: 9 });
     };
-    (c.grupo === 'catastro' ? $('lista-catastro') : c.grupo === 'reportes' ? $('lista') : $('lista')).appendChild(d);
+    ({ catastro: $('lista-catastro'), ecosistemas: $('lista-ecosistemas') }[c.grupo] || $('lista')).appendChild(d);
     contarBD(c);
   });
 }
@@ -958,25 +917,20 @@ async function reproyectarSiHaceFalta(fcOriginal, fc) {
   return fc;
 }
 
-function etiquetaPunto(p) {
-  if (!p) return '';
-  const keys = Object.keys(p);
-  const norm = function(s) { return String(s).toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9]/g, ''); };
-  const buscar = function(nombre) {
-    const k = keys.find(function(x) { return norm(x) === nombre; });
-    return k && p[k] != null && String(p[k]).trim() !== '' ? String(p[k]).trim() : '';
-  };
-  return buscar('sondaje') || buscar('plataforma') || buscar('codigo') || buscar('code') || buscar('id') || '';
-}
-
-async function puntosDesdeFilas(filas, cols, opts) {
+async function csvAGeoJSON(texto, opts) {
+  const P = await lib('papa');
+  const r = P.parse(texto, { header: true, skipEmptyLines: true });
+  const filas = r.data;
+  if (!filas.length) throw new Error('El CSV no tiene filas.');
+  const cols = r.meta.fields || [];
   const norm = function(s) { return String(s).toLowerCase().trim().replace(/[^a-z0-9]/g, ''); };
   const candX = ['lon', 'lng', 'long', 'longitude', 'longitud', 'x', 'este', 'east', 'easting', 'coordenadax', 'coordx', 'xcoord'];
   const candY = ['lat', 'latitude', 'latitud', 'y', 'norte', 'north', 'northing', 'coordenaday', 'coordy', 'ycoord'];
   const cx = cols.find(function(c) { return candX.indexOf(norm(c)) >= 0; });
   const cy = cols.find(function(c) { return candY.indexOf(norm(c)) >= 0; });
-  if (!cx || !cy) throw new Error('No encontré columnas Este/Norte o Lon/Lat.\nColumnas: ' + cols.join(', '));
+  if (!cx || !cy) throw new Error('No encontré columnas de coordenadas (usa lon/lat, x/y o este/norte).\nColumnas del archivo: ' + cols.join(', '));
   const num = function(v) { return parseFloat(String(v).replace(',', '.')); };
+
   let p4 = null;
   if (opts.crs !== 'wgs84') p4 = await lib('proj4');
   const feats = []; let omitidos = 0;
@@ -987,30 +941,12 @@ async function puntosDesdeFilas(filas, cols, opts) {
     if (opts.crs === 'auto') def = (Math.abs(x) <= 180 && Math.abs(y) <= 90) ? null : CRS_OPC.utm18;
     if (def) { const p = p4(def).inverse([x, y]); lon = p[0]; lat = p[1]; }
     if (!isFinite(lon) || !isFinite(lat) || Math.abs(lat) > 90 || Math.abs(lon) > 180) { omitidos++; return; }
-    const props = Object.assign({}, fila);
-    const et = etiquetaPunto(props);
-    if (et) props._codigo = et;
-    feats.push({ type: 'Feature', geometry: { type: 'Point', coordinates: [lon, lat] }, properties: props });
+    feats.push({ type: 'Feature', geometry: { type: 'Point', coordinates: [lon, lat] }, properties: fila });
   });
-  if (!feats.length) throw new Error('Ninguna fila tiene coordenadas válidas (' + opts.crs + ').');
+  if (!feats.length) throw new Error('Ninguna fila tiene coordenadas válidas con el sistema elegido (' + opts.crs + ').');
   const fc = { type: 'FeatureCollection', features: feats };
-  fc._nota = 'Columnas: ' + cx + ' / ' + cy + ' · etiqueta: SONDAJE > PLATAFORMA > CODIGO' + (omitidos ? ' · omitidas: ' + omitidos : '');
+  fc._nota = 'Columnas usadas: ' + cx + ' / ' + cy + (omitidos ? ' · filas omitidas: ' + omitidos : '');
   return fc;
-}
-
-async function csvAGeoJSON(texto, opts) {
-  const P = await lib('papa');
-  const r = P.parse(texto, { header: true, skipEmptyLines: true });
-  if (!r.data.length) throw new Error('El CSV no tiene filas.');
-  return puntosDesdeFilas(r.data, r.meta.fields || [], opts);
-}
-
-async function excelAGeoJSON(buf, opts) {
-  if (typeof XLSX === 'undefined') throw new Error('No se cargó la librería Excel.');
-  const wb = XLSX.read(buf, { type: 'array' });
-  const filas = XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]], { defval: '' });
-  if (!filas.length) throw new Error('El Excel no tiene filas.');
-  return puntosDesdeFilas(filas, Object.keys(filas[0]), opts);
 }
 
 async function desdeZip(buf) {
@@ -1035,8 +971,7 @@ async function convertir(ext, buf, opts) {
   if (ext === 'gpx') { const tg = await lib('togeojson'); return normalizar(tg.gpx(parseXML(texto()))); }
   if (ext === 'kmz' || ext === 'zip') return desdeZip(buf);
   if (ext === 'csv' || ext === 'txt' || ext === 'tsv') return csvAGeoJSON(texto(), opts);
-  if (ext === 'xlsx' || ext === 'xls') return excelAGeoJSON(buf, opts);
-  throw new Error('Formato no soportado: .' + ext + ' (usa GeoJSON, KML, KMZ, GPX, Shapefile .zip, CSV o Excel).');
+  throw new Error('Formato no soportado: .' + ext + ' (usa GeoJSON, KML, KMZ, GPX, Shapefile .zip o CSV).');
 }
 
 async function arcgisAGeoJSON(url) {
@@ -1086,14 +1021,7 @@ function construirAgregada(rec) {
   return L.geoJSON(rec.fc, {
     pane: 'p_add',
     pointToLayer: function(f, ll) {
-      const cod = etiquetaPunto(f.properties || {});
-      const icon = L.divIcon({
-        className: 'pt-cod',
-        html: '<div class="pt-dot" style="background:' + rec.color + '"></div>' +
-              (cod ? '<div class="pt-lbl">' + esc(cod) + '</div>' : ''),
-        iconSize: [0, 0], iconAnchor: [0, 0]
-      });
-      return L.marker(ll, { pane: 'p_add', icon: icon });
+      return L.circleMarker(ll, { pane: 'p_add', radius: 5, color: '#fff', weight: 1, fillColor: rec.color, fillOpacity: 0.9 });
     },
     style: function() { return { color: rec.color, weight: 2, fillColor: rec.color, fillOpacity: 0.2 }; },
     onEachFeature: function(f, l) { l.bindPopup(popupAgregada(rec, f.properties || {}), { maxWidth: 360 }); }
@@ -1223,20 +1151,9 @@ wrap.addEventListener('drop', function(e) {
 // =============================================================================
 function fuentes() {
   const out = [];
-  // Capas del geoportal (siempre disponibles, aunque no estén en la vista)
+  AGREGADAS.forEach(function(r) { out.push({ id: r.id, nombre: r.nombre, features: r.fc.features }); });
   CAPAS.forEach(function(c) {
-    const feats = (c._fc && c._fc.features) ? c._fc.features : [];
-    out.push({
-      id: 'adm_' + c.key,
-      nombre: c.nombre,
-      features: feats,
-      remota: true,
-      capa: c
-    });
-  });
-  // Capas agregadas (Add Data)
-  AGREGADAS.forEach(function(r) {
-    out.push({ id: r.id, nombre: r.nombre + ' (agregada)', features: r.fc.features, remota: false });
+    if (c._fc && c._fc.features && c._fc.features.length) out.push({ id: 'adm_' + c.key, nombre: c.nombre + ' (en vista)', features: c._fc.features });
   });
   return out;
 }
@@ -1247,106 +1164,22 @@ function llenarSelect(sel, items, valor) {
   if (items.some(function(i) { return i.v === previo; })) sel.value = previo;
 }
 
-function valoresUnicos(features, campo) {
-  const set = {};
-  (features || []).forEach(function(f) {
-    const v = f.properties && f.properties[campo];
-    if (v != null && String(v).trim() !== '') set[String(v).trim()] = true;
-  });
-  return Object.keys(set).sort(function(a, b) { return a.localeCompare(b, 'es'); });
-}
-
-function pintarValores(vals) {
-  const sel = $('q-valor-lista');
-  const dl = $('q-valores-dl');
-  sel.innerHTML = '<option value="">— Seleccione o escriba —</option>' +
-    vals.map(function(v) { return '<option value="' + esc(v) + '">' + esc(v) + '</option>'; }).join('');
-  dl.innerHTML = vals.map(function(v) { return '<option value="' + esc(v) + '">'; }).join('');
-  const hint = $('q-valor-hint');
-  hint.textContent = vals.length
-    ? vals.length + ' valor(es) único(s) en «' + $('q-campo').value + '». Elija de la lista o escriba las primeras letras.'
-    : 'No hay valores cargados para este campo. Acerque el mapa o agregue la capa.';
-}
-
-async function cargarValoresCampo() {
-  const src = fuentes().find(function(s) { return s.id === $('q-capa').value; });
-  const campo = $('q-campo').value;
-  if (!src || !campo) { pintarValores([]); return; }
-  let vals = valoresUnicos(src.features, campo);
-  // Capas de Supabase: traer TODOS los valores distintos (paginado)
-  if (src.remota && src.capa && src.capa.tabla) {
-    try {
-      const extra = {};
-      vals.forEach(function(v) { extra[v] = true; });
-      let offset = 0;
-      const page = 1000;
-      while (true) {
-        const url = SUPABASE_URL + '/rest/v1/' + src.capa.tabla +
-          '?select=' + encodeURIComponent(campo) +
-          '&order=' + encodeURIComponent(campo) + '.asc' +
-          '&limit=' + page + '&offset=' + offset;
-        const r = await fetch(url, { headers: hdrBase });
-        if (!r.ok) break;
-        const data = await r.json();
-        if (!data.length) break;
-        data.forEach(function(row) {
-          const v = row[campo];
-          if (v != null && String(v).trim() !== '') extra[String(v).trim()] = true;
-        });
-        if (data.length < page) break;
-        offset += page;
-        if (offset > 100000) break; // tope de seguridad
-      }
-      vals = Object.keys(extra).sort(function(a, b) { return a.localeCompare(b, 'es'); });
-    } catch (e) { /* se queda con los valores locales */ }
-  }
-  pintarValores(vals);
-}
-
 function refrescarCampos() {
   const src = fuentes().find(function(s) { return s.id === $('q-capa').value; });
   const claves = [];
-  if (src && src.capa && src.capa.campos) {
-    src.capa.campos.forEach(function(cf) { if (claves.indexOf(cf.key) < 0) claves.push(cf.key); });
-  }
-  if (src) src.features.forEach(function(f) {
+  if (src) src.features.slice(0, 200).forEach(function(f) {
     Object.keys(f.properties || {}).forEach(function(k) { if (claves.indexOf(k) < 0) claves.push(k); });
   });
-  llenarSelect($('q-campo'), claves.map(function(k) {
-    const label = (src && src.capa && src.capa.campos)
-      ? ((src.capa.campos.find(function(cf) { return cf.key === k; }) || {}).label || k)
-      : k;
-    return { v: k, t: label };
-  }));
-  cargarValoresCampo();
+  llenarSelect($('q-campo'), claves.map(function(k) { return { v: k, t: k }; }));
 }
 
 function refrescarFuentes() {
   const fs = fuentes();
-  llenarSelect($('q-capa'), fs.map(function(s) {
-    const n = s.features.length ? ' (' + s.features.length + ')' : '';
-    return { v: s.id, t: s.nombre + n };
-  }));
+  llenarSelect($('q-capa'), fs.map(function(s) { return { v: s.id, t: s.nombre + ' (' + s.features.length + ')' }; }));
   llenarSelect($('x-capa'), AGREGADAS.map(function(r) { return { v: r.id, t: r.nombre + ' (' + r.fc.features.length + ')' }; }));
   refrescarCampos();
 }
 $('q-capa').onchange = refrescarCampos;
-$('q-campo').onchange = cargarValoresCampo;
-$('q-valor-lista').onchange = function() {
-  if (this.value) {
-    $('q-valor').value = this.value;
-    $('q-op').value = 'eq';
-  }
-};
-$('q-valor').addEventListener('input', function() {
-  const t = this.value.toLowerCase();
-  const sel = $('q-valor-lista');
-  for (let i = 0; i < sel.options.length; i++) {
-    const opt = sel.options[i];
-    if (!opt.value) continue;
-    if (opt.value.toLowerCase().indexOf(t) === 0) { sel.value = opt.value; break; }
-  }
-});
 
 function qMsg(t, err) { const m = $('q-msg'); m.textContent = t || ''; m.className = 'msg' + (err ? ' err' : ''); }
 
@@ -1388,27 +1221,38 @@ function descargarCSV(nombre, features) {
   document.body.appendChild(a); a.click(); a.remove();
 }
 
-/** Excel real (.xlsx) — no muestra advertencia de formato */
+/** Excel con encabezado coloreado (HTML table .xls — Excel lo abre con estilos) */
 function descargarExcel(nombre, features) {
-  if (typeof XLSX === 'undefined') {
-    alert('No se pudo cargar la librería Excel. Revisa la conexión a internet.');
-    return;
-  }
   const filas = features.map(filaCSV);
   const cols = [];
   filas.forEach(function(f) { Object.keys(f).forEach(function(k) { if (cols.indexOf(k) < 0) cols.push(k); }); });
-  const aoa = [];
-  aoa.push(['Resultado de consulta — Geo Portal']);
-  aoa.push(cols);
-  filas.forEach(function(f) {
-    aoa.push(cols.map(function(c) { return f[c] == null ? '' : f[c]; }));
+  const esc = function(v) {
+    if (v == null) return '';
+    return String(v).replace(/&/g, '&').replace(/</g, '<').replace(/>/g, '>');
+  };
+  let html = '<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel">';
+  html += '<head><meta charset="utf-8"><style>';
+  html += 'table { border-collapse:collapse; font-family:Calibri,Arial,sans-serif; font-size:11pt; }';
+  html += 'td, th { border:1px solid #cbd5e0; padding:6px 10px; }';
+  html += '.titulo { background:#1e3a8a; color:#ffffff; font-size:14pt; font-weight:bold; text-align:center; padding:10px; }';
+  html += '.hdr { background:#2563eb; color:#ffffff; font-weight:bold; text-align:center; }';
+  html += '.odd { background:#ffffff; }';
+  html += '.even { background:#eff6ff; }';
+  html += '</style></head><body>';
+  html += '<table>';
+  html += '<tr><td class="titulo" colspan="' + cols.length + '">Resultado de consulta — Geo Portal</td></tr>';
+  html += '<tr>' + cols.map(function(c) { return '<th class="hdr">' + esc(c) + '</th>'; }).join('') + '</tr>';
+  filas.forEach(function(f, i) {
+    const cls = (i % 2 === 0) ? 'odd' : 'even';
+    html += '<tr>' + cols.map(function(c) {
+      return '<td class="' + cls + '">' + esc(f[c]) + '</td>';
+    }).join('') + '</tr>';
   });
-  const ws = XLSX.utils.aoa_to_sheet(aoa);
-  if (cols.length > 1) ws['!merges'] = [{ s: { r: 0, c: 0 }, e: { r: 0, c: cols.length - 1 } }];
-  ws['!cols'] = cols.map(function(c) { return { wch: Math.max(12, Math.min(36, String(c).length + 4)) }; });
-  const wb = XLSX.utils.book_new();
-  XLSX.utils.book_append_sheet(wb, ws, 'Consulta');
-  XLSX.writeFile(wb, nombre.replace(/[^\w\-]+/g, '_') + '.xlsx');
+  html += '</table></body></html>';
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob([html], { type: 'application/vnd.ms-excel' }));
+  a.download = nombre.replace(/[^\w\-]+/g, '_') + '.xls';
+  document.body.appendChild(a); a.click(); a.remove();
 }
 
 function coordKml(coords, tipo) {
@@ -1424,13 +1268,13 @@ function coordKml(coords, tipo) {
 
 function featureToKmlPlacemark(f, i) {
   const p = f.properties || {};
-  const name = etiquetaPunto(p) || p.nombdist || p.nombprov || p.departamen || p.nombre || ('Punto_' + (i + 1));
+  const name = p.nombdist || p.nombprov || p.departamen || p.NOMBDIST || p.NOMBPROV || p.DEPARTAMEN || p.nombre || ('Feature_' + (i + 1));
   const desc = Object.keys(p).map(function(k) { return '<b>' + esc(k) + '</b>: ' + esc(p[k] == null ? '' : p[k]); }).join('<br/>');
   const g = f.geometry;
   if (!g) return '';
   let geom = '';
   if (g.type === 'Point') {
-    geom = '<styleUrl>#punto</styleUrl><Point><coordinates>' + coordKml(g.coordinates, 'Point') + '</coordinates></Point>';
+    geom = '<Point><coordinates>' + coordKml(g.coordinates, 'Point') + '</coordinates></Point>';
   } else if (g.type === 'LineString') {
     geom = '<LineString><coordinates>' + coordKml(g.coordinates, 'LineString') + '</coordinates></LineString>';
   } else if (g.type === 'Polygon' || g.type === 'MultiPolygon') {
@@ -1443,16 +1287,9 @@ function featureToKmlPlacemark(f, i) {
 /** KMZ = KML (Google Earth abre también .kml; .kmz requiere zip) */
 function descargarKML(nombre, features) {
   const body = features.map(featureToKmlPlacemark).join('\n');
-  const estilo =
-    '<Style id="punto">' +
-    '<IconStyle><color>ff0000ff</color><scale>1</scale>' +
-    '<Icon><href>http://maps.google.com/mapfiles/kml/shapes/placemark_circle.png</href></Icon>' +
-    '</IconStyle>' +
-    '<LabelStyle><color>ffffffff</color><scale>0.9</scale></LabelStyle>' +
-    '</Style>';
   const kml = '<?xml version="1.0" encoding="UTF-8"?>\n' +
     '<kml xmlns="http://www.opengis.net/kml/2.2"><Document><name>' + esc(nombre) + '</name>\n' +
-    estilo + '\n' + body + '\n</Document></kml>';
+    body + '\n</Document></kml>';
   const a = document.createElement('a');
   a.href = URL.createObjectURL(new Blob([kml], { type: 'application/vnd.google-earth.kml+xml' }));
   a.download = nombre.replace(/[^\w\-]+/g, '_') + '.kml';
@@ -1478,39 +1315,9 @@ function accionesResultado(nombre, features) {
 function limpiarConsulta() { limpiarHL(); $('q-res').innerHTML = ''; $('q-acc').innerHTML = ''; qMsg(''); }
 $('q-limpiar').onclick = limpiarConsulta;
 
-async function consultarRemota(src, campo, op, val) {
-  const tabla = src.capa.tabla;
-  let filtro = '';
-  const v = encodeURIComponent(val);
-  if (op === 'eq') filtro = campo + '=eq.' + v;
-  else if (op === 'ne') filtro = campo + '=neq.' + v;
-  else if (op === 'has') filtro = campo + '=ilike.*' + v + '*';
-  else if (op === 'sw') filtro = campo + '=ilike.' + v + '*';
-  else if (op === 'gt') filtro = campo + '=gt.' + v;
-  else if (op === 'ge') filtro = campo + '=gte.' + v;
-  else if (op === 'lt') filtro = campo + '=lt.' + v;
-  else if (op === 'le') filtro = campo + '=lte.' + v;
-  const all = [];
-  let offset = 0;
-  const page = 1000;
-  while (true) {
-    const url = SUPABASE_URL + '/rest/v1/' + tabla + '?' + filtro + '&select=*&limit=' + page + '&offset=' + offset;
-    const r = await fetch(url, { headers: hdrBase });
-    if (!r.ok) throw new Error('Error al consultar ' + tabla);
-    const rows = await r.json();
-    rows.forEach(function(row) {
-      all.push({ type: 'Feature', properties: row, geometry: row.geom || null });
-    });
-    if (rows.length < page) break;
-    offset += page;
-    if (offset > 20000) break;
-  }
-  return all;
-}
-
-async function ejecutarConsultaAtributo() {
+function ejecutarConsultaAtributo() {
   const src = fuentes().find(function(s) { return s.id === $('q-capa').value; });
-  if (!src) { qMsg('No hay capas para consultar.', true); return; }
+  if (!src) { qMsg('No hay capas para consultar. Activa un límite o agrega datos.', true); return; }
   const campo = $('q-campo').value, op = $('q-op').value, val = $('q-valor').value.trim();
   if (!campo) { qMsg('Elige un campo.', true); return; }
   const t = val.toLowerCase();
@@ -1532,28 +1339,15 @@ async function ejecutarConsultaAtributo() {
     return false;
   };
   if (['gt', 'ge', 'lt', 'le'].indexOf(op) >= 0 && !isFinite(nv)) { qMsg('Para comparar con > o < escribe un número.', true); return; }
-
-  let hits = [];
-  if (src.remota && src.capa) {
-    qMsg('Consultando ' + src.nombre + '...');
-    try {
-      hits = await consultarRemota(src, campo, op, val);
-    } catch (e) {
-      qMsg('✖ ' + e.message, true);
-      return;
-    }
-  } else {
-    hits = src.features.filter(function(f) { return test((f.properties || {})[campo]); });
-  }
-
+  const hits = src.features.filter(function(f) { return test((f.properties || {})[campo]); });
   if (!hits.length) { limpiarHL(); $('q-res').innerHTML = ''; $('q-acc').innerHTML = ''; qMsg('Sin resultados en ' + src.nombre + '.'); return; }
-  resaltar(hits.filter(function(f) { return f.geometry; }));
+  resaltar(hits);
   const b = capaHL.getBounds();
   if (b.isValid()) map.fitBounds(b, { padding: [30, 30], maxZoom: 16 });
   qMsg(hits.length + ' elemento(s) en ' + src.nombre + ' donde ' + campo + ' ' + $('q-op').selectedOptions[0].textContent + ' "' + val + '".');
   const cols = [];
-  hits.slice(0, 100).forEach(function(f) { Object.keys(f.properties || {}).forEach(function(k) { if (cols.indexOf(k) < 0 && k !== 'geom' && cols.length < 8) cols.push(k); }); });
-  mostrarTabla(cols, hits.map(function(f) { return { props: f.properties || {}, f: f }; }), function(fila) { if (fila.f.geometry) zoomFeature(fila.f); });
+  hits.slice(0, 100).forEach(function(f) { Object.keys(f.properties || {}).forEach(function(k) { if (cols.indexOf(k) < 0 && cols.length < 7) cols.push(k); }); });
+  mostrarTabla(cols, hits.map(function(f) { return { props: f.properties || {}, f: f }; }), function(fila) { zoomFeature(fila.f); });
   accionesResultado('consulta_' + src.nombre, hits);
 }
 $('q-ejecutar').onclick = ejecutarConsultaAtributo;
@@ -1563,8 +1357,7 @@ $('q-valor').addEventListener('keydown', function(ev) { if (ev.key === 'Enter') 
 const CAMPOS_CRUCE = {
   dep:  [['LIM_DEPARTAMENTO', 'departamen']],
   prov: [['LIM_DEPARTAMENTO', 'departamen'], ['LIM_PROVINCIA', 'nombprov'], ['LIM_CAPITAL', 'capital']],
-  dist: [['LIM_DEPARTAMENTO', 'departamen'], ['LIM_PROVINCIA', 'nombprov'], ['LIM_DISTRITO', 'nombdist'], ['LIM_CAPITAL', 'capital'], ['LIM_UBIGEO', 'ubigeo']],
-  cat:  [['CODIGO', 'id'], ['CONCESION', 'concesion'], ['TITULAR', 'titular'], ['ZONA', 'zona'], ['DEPA', 'depa'], ['PROVI', 'provi'], ['DISTRI', 'distri']]
+  dist: [['LIM_DEPARTAMENTO', 'departamen'], ['LIM_PROVINCIA', 'nombprov'], ['LIM_DISTRITO', 'nombdist'], ['LIM_CAPITAL', 'capital'], ['LIM_UBIGEO', 'ubigeo']]
 };
 const solapa = function(a, b) { return a[0] <= b[2] && a[2] >= b[0] && a[1] <= b[3] && a[3] >= b[1]; };
 
@@ -1610,7 +1403,7 @@ async function ejecutarCruce() {
         const vals = hits.map(function(h) { return h[cf[1]]; }).filter(function(v) { return v != null && v !== ''; });
         p[cf[0]] = vals.length ? Array.from(new Set(vals)).join(' | ') : '';
       });
-      const clave = p[{ dep: 'LIM_DEPARTAMENTO', prov: 'LIM_PROVINCIA', dist: 'LIM_DISTRITO', cat: 'CONCESION' }[nivel]];
+      const clave = p[{ dep: 'LIM_DEPARTAMENTO', prov: 'LIM_PROVINCIA', dist: 'LIM_DISTRITO' }[nivel]];
       if (!hits.length) fuera++;
       else conteo[clave] = (conteo[clave] || 0) + 1;
       if (i % 300 === 299) { qMsg('Cruzando... ' + (i + 1) + ' / ' + feats.length); await pausa(); }
@@ -1619,8 +1412,8 @@ async function ejecutarCruce() {
     renderAgregadas();
 
     const nombres = Object.keys(conteo).sort(function(a, b2) { return conteo[b2] - conteo[a]; });
-    qMsg('✔ ' + feats.length + ' elementos cruzados con ' + c.nombre.toLowerCase() + '. Con coincidencia: ' + (feats.length - fuera) + ' · sin coincidencia: ' + fuera + '.\n' +
-      'El Excel incluye atributos de la capa agregada y de ' + c.nombre.toLowerCase() + '.' +
+    qMsg('✔ ' + feats.length + ' elementos cruzados con ' + c.nombre.toLowerCase() + '. Con límite: ' + (feats.length - fuera) + ' · fuera de límites: ' + fuera + '.\n' +
+      'Las columnas LIM_* ya aparecen en el popup y en el CSV.' +
       (nombres.length ? '\nMás elementos en: ' + nombres.slice(0, 5).map(function(n) { return n + ' (' + conteo[n] + ')'; }).join(', ') : ''));
 
     const cols = [Object.keys(feats[0].properties).find(function(k) { return k.indexOf('LIM_') !== 0; })].filter(Boolean).concat(campos.map(function(cf) { return cf[0]; }));
@@ -1659,12 +1452,6 @@ document.querySelectorAll('.tabs button').forEach(function(b) {
   const el = $(id); L.DomEvent.disableClickPropagation(el); L.DomEvent.disableScrollPropagation(el);
 });
 
-$('btn-menu').onclick = function() {
-  const side = $('side');
-  const abierto = side.classList.toggle('abierto');
-  this.textContent = abierto ? '✕ Cerrar' : '☰ Capas';
-  setTimeout(function() { map.invalidateSize(); }, 200);
-};
 map.on('zoomend moveend', onMoveEnd);
 dibujarLista();
 dibujarLeyenda();
@@ -1700,110 +1487,6 @@ estado('1) Activa Departamentos\n2) Acerca: Provincias z≥7 · Distritos z≥10
     console.warn('Presence no disponible:', e);
   }
 })();
-
-// =============================================================================
-//  Reportes de campo (navegador / celular)
-// =============================================================================
-// Lat/Lon (WGS84) → UTM. Perú: 17S / 18S / 19S
-function aUTM(lat, lon) {
-  const a = 6378137, f = 1 / 298.257223563, k0 = 0.9996;
-  const e2 = f * (2 - f), ep2 = e2 / (1 - e2);
-  let zona = Math.floor((lon + 180) / 6) + 1;
-  if (zona < 17) zona = 17;
-  if (zona > 19) zona = 19;
-  const lon0 = (zona - 1) * 6 - 180 + 3;
-  const latR = lat * Math.PI / 180, lonR = lon * Math.PI / 180, lon0R = lon0 * Math.PI / 180;
-  const N = a / Math.sqrt(1 - e2 * Math.sin(latR) * Math.sin(latR));
-  const T = Math.tan(latR) * Math.tan(latR);
-  const C = ep2 * Math.cos(latR) * Math.cos(latR);
-  const A = (lonR - lon0R) * Math.cos(latR);
-  const M = a * ((1 - e2 / 4 - 3 * e2 * e2 / 64) * latR
-    - (3 * e2 / 8 + 3 * e2 * e2 / 32) * Math.sin(2 * latR)
-    + (15 * e2 * e2 / 256) * Math.sin(4 * latR));
-  const este = k0 * N * (A + (1 - T + C) * A * A * A / 6) + 500000;
-  const norte = k0 * (M + N * Math.tan(latR) * (A * A / 2 + (5 - T + 9 * C + 4 * C * C) * A * A * A * A / 24));
-  const norteS = lat < 0 ? norte + 10000000 : norte;
-  return { este: este, norte: norteS, zona: zona, hemi: lat < 0 ? 'S' : 'N' };
-}
-function textoUTM(lat, lon) {
-  const u = aUTM(lat, lon);
-  return 'UTM ' + u.zona + u.hemi + '  E ' + u.este.toFixed(1) + '  N ' + u.norte.toFixed(1);
-}
-function repMsg(t, err) { const m = $('rep-msg'); m.textContent = t || ''; m.className = 'msg' + (err ? ' err' : ''); }
-function repActualizarCoord() {
-  if (repLat == null) { $('rep-coord').textContent = 'Sin ubicación aún.'; $('rep-enviar').disabled = true; return; }
-  $('rep-coord').textContent = 'Lat ' + repLat.toFixed(5) + ' · Lon ' + repLon.toFixed(5) + '\n' + textoUTM(repLat, repLon);
-  $('rep-enviar').disabled = false;
-}
-$('rep-gps').onclick = function() {
-  if (!navigator.geolocation) { repMsg('Este dispositivo no da ubicación.', true); return; }
-  repMsg('Obteniendo ubicación...');
-  navigator.geolocation.getCurrentPosition(function(pos) {
-    repLat = pos.coords.latitude; repLon = pos.coords.longitude;
-    map.setView([repLat, repLon], 16);
-    repActualizarCoord();
-    repMsg('Ubicación lista.');
-  }, function() { repMsg('No se pudo obtener la ubicación. Permite el acceso al GPS.', true); }, { enableHighAccuracy: true, timeout: 10000 });
-};
-$('rep-click').onclick = function() {
-  repModoClic = true;
-  repMsg('Haz clic en el mapa para fijar el punto.');
-  map.getContainer().style.cursor = 'crosshair';
-};
-map.on('click', function(e) {
-  if (!repModoClic) return;
-  repModoClic = false;
-  map.getContainer().style.cursor = '';
-  repLat = e.latlng.lat; repLon = e.latlng.lng;
-  repActualizarCoord();
-  repMsg('Punto fijado en el mapa.');
-});
-$('rep-enviar').onclick = async function() {
-  if (repLat == null) return;
-  const tipo = $('rep-tipo').value;
-  const descripcion = $('rep-desc').value.trim();
-  const autor = $('rep-autor').value.trim() || 'Anónimo';
-  if (!descripcion) { repMsg('Escribe una descripción.', true); return; }
-  const utm = aUTM(repLat, repLon);
-  const body = {
-    tipo: tipo,
-    descripcion: descripcion,
-    autor: autor,
-    este: Math.round(utm.este * 10) / 10,
-    norte: Math.round(utm.norte * 10) / 10,
-    zona: utm.zona + utm.hemi,
-    geom: 'SRID=4326;POINT(' + repLon + ' ' + repLat + ')'
-  };
-  try {
-    const r = await fetch(SUPABASE_URL + '/rest/v1/reportes', {
-      method: 'POST',
-      headers: Object.assign({}, hdrBase, {
-        'Content-Type': 'application/json',
-        'Content-Profile': ESQUEMA,
-        Prefer: 'return=minimal'
-      }),
-      body: JSON.stringify(body)
-    });
-    if (!r.ok) {
-      const t = await r.text();
-      repMsg('Error al guardar: ' + t.slice(0, 200), true);
-      return;
-    }
-    repMsg('✔ Reporte enviado. Activa la capa «Reportes» en el panel izquierdo para verlo.');
-    $('rep-desc').value = '';
-    // Marcador inmediato
-    L.circleMarker([repLat, repLon], { radius: 8, color: '#dc2626', fillColor: '#f87171', fillOpacity: 0.9, weight: 2 })
-      .addTo(map)
-      .bindPopup('<b>' + esc(tipo) + '</b><br>' + esc(descripcion) +
-        '<br><small>' + esc(autor) + '</small><br><small>' + esc(textoUTM(repLat, repLon)) + '</small>')
-      .openPopup();
-    // Refrescar capa de reportes si está activa
-    const capaRep = CAPAS.find(function(c) { return c.key === 'rep'; });
-    if (capaRep && deseadas[capaRep.tabla]) refrescar(capaRep, true);
-  } catch (e) {
-    repMsg('✖ ' + e.message, true);
-  }
-};
 </script>
 </body>
 </html>
