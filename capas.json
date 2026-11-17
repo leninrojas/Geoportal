@@ -1,0 +1,369 @@
+{
+ "proyectos": [
+  {
+   "nombre": "Base Geoportal", 
+   "gdb": "Base_Geoportal.gdb", 
+   "id": "base_geoportal", 
+   "principal": true
+  }
+ ], 
+ "actualizado": "2026-11-16 08:44:30", 
+ "capas": [
+  {
+   "fc": "Catastro_Minero\\Concesiones_Mineras_2026", 
+   "bbox": [
+    -83.7676, 
+    -18.2834, 
+    -68.7164, 
+    -2.9551
+   ], 
+   "proyecto": "base_geoportal", 
+   "geometria": "Polygon", 
+   "nombre": "Concesiones Mineras 2026", 
+   "columnas": [
+    "concesion", 
+    "depa", 
+    "distri", 
+    "provi", 
+    "titular", 
+    "zona"
+   ], 
+   "tabla": "catastro_minero", 
+   "id": "CODIGOU"
+  }, 
+  {
+   "fc": "Social\\Centros_Poblados_GeoPeru", 
+   "bbox": [
+    -81.3059, 
+    -18.286, 
+    -68.7776, 
+    -0.0957
+   ], 
+   "proyecto": "base_geoportal", 
+   "geometria": "Point", 
+   "nombre": "Centros Poblados GeoPeru", 
+   "columnas": [
+    "cp_etiq", 
+    "dist", 
+    "dpto", 
+    "fuente", 
+    "pob_total", 
+    "prov", 
+    "tipo"
+   ], 
+   "tabla": "centros_poblados_geoperu", 
+   "id": "GlobalID"
+  }, 
+  {
+   "fc": "Social\\Comunidades", 
+   "bbox": [
+    -79.6482, 
+    -17.7619, 
+    -68.6738, 
+    -0.0422
+   ], 
+   "proyecto": "base_geoportal", 
+   "geometria": "Polygon", 
+   "nombre": "Comunidades", 
+   "columnas": [
+    "nombre", 
+    "pueblo_ind", 
+    "tipo_comun"
+   ], 
+   "tabla": "comunidades", 
+   "id": "GlobalID"
+  }, 
+  {
+   "fc": "Ecosistemas_Fragiles\\Humedales_Costeros_SERFOR", 
+   "bbox": [
+    -80.6663, 
+    -12.5893, 
+    -75.492, 
+    -5.1988
+   ], 
+   "proyecto": "base_geoportal", 
+   "geometria": "Polygon", 
+   "nombre": "Humedales Costeros SERFOR", 
+   "columnas": [
+    "docleg", 
+    "fuente", 
+    "nomdep", 
+    "nomdis", 
+    "nomef", 
+    "nomloc", 
+    "nompro", 
+    "supaha"
+   ], 
+   "tabla": "humedales_costeros_serfor", 
+   "id": "OBJECTID"
+  }, 
+  {
+   "fc": "Ecosistemas_Fragiles\\Invent_Bof_INAIGEM_2023_v2", 
+   "bbox": [
+    -79.9138, 
+    -17.8789, 
+    -69.0636, 
+    -4.6963
+   ], 
+   "proyecto": "base_geoportal", 
+   "geometria": "Polygon", 
+   "nombre": "Invent Bof INAIGEM 2023 v2", 
+   "columnas": [
+    "area_ha", 
+    "desc_cober", 
+    "macrozona", 
+    "nomb_uh", 
+    "vertiente"
+   ], 
+   "tabla": "invent_bof_inaigem_2023", 
+   "id": "OBJECTID_12"
+  }, 
+  {
+   "fc": "Ecosistemas_Fragiles\\Invent_Glaciar_INAIGEM_2020", 
+   "bbox": [
+    -77.8644, 
+    -17.6727, 
+    -69.2216, 
+    -8.3937
+   ], 
+   "proyecto": "base_geoportal", 
+   "geometria": "Polygon", 
+   "nombre": "Invent Glaciar INAIGEM 2020", 
+   "columnas": [
+    "alt_max", 
+    "alt_min", 
+    "area_km2", 
+    "cod_glac", 
+    "cordillera", 
+    "cuenca", 
+    "depart", 
+    "distr", 
+    "id_glims", 
+    "prov", 
+    "tipo", 
+    "vert"
+   ], 
+   "tabla": "invent_glaciar_inaigem_2020", 
+   "id": "OBJECTID"
+  }, 
+  {
+   "fc": "Ecosistemas_Fragiles\\Lagos_Lagunas_IGN", 
+   "bbox": [
+    -80.8131, 
+    -17.665, 
+    -68.7174, 
+    -0.1083
+   ], 
+   "proyecto": "base_geoportal", 
+   "geometria": "Polygon", 
+   "nombre": "Lagos Lagunas IGN", 
+   "columnas": [
+    "codigo", 
+    "nom_lag"
+   ], 
+   "tabla": "lagos_lagunas_ign", 
+   "id": "OBJECTID"
+  }, 
+  {
+   "fc": "Limites_Politicos\\Limite_Departamental", 
+   "bbox": [
+    -81.3282, 
+    -18.3509, 
+    -68.6523, 
+    -0.0386
+   ], 
+   "proyecto": "base_geoportal", 
+   "geometria": "Polygon", 
+   "nombre": "Limite Departamental", 
+   "columnas": [
+    "capital", 
+    "departamen", 
+    "fuente"
+   ], 
+   "tabla": "limite_departamental", 
+   "id": "ID"
+  }, 
+  {
+   "fc": "Limites_Politicos\\Limite_Distrital", 
+   "bbox": [
+    -81.3282, 
+    -18.3509, 
+    -68.6523, 
+    -0.0386
+   ], 
+   "proyecto": "base_geoportal", 
+   "geometria": "Polygon", 
+   "nombre": "Limite Distrital", 
+   "columnas": [
+    "capital", 
+    "departamen", 
+    "fuente", 
+    "nombdist", 
+    "nombprov", 
+    "ubigeo"
+   ], 
+   "tabla": "limite_distrital", 
+   "id": "ID"
+  }, 
+  {
+   "fc": "Limites_Politicos\\Limite_Provincial", 
+   "bbox": [
+    -81.3282, 
+    -18.3509, 
+    -68.6523, 
+    -0.0386
+   ], 
+   "proyecto": "base_geoportal", 
+   "geometria": "Polygon", 
+   "nombre": "Limite Provincial", 
+   "columnas": [
+    "capital", 
+    "departamen", 
+    "fuente", 
+    "nombprov"
+   ], 
+   "tabla": "limite_provincial", 
+   "id": "ID"
+  }, 
+  {
+   "fc": "Ecosistemas_Fragiles\\Lomas_Costeras_SERFOR", 
+   "bbox": [
+    -78.9613, 
+    -18.0407, 
+    -70.743, 
+    -8.1668
+   ], 
+   "proyecto": "base_geoportal", 
+   "geometria": "Polygon", 
+   "nombre": "Lomas Costeras SERFOR", 
+   "columnas": [
+    "altmax", 
+    "altmin", 
+    "docleg", 
+    "fuente", 
+    "nomdep", 
+    "nomdis", 
+    "nomef", 
+    "nomloc", 
+    "nompro", 
+    "supaha"
+   ], 
+   "tabla": "lomas_costeras_serfor", 
+   "id": "OBJECTID"
+  }, 
+  {
+   "fc": "Pasivos_Ambientales_Mineros\\Pasivos_Mineros", 
+   "bbox": [
+    -81.0188, 
+    -17.9996, 
+    -69.1202, 
+    -4.0369
+   ], 
+   "proyecto": "base_geoportal", 
+   "geometria": "Point", 
+   "nombre": "Pasivos Mineros", 
+   "columnas": [
+    "distrito", 
+    "este_wgs84", 
+    "norte_wgs84", 
+    "provincia", 
+    "region", 
+    "subtipo", 
+    "tipo"
+   ], 
+   "tabla": "pasivos_mineros", 
+   "id": "OBJECTID"
+  }, 
+  {
+   "fc": "Social\\Poblaciones_Dispersas_GeoPeru", 
+   "bbox": [
+    -81.282, 
+    -18.3345, 
+    -68.6593, 
+    -0.2016
+   ], 
+   "proyecto": "base_geoportal", 
+   "geometria": "Point", 
+   "nombre": "Poblaciones Dispersas GeoPeru", 
+   "columnas": [
+    "cp_etiq", 
+    "fuente", 
+    "nom_dist", 
+    "nom_dpto", 
+    "nom_prov", 
+    "pob_total", 
+    "tipo"
+   ], 
+   "tabla": "poblaciones_dispersas_geoperu", 
+   "id": "GlobalID"
+  }, 
+  {
+   "fc": "Hidrografia\\Rios_Quebradas", 
+   "bbox": [
+    -81.2983, 
+    -18.3354, 
+    -68.6918, 
+    -0.0462
+   ], 
+   "proyecto": "base_geoportal", 
+   "geometria": "Polyline", 
+   "nombre": "Rios Quebradas", 
+   "columnas": [
+    "caract", 
+    "cod_facc", 
+    "cod_ign", 
+    "cuenca", 
+    "distrito", 
+    "dpto", 
+    "longitud", 
+    "nombre", 
+    "obs", 
+    "provincia", 
+    "rasgo_prin", 
+    "rasgo_secu", 
+    "shape_stle"
+   ], 
+   "tabla": "rios_quebradas", 
+   "id": "GlobalID"
+  }, 
+  {
+   "fc": "Ecosistemas_Fragiles\\Sitios_RAMSAR", 
+   "bbox": [
+    -80.9125, 
+    -17.1717, 
+    -69.0946, 
+    -3.1162
+   ], 
+   "proyecto": "base_geoportal", 
+   "geometria": "Polygon", 
+   "nombre": "Sitios RAMSAR", 
+   "columnas": [
+    "ds", 
+    "nombre", 
+    "ubicacion"
+   ], 
+   "tabla": "sitios_ramsar", 
+   "id": "OBJECTID"
+  }, 
+  {
+   "fc": "Hidrografia\\Unidades_Hidrograficas", 
+   "bbox": [
+    -81.3282, 
+    -18.3505, 
+    -68.6519, 
+    -0.0387
+   ], 
+   "proyecto": "base_geoportal", 
+   "geometria": "Polygon", 
+   "nombre": "Unidades Hidrograficas", 
+   "columnas": [
+    "area_ha", 
+    "cod_gdb", 
+    "cod_uh", 
+    "nom_uh"
+   ], 
+   "tabla": "unidades_hidrograficas", 
+   "id": "COD_UH"
+  }
+ ]
+}
