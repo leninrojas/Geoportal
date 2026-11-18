@@ -11,6 +11,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="GeoPortal">
 <link rel="manifest" href="manifest.webmanifest">
+<script>window.addEventListener("beforeinstallprompt",function(e){e.preventDefault();window.__pwaPrompt=e;});</script>
 <link rel="icon" type="image/png" href="icon-v2-192.png">
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
@@ -833,6 +834,7 @@
       <div id="tk-plan-acc" style="display:none; gap:6px; margin-top:6px;">
         <button class="btn sec" id="tk-plan-perfil" type="button" style="margin:0; flex:1; padding:6px; font-size:11.5px;">⛰ Perfil topográfico</button>
         <button class="btn sec" id="tk-plan-tiempo" type="button" style="margin:0; flex:1; padding:6px; font-size:11.5px;">⏱ Tiempo</button>
+        <button class="btn sec" id="tk-plan-video" type="button" style="margin:0; flex:1; padding:6px; font-size:11.5px;">🎬 Video 3D</button>
       </div>
       <div class="tk-sec">🧭 Mejor ruta entre A y B (según el relieve)</div>
       <div style="display:flex; gap:6px;">
@@ -848,6 +850,7 @@
       <label class="tk-lbl">Preferir caminos de una capa (opcional)</label>
       <select id="ar-caminos" style="width:100%; padding:5px; font-size:12px;"><option value="">— ninguna —</option></select>
       <button class="btn" id="ar-calc" type="button">🧭 Calcular mejor ruta</button>
+      <button class="btn sec" id="ar-limpiar" type="button" style="padding:6px; font-size:11.5px;">🧹 Limpiar puntos A y B</button>
       <div id="ar-msg" style="font-size:12px; font-weight:600; min-height:16px; margin-top:4px;"></div>
       <div style="font-size:11px; color:#64748b;">Busca la ruta de menor esfuerzo sobre el modelo de elevación (~30 m), con la velocidad de caminata de Tobler. No conoce caminos reales salvo que elijas una capa de caminos; verifica la ruta en campo.</div>
       <div style="font-size:11.5px; color:#64748b; margin-top:8px;">Al grabar, el geoportal te muestra cuánto falta, el rumbo a la meta, la hora estimada de llegada y te avisa (vibración y sonido) si te sales de la ruta o llegas a la meta. La ruta queda guardada en el teléfono.</div>
@@ -862,6 +865,7 @@
       <label class="tk-lbl">Medio de transporte</label>
       <select id="nv-modo" style="width:100%; padding:6px; font-size:12px; border:1px solid var(--border-color); border-radius:4px;"><option value="car" selected>🚗 Auto / camioneta</option><option value="foot">🚶 A pie</option><option value="bike">🚲 Bicicleta</option></select>
       <button class="btn" id="nv-calc" type="button">⏱ Calcular recorrido</button>
+      <button class="btn sec" id="nv-limpiar" type="button" style="padding:6px; font-size:11.5px;">🧹 Limpiar puntos del mapa</button>
       <div id="nv-msg" style="font-size:12px; font-weight:600; min-height:16px; margin-top:4px;"></div>
       <div id="nv-res"></div>
       <div id="nv-acc" style="display:none; gap:6px; flex-wrap:wrap; margin-top:6px;">
@@ -879,9 +883,10 @@
     <div id="tk-t-off" style="display:none;">
       <div id="off-sw" class="tk-aviso" style="background:#f8fafc; border-color:#e2e8f0; color:#334155;"></div>
       <div style="display:flex; gap:6px; flex-wrap:wrap; margin-top:6px;">
-        <button class="btn" id="off-inst" type="button" style="margin:0; flex:1; display:none;">📲 Instalar como app</button>
+        <button class="btn" id="off-inst" type="button" style="margin:0; flex:1;">📲 Instalar como app</button>
         <button class="btn sec" id="off-actualizar" type="button" style="margin:0; flex:1; padding:6px;">🔄 Buscar actualización</button>
       </div>
+      <div id="off-inst-ayuda" class="tk-aviso" style="display:none; margin-top:6px;"></div>
       <div class="tk-sec">Descargar mapas para usar sin internet</div>
       <label class="tk-lbl">Mapa base</label>
       <select id="off-base" style="width:100%; padding:5px; font-size:12px;"><option value="sat">Imágenes satelitales + etiquetas</option><option value="topo">Topográfico</option><option value="calles">Calles</option></select>
@@ -12073,10 +12078,11 @@ function trkTeselasBBox(w, s, e, n, z) {
   return out;
 }
 // Teselas a lo largo de una ruta con un buffer (m): corredor
-function trkTeselasRuta(ruta, buffer, z) {
+function trkTeselasRuta(ruta, buffer, z, tope) {
   const N = Math.pow(2, z) - 1, set = new Set(), out = [];
   const add = (x, y) => { if (x < 0 || y < 0 || x > N || y > N) return; const k = x + '/' + y; if (!set.has(k)) { set.add(k); out.push([x, y]); } };
   for (let i = 0; i < ruta.length; i++) {
+    if (tope && out.length > tope) break;
     const lat = ruta[i].lat, tam = 40075016 * Math.cos(trkRad(lat)) / Math.pow(2, z), k = Math.ceil(buffer / tam);
     const paso = Math.max(10, tam / 3); let pts = [ruta[i]];
     if (i > 0) { const L = trkDist(ruta[i - 1], ruta[i]), m = Math.floor(L / paso); for (let j = 1; j <= m; j++) { const f = j / (m + 1); pts.push({ lat: ruta[i - 1].lat + (ruta[i].lat - ruta[i - 1].lat) * f, lng: ruta[i - 1].lng + (ruta[i].lng - ruta[i - 1].lng) * f }); } }
@@ -12370,7 +12376,7 @@ function trkTeselasRuta(ruta, buffer, z) {
     if (cur) { const u = trkUTM(cur.lat, cur.lng); set('tk-v-pos', cur.lat.toFixed(5) + ', ' + cur.lng.toFixed(5) + (u ? '  ·  UTM ' + u.zona + ' ' + Math.round(u.e) + ' E ' + Math.round(u.n) + ' N' : '')); }
     const nb = q('tk-nav-box'); if (nb) { nb.style.display = n ? '' : 'none'; if (n) nb.innerHTML = q('th-nav').innerHTML; }
   }
-  setInterval(() => { if (TK.estado === 'rec' || TK.watch != null) { hud(); } if (TK.estado === 'rec' && q('pnl-trek').classList.contains('on')) perfil(); else if (TK.estado === 'rec' && TK.plan && (TK.tick = (TK.tick || 0) + 1) % 3 === 0) flotRender(); }, 1000);
+  setInterval(() => { if (TK.estado === 'rec' || TK.watch != null) { hud(); } if (TK.estado === 'rec' && (TK.tick = (TK.tick || 0) + 1) % 4 === 0) { if (q('pnl-trek').classList.contains('on')) perfil(); else if (TK.plan) flotRender(); } }, 1000);
   setInterval(() => { try { if (navigator.getBattery) navigator.getBattery().then(b => { set('tk-bat', '🔋 ' + Math.round(b.level * 100) + '%'); if (b.level < 0.15 && !b.charging && TK.estado === 'rec') aviso('bat', '🔋 Batería baja (' + Math.round(b.level * 100) + '%). Reduce el brillo de la pantalla.', 'mal', 600000, [200], 1); }); } catch (e) {} }, 30000);
   function redUI() { const on = navigator.onLine; const r = q('tk-red'); if (r) { r.textContent = on ? '🟢 En línea' : '🔴 Sin conexión'; r.className = 'tk-chip ' + (on ? 'bien' : 'mal'); } }
   window.addEventListener('online', redUI); window.addEventListener('offline', redUI);
@@ -12502,7 +12508,7 @@ function trkTeselasRuta(ruta, buffer, z) {
       const s = r.stats || {}, id = esc(r.id);
       return '<div class="tk-card" data-id="' + id + '"><div class="tk-card-t"><b>' + esc(r.nombre) + '</b><span>' + new Date(r.creado).toLocaleString('es-PE') + '</span></div>' +
         '<div class="tk-card-s">' + trkFmtD(s.dist || 0) + ' · ' + trkFmtT(r.tTotal || 0) + ' · +' + Math.round(s.sube || 0) + ' / −' + Math.round(s.baja || 0) + ' m · ' + fmtAlt(s.altMax) + ' máx</div>' +
-        '<div class="tk-card-b"><button data-a="ver">👁 Ver</button><button data-a="seguir">🎯 Seguir</button><button data-a="gpx">GPX</button><button data-a="kml">KML</button><button data-a="geojson">GeoJSON</button>' +
+        '<div class="tk-card-b"><button data-a="ver">👁 Ver</button><button data-a="video">🎬 Video 3D</button><button data-a="seguir">🎯 Seguir</button><button data-a="gpx">GPX</button><button data-a="kml">KML</button><button data-a="geojson">GeoJSON</button>' +
         (navigator.share ? '<button data-a="share">📤</button>' : '') + '<button data-a="dem">⛰ DEM</button><button data-a="ren">✏</button><button data-a="del">🗑</button></div></div>';
     }).join('');
   }
@@ -12511,6 +12517,7 @@ function trkTeselasRuta(ruta, buffer, z) {
     const r = MARC[id]; if (!r) return; const base = nombreArchivo(r.nombre);
     if (a === 'ver') { lnVer.setLatLngs(r.pts.map(ll)); lnVer.addTo(map); TK.vista = id; map.fitBounds(lnVer.getBounds(), { padding: [50, 50] }); }
     else if (a === 'seguir') { if (setPlan(r.pts.map(p => ({ lat: p.lat, lng: p.lng, alt: p.alt })), r.nombre, 'guardada')) { tab('ruta'); } }
+    else if (a === 'video') { if (window.trkVideo3D) window.trkVideo3D(r); else alert('El video 3D no está disponible.'); }
     else if (a === 'gpx') bajar(base + '.gpx', 'application/gpx+xml', aGPX(r));
     else if (a === 'kml') bajar(base + '.kml', 'application/vnd.google-earth.kml+xml', aKML(r));
     else if (a === 'geojson') bajar(base + '.geojson', 'application/geo+json', aGeoJSON(r));
@@ -12548,9 +12555,10 @@ function trkTeselasRuta(ruta, buffer, z) {
     box.innerHTML = '<b>' + esc(pl.nombre) + '</b><br>Longitud <b>' + trkFmtD(r.total) + '</b>' + (r.sube != null ? ' · Desnivel <b>+' + Math.round(r.sube) + ' / −' + Math.round(r.baja) + ' m</b>' : ' · <i>sin altitudes</i>') + '<br>' + ({ ruta: 'Tiempo de recorrido (servicio de rutas, sin tráfico)', tobler: 'Tiempo estimado a pie (según pendiente, Tobler)', naismith: 'Tiempo estimado a pie (Naismith)' }[r.tipo]) + ': <b>' + trkFmtT(r.tEst) + '</b>';
     poblarCapas();
   }
+  function nLin(ul) { const fs = ul.features || []; if (ul._nLinK !== fs.length) { ul._nLinK = fs.length; ul._nLin = fs.filter(f => f.geometry && /LineString/.test(f.geometry.type)).length; } return ul._nLin; }
   function poblarCapas() {
     const sel = q('tk-capa'); if (!sel) return; const prev = sel.value; sel.innerHTML = '<option value="">— Capa con líneas del geoportal —</option>';
-    (typeof userLayers !== 'undefined' ? userLayers : []).forEach((ul, i) => { const n = (ul.features || []).filter(f => f.geometry && /LineString/.test(f.geometry.type)).length; if (n) { const o = document.createElement('option'); o.value = i; o.textContent = ul.name + ' (' + n + ' líneas)'; sel.appendChild(o); } });
+    (typeof userLayers !== 'undefined' ? userLayers : []).forEach((ul, i) => { const n = nLin(ul); if (n) { const o = document.createElement('option'); o.value = i; o.textContent = ul.name + ' (' + n + ' líneas)'; sel.appendChild(o); } });
     if (prev) sel.value = prev;
   }
 
@@ -12572,38 +12580,53 @@ function trkTeselasRuta(ruta, buffer, z) {
   };
   const urlT = (p, z, x, y) => 'https://server.arcgisonline.com/ArcGIS/rest/services/' + p + '/MapServer/tile/' + z + '/' + y + '/' + x;
   const urlD = (z, x, y) => 'https://s3.amazonaws.com/elevation-tiles-prod/terrarium/' + z + '/' + x + '/' + y + '.png';
-  function planDescarga() {
-    const base = q('off-base').value, zmax = parseInt(q('off-zmax').value, 10), modo = q('off-modo').value, buf = parseFloat(q('off-buf').value) * 1000, dem = q('off-dem').checked;
+  const TOPE_TESELAS = 12000;
+  const contarBBox = (w, s, e, n, z) => { const N = Math.pow(2, z) - 1, x0 = Math.max(0, trkTX(w, z)), x1 = Math.min(N, trkTX(e, z)), y0 = Math.max(0, trkTY(n, z)), y1 = Math.min(N, trkTY(s, z)); return Math.max(0, x1 - x0 + 1) * Math.max(0, y1 - y0 + 1); };
+  function planDescarga(zmaxFijo) {
+    const base = q('off-base').value, zmax = zmaxFijo || parseInt(q('off-zmax').value, 10), modo = q('off-modo').value, buf = parseFloat(q('off-buf').value) * 1000, dem = q('off-dem').checked;
     let ruta = null, b = null;
     if (modo === 'ruta') { if (!TK.plan) return { error: 'Primero carga o traza una ruta meta.' }; ruta = TK.plan.pts; } else b = map.getBounds();
-    const lista = []; let kb = 0, conteo = 0;
-    const tiles = z => ruta ? trkTeselasRuta(ruta, buf, z) : trkTeselasBBox(b.getWest(), b.getSouth(), b.getEast(), b.getNorth(), z);
-    const zmin = ruta ? 8 : Math.max(5, Math.min(zmax, Math.round(map.getZoom())) - 3);
-    for (let z = Math.min(zmin, zmax); z <= zmax; z++) {
-      const T = tiles(z);
-      BASES[base].c.forEach(c => { if (z <= c.zm) T.forEach(t => { lista.push(urlT(c.p, z, t[0], t[1])); kb += c.kb; }); });
-      conteo += T.length;
+    const tiles = z => ruta ? trkTeselasRuta(ruta, buf, z, TOPE_TESELAS + 1) : trkTeselasBBox(b.getWest(), b.getSouth(), b.getEast(), b.getNorth(), z);
+    const cuenta = z => ruta ? trkTeselasRuta(ruta, buf, z, TOPE_TESELAS + 1).length : contarBBox(b.getWest(), b.getSouth(), b.getEast(), b.getNorth(), z);
+    const zmin = Math.min(ruta ? 8 : Math.max(5, Math.min(zmax, Math.round(map.getZoom())) - 3), zmax);
+    let n = 0, kb = 0, excede = false;
+    for (let z = zmin; z <= zmax && !excede; z++) {
+      const T = cuenta(z);
+      BASES[base].c.forEach(c => { if (z <= c.zm) { n += T; kb += T * c.kb; } });
+      if (n > TOPE_TESELAS) excede = true;
     }
-    if (dem) [12, 13].forEach(z => tiles(z).forEach(t => { lista.push(urlD(z, t[0], t[1])); kb += 45; }));
-    return { lista, mb: kb / 1024 };
+    if (dem && !excede) [12, 13].forEach(z => { const T = cuenta(z); n += T; kb += T * 45; });
+    if (n > TOPE_TESELAS) excede = true;
+    const build = () => {   // la lista de URLs solo se arma al descargar (y solo si cabe)
+      const lista = [];
+      for (let z = zmin; z <= zmax; z++) { const T = tiles(z); BASES[base].c.forEach(c => { if (z <= c.zm) T.forEach(t => lista.push(urlT(c.p, z, t[0], t[1]))); }); }
+      if (dem) [12, 13].forEach(z => tiles(z).forEach(t => lista.push(urlD(z, t[0], t[1]))));
+      return lista;
+    };
+    return { n, mb: kb / 1024, excede, build, zmax };
   }
   function estimar() {
     const r = planDescarga(), e = q('off-est'); if (r.error) { e.textContent = r.error; e.style.color = '#dc2626'; return r; }
-    e.style.color = r.lista.length > 12000 ? '#dc2626' : '#475569'; e.textContent = '≈ ' + r.lista.length.toLocaleString('es-PE') + ' teselas · ~' + r.mb.toFixed(0) + ' MB' + (r.lista.length > 12000 ? ' (demasiado grande: reduce el zoom máximo o la zona)' : ''); return r;
+    if (r.excede) {
+      let sug = null; for (let z = r.zmax - 1; z >= 10 && sug == null; z--) { if (!planDescarga(z).excede) sug = z; }
+      e.style.color = '#dc2626'; e.textContent = 'Más de ' + TOPE_TESELAS.toLocaleString('es-PE') + ' teselas: demasiado grande.' + (sug ? ' Prueba con zoom máximo ' + sug + ' o acerca el mapa a la zona que necesitas.' : ' Acerca el mapa o reduce la zona.');
+      return r;
+    }
+    e.style.color = '#475569'; e.textContent = '≈ ' + r.n.toLocaleString('es-PE') + ' teselas · ~' + r.mb.toFixed(0) + ' MB'; return r;
   }
   let cancelDesc = false;
   async function descargarZona() {
     if (!window.caches) { alert('Este navegador no permite guardar mapas sin conexión aquí (se necesita HTTPS o la app instalada).'); return; }
     if (!navigator.onLine) { alert('Para descargar mapas necesitas internet.'); return; }
-    const r = estimar(); if (r.error || !r.lista.length) return;
-    if (r.lista.length > 12000) { alert('La descarga es demasiado grande. Reduce el zoom máximo o la zona.'); return; }
+    const r = estimar(); if (r.error || !r.n) return;
+    if (r.excede) { alert('La descarga es demasiado grande. Reduce el zoom máximo o la zona.'); return; }
     if (r.mb > 300 && !confirm('Son unos ' + r.mb.toFixed(0) + ' MB. ¿Descargar con datos móviles/wifi?')) return;
     if (navigator.storage && navigator.storage.persist) navigator.storage.persist().catch(() => {});
     cancelDesc = false; q('off-go').style.display = 'none'; q('off-stop').style.display = ''; const barra = q('off-bar'), txt = q('off-prog'); barra.parentNode.style.display = '';
-    const cache = await caches.open(TILES); let i = 0, ok = 0, err = 0; const N = r.lista.length;
+    const lista = r.build(); const cache = await caches.open(TILES); let i = 0, ok = 0, err = 0; const N = lista.length;
     async function w() {
       while (i < N && !cancelDesc) {
-        const u = r.lista[i++];
+        const u = lista[i++];
         try { if (await cache.match(u)) ok++; else { const rs = await fetch(u, { mode: 'cors' }); if (rs.ok) { await cache.put(u, rs); ok++; } else err++; } }
         catch (e) { err++; if (!navigator.onLine) cancelDesc = true; }
         if ((ok + err) % 10 === 0 || ok + err === N) { barra.style.width = ((ok + err) / N * 100).toFixed(1) + '%'; txt.textContent = (ok + err).toLocaleString('es-PE') + ' / ' + N.toLocaleString('es-PE') + (err ? ' · ' + err + ' fallidas' : ''); }
@@ -12618,12 +12641,28 @@ function trkTeselasRuta(ruta, buffer, z) {
     redUI(); const e = q('off-sw');
     const sw = 'serviceWorker' in navigator, ctl = sw && navigator.serviceWorker.controller;
     e.innerHTML = !sw ? '❌ Este navegador no admite modo sin conexión.' : (window.isSecureContext === false ? '⚠ Abre el geoportal con HTTPS (GitHub Pages) para activar el modo sin conexión.' : (ctl ? '✅ Modo sin conexión <b>activo</b>: la app abre sin internet.' : '⏳ Aún no está activo. Abre el geoportal con internet una vez y recarga la página.'));
-    q('off-inst').style.display = window.__pwaPrompt ? '' : 'none';
+    q('off-inst').style.display = esAppInstalada() ? 'none' : '';
     let n = 0, mb = null; try { if (window.caches && await caches.has(TILES)) { n = (await (await caches.open(TILES)).keys()).length; } if (navigator.storage && navigator.storage.estimate) { const s = await navigator.storage.estimate(); mb = (s.usage || 0) / 1048576; } } catch (er) {}
     q('off-cache').textContent = n.toLocaleString('es-PE') + ' teselas guardadas' + (mb != null ? ' · almacenamiento usado por la app: ' + mb.toFixed(0) + ' MB' : '');
     estimar();
   }
-  window.addEventListener('beforeinstallprompt', ev => { ev.preventDefault(); window.__pwaPrompt = ev; if (q('off-inst')) q('off-inst').style.display = ''; });
+  const esAppInstalada = () => { try { return window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true; } catch (e) { return false; } };
+  function ayudaInstalar() {
+    const ua = navigator.userAgent || '';
+    if (esAppInstalada()) return 'La app ya está instalada en este dispositivo.';
+    if (/FBAN|FBAV|Instagram|WhatsApp|Line\/|Telegram|MicroMessenger|; wv\)/i.test(ua)) return 'Estás en un navegador interno (WhatsApp, Facebook, etc.). Abre el enlace en Chrome: menú ⋮ → «Abrir en el navegador» (o copia el enlace y pégalo en Chrome).';
+    if (/iPhone|iPad|iPod/i.test(ua)) return 'En iPhone/iPad: abre esta página en Safari, toca Compartir (⬆) y elige «Añadir a pantalla de inicio».';
+    if (/Android/i.test(ua)) return 'En Android (Chrome): menú ⋮ → «Instalar aplicación» o «Añadir a la pantalla de inicio». Si no aparece, recarga la página con internet, espera unos segundos y vuelve a intentar. En Samsung Internet: menú ☰ → «Añadir a la pantalla de inicio».';
+    return 'En Chrome o Edge: toca el ícono de instalar que aparece a la derecha de la barra de direcciones, o menú ⋮ → «Instalar GeoPortal».';
+  }
+  async function instalarApp() {
+    const ev = window.__pwaPrompt;
+    if (ev) { try { ev.prompt(); await ev.userChoice; } catch (e) {} window.__pwaPrompt = null; offUI(); return; }
+    const a = q('off-inst-ayuda'), t = ayudaInstalar();
+    if (a && a.offsetParent) { a.style.display = ''; a.textContent = t; } else alert(t);
+  }
+  window.instalarApp = instalarApp;
+  window.addEventListener('beforeinstallprompt', ev => { ev.preventDefault(); window.__pwaPrompt = ev; });
   window.addEventListener('appinstalled', () => { window.__pwaPrompt = null; offUI(); });
 
   // ---------- Conexión de eventos ----------
@@ -12637,7 +12676,7 @@ function trkTeselasRuta(ruta, buffer, z) {
     ['pantalla', 'sonido', 'seguir'].forEach(k => { const e = q('tk-c-' + k); e.checked = !!CFG[k]; e.onchange = () => { CFG[k] = e.checked; guardarCfg(); if (k === 'pantalla') pantalla(e.checked && TK.watch != null); }; });
     q('tk-trazar').onclick = () => { if (TK.trazando) trazoParar(true); else trazoIniciar(); };
     q('tk-trazo-undo').onclick = () => { trazo.pts.pop(); trazo.lin.setLatLngs(trazo.pts.map(ll)); const l = trazo.mks.getLayers(); if (l.length) trazo.mks.removeLayer(l[l.length - 1]); trazoUI(); };
-    q('tk-quitar-plan').onclick = () => { if (TK.trazando) trazoParar(false); quitarPlan(); };
+    q('tk-quitar-plan').onclick = () => { if (TK.trazando) trazoParar(false); quitarPlan(); ['a', 'b'].forEach(quitarMarca); };
     q('tk-arch').onchange = async ev => {
       const f = ev.target.files && ev.target.files[0]; if (!f) return;
       try { const r = await leerArchivo(f); if (setPlan(r.pts, r.nombre, 'archivo')) msg('Ruta cargada: ' + trkFmtD(TK.plan.acum[TK.plan.acum.length - 1]) + (r.n > 1 ? ' (se usó la línea más larga de ' + r.n + ')' : ''), true); } catch (e) { msg(e.message || 'No se pudo leer el archivo', false); }
@@ -12659,10 +12698,10 @@ function trkTeselasRuta(ruta, buffer, z) {
     q('tk-plan-corr').onclick = () => { if (!TK.plan) return; document.querySelectorAll('.pnl').forEach(p => p.classList.toggle('on', p.id === 'pnl-trek')); tab('off'); q('off-modo').value = 'ruta'; estimar(); };
     q('tk-lista').onclick = ev => { const b = ev.target.closest('button[data-a]'); if (!b) return; accionRuta(b.dataset.a, b.closest('.tk-card').dataset.id); };
     ['off-base', 'off-zmax', 'off-modo', 'off-buf', 'off-dem'].forEach(id => q(id).onchange = estimar);
-    map.on('moveend', () => { if (q('pnl-trek').classList.contains('on') && q('tk-t-off').style.display !== 'none') estimar(); });
+    let _tEst = null; map.on('moveend', () => { if (q('pnl-trek').classList.contains('on') && q('tk-t-off').style.display !== 'none') { clearTimeout(_tEst); _tEst = setTimeout(estimar, 600); } });
     q('off-go').onclick = descargarZona; q('off-stop').onclick = () => { cancelDesc = true; };
     q('off-borrar').onclick = async () => { if (window.caches && confirm('¿Borrar todos los mapas descargados de este teléfono?')) { await caches.delete(TILES); offUI(); } };
-    q('off-inst').onclick = async () => { const ev = window.__pwaPrompt; if (!ev) return; ev.prompt(); try { await ev.userChoice; } catch (e) {} window.__pwaPrompt = null; offUI(); };
+    q('off-inst').onclick = instalarApp;
     q('off-actualizar').onclick = async () => { try { const rg = await navigator.serviceWorker.getRegistration(); if (rg) { await rg.update(); } if (window.caches) { const ks = await caches.keys(); await Promise.all(ks.filter(k => k.indexOf('geoportal-app') === 0).map(k => caches.delete(k))); } alert('Listo. Recarga la página con internet para guardar la versión más reciente.'); } catch (e) { alert('No se pudo actualizar: ' + (e && e.message)); } };
     new MutationObserver(() => { if (q('pnl-trek').classList.contains('on')) { poblarCapas(); setTimeout(() => { hud(); perfil(); }, 30); } }).observe(q('pnl-trek'), { attributes: true, attributeFilter: ['class'] });
     bindExtra(); redUI(); estadoUI(); planUI(); tab('rec');
@@ -12681,7 +12720,20 @@ function trkTeselasRuta(ruta, buffer, z) {
     e.textContent = t || ''; e.style.display = t ? '' : 'none'; clearTimeout(e._t); if (t && ms) e._t = setTimeout(() => { e.style.display = 'none'; }, ms);
   };
   const txtPt = p => p.lat.toFixed(5) + ', ' + p.lng.toFixed(5);
-  function ponerMarca(k, p, emoji) { if (mkNV[k]) grpNV.removeLayer(mkNV[k]); if (!p) { mkNV[k] = null; return; } mkNV[k] = L.marker([p.lat, p.lng], { pane: 'p_trek', icon: L.divIcon({ className: '', html: '<div style="font-size:24px;line-height:24px;text-shadow:0 1px 3px #fff">' + emoji + '</div>', iconSize: [26, 26], iconAnchor: [13, 24] }), interactive: false }).addTo(grpNV); }
+  function ponerMarca(k, p, emoji) {
+    if (mkNV[k]) { grpNV.removeLayer(mkNV[k]); mkNV[k] = null; } if (!p) return;
+    const m = L.marker([p.lat, p.lng], { pane: 'p_trek', title: 'Toca para quitar', keyboard: false, icon: L.divIcon({ className: '', html: '<div style="font-size:24px;line-height:24px;text-shadow:0 1px 3px #fff">' + emoji + '</div>', iconSize: [26, 26], iconAnchor: [13, 24] }) }).addTo(grpNV);
+    m.on('click', ev => { L.DomEvent.stopPropagation(ev); quitarMarca(k); }); mkNV[k] = m;
+  }
+  function quitarMarca(k) {
+    if (mkNV[k]) { grpNV.removeLayer(mkNV[k]); mkNV[k] = null; }
+    if (k === 'o') { NV.o = null; q('nv-o').value = ''; } else if (k === 'd') { NV.d = null; NV.dNombre = ''; q('nv-d').value = ''; }
+    else if (k === 'a') { AR.a = null; arInfo(); } else if (k === 'b') { AR.b = null; arInfo(); }
+  }
+  function limpiarMarcas() {
+    ['o', 'd', 'a', 'b'].forEach(quitarMarca); nvQuitar(); quitarMarcaFlot(); grpNV.clearLayers();
+    if (mkIni && TK.estado === 'idle') { map.removeLayer(mkIni); mkIni = null; }
+  }
   function elegirEnMapa(txt, cb) {
     const pn = q('pnl-trek'), mov = window.innerWidth <= 768;
     if (mov) pn.style.visibility = 'hidden';
@@ -12868,6 +12920,7 @@ function trkTeselasRuta(ruta, buffer, z) {
       const r = await rutaDEM(AR.a, AR.b, { crit: q('ar-crit').value, pmax: parseFloat(q('ar-pmax').value) / 100, capa: q('ar-caminos').value }, t => arMsg(t));
       TK.vehiculo = false;
       if (setPlan(r.pts, 'Mejor ruta A→B', 'auto', false, false, { tTobler: r.tTobler })) {
+        ['a', 'b'].forEach(k => { if (mkNV[k]) { grpNV.removeLayer(mkNV[k]); mkNV[k] = null; } });
         arMsg('✔ Ruta calculada' + (r.pendFuerte ? ' (hay tramos más empinados que el límite elegido: no había otra opción)' : '') + (r.z <= 10 ? ' · relieve de baja resolución (~' + Math.round(r.res) + ' m)' : '') + '.', !r.pendFuerte);
       }
     } catch (e) { console.error(e); arMsg(e.message || 'No se pudo calcular la ruta.', false); }
@@ -12875,7 +12928,7 @@ function trkTeselasRuta(ruta, buffer, z) {
   }
   function poblarVias() {
     const sel = q('ar-caminos'); if (!sel) return; const prev = sel.value; sel.innerHTML = '<option value="">— ninguna —</option>';
-    userLayers.forEach((ul, i) => { if (!ul || ul.isRutaTrek) return; const n = (ul.features || []).filter(f => f.geometry && /LineString/.test(f.geometry.type)).length; if (n) { const o = document.createElement('option'); o.value = i; o.textContent = ul.name + ' (' + n + ' líneas)'; sel.appendChild(o); } });
+    userLayers.forEach((ul, i) => { if (!ul || ul.isRutaTrek) return; const n = nLin(ul); if (n) { const o = document.createElement('option'); o.value = i; o.textContent = ul.name + ' (' + n + ' líneas)'; sel.appendChild(o); } });
     if (prev && sel.querySelector('option[value="' + prev + '"]')) sel.value = prev;
   }
 
@@ -12945,7 +12998,7 @@ function trkTeselasRuta(ruta, buffer, z) {
     TK.vehiculo = NV.modo !== 'foot';
     const nombre = 'Ruta a ' + (NV.dNombre || 'destino') + ' (' + RUTEO[NV.modo][1].toLowerCase() + ')';
     if (!setPlan(r.pts.map(p => ({ lat: p.lat, lng: p.lng, alt: null })), nombre, 'nav', false, false, { tRouter: r.aprox ? null : r.dur, pasos: r.pasos, distRouter: r.dist, modoNav: NV.modo, destino: NV.d })) return;
-    grpNV.clearLayers(); mkNV.ruta = null;
+    ['o', 'd', 'ruta'].forEach(k => { if (mkNV[k]) { grpNV.removeLayer(mkNV[k]); mkNV[k] = null; } });
     if (seguir) {
       FL.cerrado = false; flotRender();
       if (TK.estado === 'idle') iniciarRec();
@@ -12972,6 +13025,7 @@ function trkTeselasRuta(ruta, buffer, z) {
     ['mousemove', 'touchmove', 'touchstart'].forEach(ev => cv.addEventListener(ev, e => { if (e.cancelable && e.touches) e.preventDefault(); flotHover(e); }, { passive: false }));
     ['mouseleave', 'touchend'].forEach(ev => cv.addEventListener(ev, () => { quitarMarcaFlot(); const pl = TK.plan; if (pl) { q('tf-pie').textContent = 'Pasa el dedo o el cursor sobre el perfil para ver la altitud y la pendiente.'; if (pl.des) dibujar(cv, flotSeries(pl), TK.nav ? TK.nav.s : null); } }));
     window.addEventListener('resize', () => { if (TK.plan) flotRender(); });
+    q('tk-plan-video').onclick = () => { const pl = TK.plan; if (pl && window.trkVideo3D) window.trkVideo3D({ nombre: pl.nombre, pts: pl.pts.map(p => ({ lat: p.lat, lng: p.lng, alt: p.alt })), wpts: [], creado: Date.now() }); };
     q('tk-plan-perfil').onclick = planAPerfil; q('tk-plan-tiempo').onclick = planATiempo;
     q('ar-a').onclick = () => elegirEnMapa('Toca el mapa para marcar el punto A', p => { AR.a = p; ponerMarca('a', p, '🚩'); arInfo(); });
     q('ar-b').onclick = () => elegirEnMapa('Toca el mapa para marcar el punto B', p => { AR.b = p; ponerMarca('b', p, '🏁'); arInfo(); });
@@ -12983,7 +13037,7 @@ function trkTeselasRuta(ruta, buffer, z) {
     const buscarD = async () => { const t = q('nv-d').value.trim(); if (!t) return; nvMsg('Buscando…'); try { const r = await buscarLugar(t); NV.d = { lat: r.lat, lng: r.lng }; NV.dNombre = r.nombre; q('nv-d').value = r.nombre; ponerMarca('d', NV.d, '🏁'); map.setView([r.lat, r.lng], Math.max(map.getZoom(), 13)); nvMsg('✔ Destino: ' + r.nombre, true); } catch (e) { nvMsg(e.message || 'No se pudo buscar (¿hay internet?).', false); } };
     q('nv-d-buscar').onclick = buscarD; q('nv-d').addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); buscarD(); } });
     q('nv-modo').onchange = () => { const m = q('nv-modo').value; NV.modo = m; if (NV.opciones[m]) { NV.ruta = NV.opciones[m]; nvDibujar(); nvResumen(); } };
-    q('nv-calc').onclick = nvCalcular; q('nv-quitar').onclick = nvQuitar;
+    q('nv-calc').onclick = nvCalcular; q('nv-quitar').onclick = nvQuitar; q('nv-limpiar').onclick = limpiarMarcas; q('ar-limpiar').onclick = limpiarMarcas;
     q('nv-seguir').onclick = () => nvComoPlan(true);
     q('nv-usar').onclick = () => { nvComoPlan(false); tab('ruta'); };
     poblarVias();
@@ -12992,6 +13046,345 @@ function trkTeselasRuta(ruta, buffer, z) {
   window.trkAbrir = () => { document.querySelectorAll('.pnl').forEach(p => p.classList.toggle('on', p.id === 'pnl-trek')); tab('rec'); };
   window.TREK = TK;
   iniciar();
+})();
+
+// =============================================================================
+// VIDEO 3D DE LA RUTA: vuelo sobre el relieve siguiendo lo caminado, estadísticas al final y grabación
+// descargable (MP4 o WebM) en formato vertical/cuadrado/horizontal para redes sociales.
+// Usa el mismo motor 3D (MapLibre) de la Vista 3D; la imagen final se compone en un canvas 2D (mapa + datos).
+// =============================================================================
+(function () {
+  const $ = id => document.getElementById(id);
+  const RAD = Math.PI / 180;
+  const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
+  const lerp = (a, b, t) => a + (b - a) * t;
+  const ease = t => t < .5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
+  const angDif = (a, b) => ((b - a + 540) % 360) - 180;
+  const lerpAng = (a, b, t) => a + angDif(a, b) * t;
+  const norm360 = a => ((a % 360) + 360) % 360;
+  const FMT = { v916: [720, 1280, 'Vertical 9:16 (Reels / Stories) 720×1280'], v916s: [540, 960, 'Vertical ligero 540×960 (equipos lentos)'], c11: [720, 720, 'Cuadrado 1:1 (publicación) 720×720'], h169: [1280, 720, 'Horizontal 16:9 1280×720'] };
+  const COLORES = { naranja: '#ff6a00', amarillo: '#fbbf24', rosa: '#ec4899', cian: '#22d3ee', rojo: '#ef4444' };
+  const T_IN = 3, T_OUT = 3.5, T_ST = 7;
+  const V = { ui: false, abierto: false, ruta: null, R: null, map: null, comp: null, ctx: null, W: 720, H: 1280, tt: 0, total: 20, D: 30, playing: false, last: 0, raf: 0, gen: 0,
+    rec: null, chunks: [], mime: '', blob: null, url: null, ocupado: false, dirty: true, dB: 0, dP: 0, lastIdx: -1, wl: null, opt: { fmt: 'v916', dur: 30, base: 'sat', exag: 1.4, color: 'naranja', marca: true } };
+
+  // ---------------------------------------------------------------- preparación de la ruta
+  function preparar(ruta) {
+    const P = (ruta.pts || []).filter(p => p && isFinite(p.lat) && isFinite(p.lng));
+    const acum = trkAcum(P), total = acum[P.length - 1];
+    const N = clamp(Math.round(total / 8), 160, 700), R = { n: N, lng: [], lat: [], alt: [], t: [], d: [], total, nombre: ruta.nombre || 'Mi recorrido', fecha: ruta.creado || (P[0] && P[0].t) || Date.now() };
+    let j = 0, nAlt = 0, hayT = P.every(p => p.t != null);
+    for (let k = 0; k < N; k++) {
+      const s = total * k / (N - 1);
+      while (j < P.length - 2 && acum[j + 1] < s) j++;
+      const a = P[j], b = P[j + 1], seg = acum[j + 1] - acum[j], u = seg > 0 ? clamp((s - acum[j]) / seg, 0, 1) : 0;
+      R.lng.push(lerp(a.lng, b.lng, u)); R.lat.push(lerp(a.lat, b.lat, u)); R.d.push(s);
+      const al = (a.alt != null && b.alt != null && isFinite(a.alt) && isFinite(b.alt)) ? lerp(a.alt, b.alt, u) : null; R.alt.push(al); if (al != null) nAlt++;
+      R.t.push(hayT ? lerp(a.t, b.t, u) : null);
+    }
+    R.hayT = hayT; R.altOK = nAlt >= N * 0.8;
+    // camino suavizado para la cámara y rumbo con mirada hacia adelante
+    const w = Math.max(2, Math.round(N * 0.02)), avg = arr => arr.map((_, i) => { let s = 0, c = 0; for (let q = Math.max(0, i - w); q <= Math.min(N - 1, i + w); q++) { s += arr[q]; c++; } return s / c; });
+    R.cLng = avg(R.lng); R.cLat = avg(R.lat);
+    const ah = Math.max(3, Math.round(N * 0.03)), brg = []; let ult = 0;
+    for (let k = 0; k < N; k++) {
+      const k2 = Math.min(N - 1, k + ah), k1 = Math.max(0, k2 - ah * 2);
+      if (k2 > k1 && (Math.abs(R.cLng[k2] - R.cLng[k1]) + Math.abs(R.cLat[k2] - R.cLat[k1])) > 1e-7) {
+        const f1 = R.cLat[k1] * RAD, f2 = R.cLat[k2] * RAD, dl = (R.cLng[k2] - R.cLng[k1]) * RAD;
+        ult = norm360(Math.atan2(Math.sin(dl) * Math.cos(f2), Math.cos(f1) * Math.sin(f2) - Math.sin(f1) * Math.cos(f2) * Math.cos(dl)) / RAD);
+      }
+      brg.push(ult);
+    }
+    const wb = Math.max(3, Math.round(N * 0.04)); R.brg = brg.map((_, i) => { let sx = 0, sy = 0; for (let q = Math.max(0, i - wb); q <= Math.min(N - 1, i + wb); q++) { sx += Math.sin(brg[q] * RAD); sy += Math.cos(brg[q] * RAD); } return norm360(Math.atan2(sx, sy) / RAD); });
+    let w0 = 1e9, w1 = -1e9, s0 = 1e9, s1 = -1e9; for (let k = 0; k < N; k++) { w0 = Math.min(w0, R.lng[k]); w1 = Math.max(w1, R.lng[k]); s0 = Math.min(s0, R.lat[k]); s1 = Math.max(s1, R.lat[k]); }
+    R.bounds = [[w0, s0], [w1, s1]];
+    R.zoomF = clamp(15.6 - 0.45 * Math.log2(Math.max(total, 500) / 1000), 12.6, 16.2);
+    R.wpts = (ruta.wpts || []).filter(w => w && isFinite(w.lat) && isFinite(w.lng));
+    R.statsIn = ruta.stats || null; R.tTotal = ruta.tTotal != null ? ruta.tTotal : (R.statsIn && R.statsIn.tTotal) || (hayT ? (R.t[N - 1] - R.t[0]) / 1000 : null);
+    return R;
+  }
+  async function rellenarAlt(R, estado) {
+    if (R.altOK) return;
+    const idx = [], paso = Math.max(1, Math.round(R.n / 160)); for (let i = 0; i < R.n; i += paso) idx.push(i); if (idx[idx.length - 1] !== R.n - 1) idx.push(R.n - 1);
+    const val = {}; let ok = 0;
+    for (let k = 0; k < idx.length; k += 16) {
+      await Promise.all(idx.slice(k, k + 16).map(async i => { try { const z = await demElevacion(R.lng[i], R.lat[i], 13); if (z != null) { val[i] = z; ok++; } } catch (e) {} }));
+      if (estado) estado('Calculando altitudes… ' + Math.round(k / idx.length * 100) + ' %');
+    }
+    if (ok < idx.length * 0.6) return;   // sin DEM: no se muestran altitudes
+    const ks = Object.keys(val).map(Number).sort((a, b) => a - b);
+    for (let i = 0; i < R.n; i++) { let a = ks[0], b = ks[ks.length - 1]; for (const q of ks) { if (q <= i) a = q; if (q >= i) { b = q; break; } } R.alt[i] = a === b ? val[a] : lerp(val[a], val[b], (i - a) / (b - a)); }
+    R.altOK = true;
+  }
+  function estadisticas(R) {
+    const S = R.statsIn || {}, o = { dist: S.dist || R.total, tTotal: R.tTotal, tMov: S.tMov != null && S.tMov > 0 ? S.tMov : null, sube: null, baja: null, altMax: null, altMin: null, vProm: null };
+    if (R.altOK) {
+      const des = trkDesnivel(R.alt, 4); R.lisa = des.lisa; R.cumSube = des.cumSube;
+      o.altMax = S.altMax != null ? S.altMax : des.max; o.altMin = S.altMin != null ? S.altMin : des.min;
+      o.sube = S.sube != null && S.altMax != null ? S.sube : des.sube; o.baja = S.baja != null && S.altMax != null ? S.baja : des.baja;
+      R.escSube = des.sube > 0 && o.sube > 0 ? o.sube / des.sube : 1;
+    }
+    if (o.tTotal > 0) o.vProm = o.dist / o.tTotal;
+    R.S = o; return o;
+  }
+
+  // ---------------------------------------------------------------- cámara
+  function mezcla(a, b, k) { return { center: [lerp(a.center[0], b.center[0], k), lerp(a.center[1], b.center[1], k)], zoom: lerp(a.zoom, b.zoom, k), pitch: lerp(a.pitch, b.pitch, k), bearing: lerpAng(a.bearing, b.bearing, k) }; }
+  function camSeg(p) {
+    const R = V.R, f = clamp(p, 0, 1) * (R.n - 1), i = Math.floor(f), j = Math.min(R.n - 1, i + 1), u = f - i;
+    return { center: [lerp(R.cLng[i], R.cLng[j], u), lerp(R.cLat[i], R.cLat[j], u)], zoom: R.zoomF, pitch: 62, bearing: lerpAng(R.brg[i], R.brg[j], u) };
+  }
+  function camaras() {
+    const R = V.R, m = V.map, W = V.W, H = V.H, pad = Math.round(Math.min(W, H) * 0.14);
+    let o0 = { center: [(R.bounds[0][0] + R.bounds[1][0]) / 2, (R.bounds[0][1] + R.bounds[1][1]) / 2], zoom: 12, pitch: 0, bearing: 0 };
+    try { const c = m.cameraForBounds(R.bounds, { padding: pad }); if (c) o0 = { center: [c.center.lng, c.center.lat], zoom: Math.min(c.zoom, 15), pitch: 0, bearing: 0 }; } catch (e) {}
+    const f1 = camSeg(1);
+    V.cam = { o0, o1: { center: o0.center, zoom: Math.max(o0.zoom - 0.35, 3), pitch: 50, bearing: norm360(f1.bearing + 35) } };
+  }
+  function camera(tt) {
+    const C = V.cam, D = V.D;
+    if (tt < T_IN) { const k = ease(tt / T_IN), f = camSeg(0); return { cam: mezcla(C.o0, f, k), p: 0, fase: 'in' }; }
+    if (tt < T_IN + D) { const p = (tt - T_IN) / D, c = camSeg(p); c.bearing = norm360(c.bearing + V.dB); c.pitch = clamp(c.pitch + V.dP, 20, 80); return { cam: c, p, fase: 'follow' }; }
+    if (tt < T_IN + D + T_OUT) { const k = ease((tt - T_IN - D) / T_OUT); return { cam: mezcla(camSeg(1), C.o1, k), p: 1, fase: 'out' }; }
+    const c = Object.assign({}, C.o1); c.bearing = norm360(C.o1.bearing + (tt - T_IN - D - T_OUT) * 7); return { cam: c, p: 1, fase: 'stats' };
+  }
+
+  // ---------------------------------------------------------------- mapa
+  const geoLinea = (R, hasta) => { const c = []; const f = hasta * (R.n - 1), i = Math.floor(f); for (let k = 0; k <= i && k < R.n; k++) c.push([R.lng[k], R.lat[k]]); if (i < R.n - 1) { const u = f - i; c.push([lerp(R.lng[i], R.lng[i + 1], u), lerp(R.lat[i], R.lat[i + 1], u)]); } if (c.length < 2) c.push(c[0] || [0, 0]); return { type: 'Feature', geometry: { type: 'LineString', coordinates: c }, properties: {} }; };
+  const geoPunto = (R, p) => { const f = clamp(p, 0, 1) * (R.n - 1), i = Math.floor(f), j = Math.min(R.n - 1, i + 1), u = f - i; return { type: 'Feature', geometry: { type: 'Point', coordinates: [lerp(R.lng[i], R.lng[j], u), lerp(R.lat[i], R.lat[j], u)] }, properties: {} }; };
+  function crearMapa() {
+    const o = V.opt, R = V.R, gen = ++V.gen; V.ocupado = true;
+    destruirMapa();
+    const [W, H] = FMT[o.fmt]; V.W = W; V.H = H; V.D = o.dur; V.total = T_IN + V.D + T_OUT + T_ST;
+    V.comp.width = W; V.comp.height = H; V.ctx = V.comp.getContext('2d');
+    const cont = $('v-map'); cont.style.width = W + 'px'; cont.style.height = H + 'px';
+    const color = COLORES[o.color] || COLORES.naranja;
+    const tiles = { sat: ['World_Imagery', 17], topo: ['World_Topo_Map', 16] }[o.base] || ['World_Imagery', 17];
+    let map;
+    try {
+      map = new maplibregl.Map({
+        container: 'v-map', pixelRatio: 1, interactive: false, attributionControl: false, maxPitch: 85,
+        preserveDrawingBuffer: true, canvasContextAttributes: { preserveDrawingBuffer: true, antialias: true },
+        style: { version: 8, sources: { base: { type: 'raster', tiles: ['https://server.arcgisonline.com/ArcGIS/rest/services/' + tiles[0] + '/MapServer/tile/{z}/{y}/{x}'], tileSize: 256, maxzoom: tiles[1] }, dem: { type: 'raster-dem', tiles: [V3D_DEM], tileSize: 256, maxzoom: 15, encoding: 'terrarium' } },
+          layers: [{ id: 'base', type: 'raster', source: 'base' }], terrain: { source: 'dem', exaggeration: o.exag } },
+        center: R.cLng ? [R.cLng[0], R.cLat[0]] : [0, 0], zoom: 12, pitch: 0, bearing: 0
+      });
+    } catch (e) { console.error(e); estado('Tu navegador o equipo no admite WebGL: no se puede generar el video 3D.', true); V.ocupado = false; return; }
+    V.map = map;
+    setTimeout(() => { if (gen === V.gen && V.ocupado && !V.cam) { estado('El mapa 3D no terminó de cargar. Revisa tu conexión a internet y vuelve a abrir el video.', true); V.ocupado = false; setUI(); } }, 25000);
+    map.on('error', e => { /* tiles que fallan: se ignoran */ });
+    map.on('load', async () => {
+      if (gen !== V.gen) return;
+      try { map.setSky({ 'sky-color': '#7ab8ff', 'sky-horizon-blend': .5, 'horizon-color': '#ffffff', 'horizon-fog-blend': .5, 'fog-color': '#dfeaff', 'fog-ground-blend': .4 }); } catch (e) {}
+      const vacio = { type: 'FeatureCollection', features: [] };
+      map.addSource('ruta', { type: 'geojson', data: geoLinea(R, 1) });
+      map.addLayer({ id: 'ruta-c', type: 'line', source: 'ruta', layout: { 'line-cap': 'round', 'line-join': 'round' }, paint: { 'line-color': '#ffffff', 'line-width': 6, 'line-opacity': .30 } });
+      map.addLayer({ id: 'ruta-b', type: 'line', source: 'ruta', layout: { 'line-cap': 'round', 'line-join': 'round' }, paint: { 'line-color': '#ffffff', 'line-width': 2.5, 'line-opacity': .85 } });
+      map.addSource('rec', { type: 'geojson', data: geoLinea(R, 0) });
+      map.addLayer({ id: 'rec-c', type: 'line', source: 'rec', layout: { 'line-cap': 'round', 'line-join': 'round' }, paint: { 'line-color': '#000000', 'line-width': 9, 'line-opacity': .35 } });
+      map.addLayer({ id: 'rec', type: 'line', source: 'rec', layout: { 'line-cap': 'round', 'line-join': 'round' }, paint: { 'line-color': color, 'line-width': 5.5 } });
+      const se = { type: 'FeatureCollection', features: [{ type: 'Feature', geometry: { type: 'Point', coordinates: [R.lng[0], R.lat[0]] }, properties: { k: 0 } }, { type: 'Feature', geometry: { type: 'Point', coordinates: [R.lng[R.n - 1], R.lat[R.n - 1]] }, properties: { k: 1 } }] };
+      map.addSource('se', { type: 'geojson', data: se });
+      map.addLayer({ id: 'se', type: 'circle', source: 'se', paint: { 'circle-radius': 8, 'circle-color': ['case', ['==', ['get', 'k'], 0], '#16a34a', '#ef4444'], 'circle-stroke-color': '#fff', 'circle-stroke-width': 2.5 } });
+      if (R.wpts.length) { map.addSource('wp', { type: 'geojson', data: { type: 'FeatureCollection', features: R.wpts.map(w => ({ type: 'Feature', geometry: { type: 'Point', coordinates: [w.lng, w.lat] }, properties: {} })) } }); map.addLayer({ id: 'wp', type: 'circle', source: 'wp', paint: { 'circle-radius': 5.5, 'circle-color': '#fbbf24', 'circle-stroke-color': '#fff', 'circle-stroke-width': 2 } }); }
+      map.addSource('pos', { type: 'geojson', data: geoPunto(R, 0) });
+      map.addLayer({ id: 'pos-h', type: 'circle', source: 'pos', paint: { 'circle-radius': 15, 'circle-color': color, 'circle-opacity': .35 } });
+      map.addLayer({ id: 'pos', type: 'circle', source: 'pos', paint: { 'circle-radius': 7.5, 'circle-color': '#ffffff', 'circle-stroke-color': color, 'circle-stroke-width': 3.5 } });
+      camaras(); V.lastIdx = -1; V.color = color;
+      await precargar(gen);
+    });
+  }
+  function destruirMapa() { if (V.map) { try { V.map.remove(); } catch (e) {} V.map = null; } }
+  const esperarIdle = () => new Promise(res => { let ok = false; const f = () => { if (!ok) { ok = true; clearTimeout(to); res(); } }; const to = setTimeout(f, 3500); try { V.map.once('idle', f); } catch (e) { f(); } });
+  async function precargar(gen) {
+    V.ocupado = true; setUI();
+    const pasos = 26, plan = [0]; for (let i = 0; i <= pasos; i++) plan.push(T_IN + V.D * i / pasos); plan.push(T_IN + V.D + T_OUT);
+    for (let i = 0; i < plan.length; i++) {
+      if (gen !== V.gen) return;
+      V.map.jumpTo(camera(plan[i]).cam); estado('Cargando el relieve y las imágenes… ' + Math.round(i / plan.length * 100) + ' %');
+      await esperarIdle();
+    }
+    if (gen !== V.gen) return;
+    V.tt = 0; V.dirty = true; V.ocupado = false; V.dB = 0; V.dP = 0;
+    estado('Listo. Pulsa ▶ para ver el vuelo, arrastra para girar la cámara, o «Grabar video».'); setUI();
+  }
+
+  // ---------------------------------------------------------------- dibujo (mapa + datos)
+  function rrect(c, x, y, w, h, r) { c.beginPath(); c.moveTo(x + r, y); c.arcTo(x + w, y, x + w, y + h, r); c.arcTo(x + w, y + h, x, y + h, r); c.arcTo(x, y + h, x, y, r); c.arcTo(x, y, x + w, y, r); c.closePath(); }
+  function recortar(c, txt, ancho) { if (c.measureText(txt).width <= ancho) return txt; while (txt.length > 1 && c.measureText(txt + '…').width > ancho) txt = txt.slice(0, -1); return txt + '…'; }
+  const FONT = (w, s) => w + ' ' + Math.round(s) + 'px system-ui, -apple-system, "Segoe UI", Roboto, sans-serif';
+  function perfilDibujar(c, x, y, w, h, p, u, color, tema) {
+    const R = V.R; if (!R.altOK) return;
+    const mn = Math.min(...R.lisa), mx = Math.max(...R.lisa), pad = Math.max(4, (mx - mn) * .12), a0 = mn - pad, a1 = mx + pad;
+    const X = i => x + i / (R.n - 1) * w, Y = v => y + (1 - (v - a0) / (a1 - a0)) * h, ip = Math.round(clamp(p, 0, 1) * (R.n - 1));
+    c.save(); c.beginPath(); c.moveTo(X(0), y + h); for (let i = 0; i < R.n; i += 1) c.lineTo(X(i), Y(R.lisa[i])); c.lineTo(X(R.n - 1), y + h); c.closePath();
+    c.fillStyle = tema === 'claro' ? 'rgba(255,255,255,.16)' : 'rgba(255,255,255,.14)'; c.fill();
+    c.beginPath(); c.moveTo(X(0), y + h); for (let i = 0; i <= ip; i++) c.lineTo(X(i), Y(R.lisa[i])); c.lineTo(X(ip), y + h); c.closePath(); c.fillStyle = color + '66'; c.fill();
+    c.lineJoin = 'round'; c.lineWidth = 2.5 * u; c.strokeStyle = 'rgba(255,255,255,.55)'; c.beginPath(); for (let i = 0; i < R.n; i++) { const px = X(i), py = Y(R.lisa[i]); i ? c.lineTo(px, py) : c.moveTo(px, py); } c.stroke();
+    c.strokeStyle = color; c.lineWidth = 3.5 * u; c.beginPath(); for (let i = 0; i <= ip; i++) { const px = X(i), py = Y(R.lisa[i]); i ? c.lineTo(px, py) : c.moveTo(px, py); } c.stroke();
+    c.fillStyle = '#fff'; c.strokeStyle = color; c.lineWidth = 3 * u; c.beginPath(); c.arc(X(ip), Y(R.lisa[ip]), 6 * u, 0, 7); c.fill(); c.stroke();
+    c.restore();
+  }
+  function hud(tt) {
+    const c = V.ctx, W = V.W, H = V.H, R = V.R, S = R.S, u = Math.min(W, H) / 720, cam = camera(tt), p = cam.p, color = V.color || '#ff6a00', ip = Math.round(clamp(p, 0, 1) * (R.n - 1));
+    const kSt = clamp((tt - (T_IN + V.D + T_OUT)) / 0.9, 0, 1), kHud = 1 - clamp((tt - (T_IN + V.D + 0.4)) / 1.2, 0, 1);
+    c.save(); c.textBaseline = 'alphabetic';
+    // cabecera
+    const gT = c.createLinearGradient(0, 0, 0, 190 * u); gT.addColorStop(0, 'rgba(0,0,0,.62)'); gT.addColorStop(1, 'rgba(0,0,0,0)'); c.fillStyle = gT; c.fillRect(0, 0, W, 190 * u);
+    c.fillStyle = '#fff'; c.font = FONT('800', 40 * u); c.shadowColor = 'rgba(0,0,0,.5)'; c.shadowBlur = 6 * u; c.fillText(recortar(c, R.nombre, W - 64 * u), 32 * u, 68 * u);
+    c.font = FONT('500', 26 * u); c.fillStyle = '#e2e8f0'; c.fillText(new Date(R.fecha).toLocaleDateString('es-PE', { day: 'numeric', month: 'long', year: 'numeric' }), 32 * u, 108 * u); c.shadowBlur = 0;
+    if (kHud > 0) {
+      c.globalAlpha = kHud;
+      const gB = c.createLinearGradient(0, H - 330 * u, 0, H); gB.addColorStop(0, 'rgba(0,0,0,0)'); gB.addColorStop(1, 'rgba(0,0,0,.72)'); c.fillStyle = gB; c.fillRect(0, H - 330 * u, W, 330 * u);
+      const items = [['DISTANCIA', trkFmtD(R.d[ip])]];
+      items.push(['ALTITUD', R.altOK ? Math.round(R.lisa[ip]).toLocaleString('es-PE') + ' m' : '—']);
+      items.push(['DESNIVEL +', R.altOK ? '+' + Math.round(R.cumSube[ip] * (R.escSube || 1)) + ' m' : '—']);
+      if (R.hayT) items.push(['TIEMPO', trkFmtT(Math.max(0, (R.t[ip] - R.t[0]) / 1000))]);
+      const cw = (W - 64 * u) / items.length; c.textAlign = 'center';
+      items.forEach((it, i) => { const cx = 32 * u + cw * (i + .5); c.fillStyle = '#fff'; c.font = FONT('800', 40 * u); c.fillText(it[1], cx, H - 215 * u); c.fillStyle = '#cbd5e1'; c.font = FONT('600', 19 * u); c.fillText(it[0], cx, H - 187 * u); });
+      c.textAlign = 'left'; perfilDibujar(c, 32 * u, H - 170 * u, W - 64 * u, 92 * u, p, u, color);
+      c.globalAlpha = 1;
+    }
+    if (V.opt.marca) { c.textAlign = 'right'; c.fillStyle = 'rgba(255,255,255,.85)'; c.font = FONT('700', 22 * u); c.shadowColor = 'rgba(0,0,0,.6)'; c.shadowBlur = 5 * u; c.fillText('🌍 GeoPortal', W - 28 * u, H - 28 * u); c.shadowBlur = 0; c.textAlign = 'left'; }
+    // tarjeta de estadísticas
+    if (kSt > 0) {
+      const k = ease(kSt), it = [];
+      it.push(['DISTANCIA', trkFmtD(S.dist)]); if (S.tTotal > 0) it.push(['TIEMPO TOTAL', trkFmtT(S.tTotal)]);
+      if (S.sube != null) { it.push(['DESNIVEL +', '+' + Math.round(S.sube) + ' m']); it.push(['DESNIVEL −', '−' + Math.round(S.baja) + ' m']); it.push(['ALTITUD MÁX.', Math.round(S.altMax).toLocaleString('es-PE') + ' m']); it.push(['ALTITUD MÍN.', Math.round(S.altMin).toLocaleString('es-PE') + ' m']); }
+      if (S.tMov > 0) it.push(['EN MOVIMIENTO', trkFmtT(S.tMov)]); if (S.vProm > 0) it.push(['VEL. MEDIA', (S.vProm * 3.6).toFixed(1).replace('.', ',') + ' km/h']);
+      const cols = W > H * 1.3 ? 4 : 2, rows = Math.ceil(it.length / cols), cwid = Math.min(W - 70 * u, (cols === 4 ? 1040 : 640) * u), ph = R.altOK ? 130 * u : 0, hh = 150 * u + rows * 100 * u + ph + 40 * u, cx = (W - cwid) / 2, cy = Math.max(120 * u, (H - hh) / 2 + (1 - k) * 50 * u);
+      c.globalAlpha = k; c.fillStyle = 'rgba(8,15,30,.82)'; rrect(c, cx, cy, cwid, hh, 28 * u); c.fill(); c.lineWidth = 2 * u; c.strokeStyle = color; c.stroke();
+      c.textAlign = 'center'; c.fillStyle = '#fff'; c.font = FONT('800', 40 * u); c.fillText('¡Recorrido completado!', W / 2, cy + 62 * u);
+      c.fillStyle = color; c.font = FONT('700', 26 * u); c.fillText(recortar(c, R.nombre, cwid - 50 * u), W / 2, cy + 102 * u);
+      it.forEach((q, i) => { const col = i % cols, row = (i / cols) | 0, x = cx + cwid * (col + .5) / cols, y = cy + 168 * u + row * 100 * u; c.fillStyle = '#fff'; c.font = FONT('800', 44 * u); c.fillText(q[1], x, y); c.fillStyle = '#94a3b8'; c.font = FONT('600', 20 * u); c.fillText(q[0], x, y + 28 * u); });
+      c.textAlign = 'left'; if (R.altOK) perfilDibujar(c, cx + 34 * u, cy + hh - ph - 22 * u, cwid - 68 * u, ph - 18 * u, 1, u, color);
+      c.globalAlpha = 1;
+    }
+    c.restore();
+  }
+  function dibujar() { if (!V.map || !V.ctx) return; try { V.ctx.drawImage(V.map.getCanvas(), 0, 0, V.W, V.H); } catch (e) { V.ctx.fillStyle = '#0b1220'; V.ctx.fillRect(0, 0, V.W, V.H); } hud(V.tt); }
+
+  // ---------------------------------------------------------------- bucle, UI, grabación
+  function aplicarCam() {
+    const m = V.map, R = V.R; if (!m || !R) return; const c = camera(V.tt); m.jumpTo(c.cam);
+    const idx = Math.floor(c.p * (R.n - 1));
+    if (idx !== V.lastIdx || c.p === 1) { V.lastIdx = idx; try { m.getSource('rec').setData(geoLinea(R, c.p)); m.getSource('pos').setData(geoPunto(R, c.p)); } catch (e) {} }
+    else { try { m.getSource('pos').setData(geoPunto(R, c.p)); } catch (e) {} }
+  }
+  function tick(now) {
+    V.raf = requestAnimationFrame(tick); if (!V.abierto) return;
+    const dt = Math.min(0.1, (now - V.last) / 1000); V.last = now;
+    if (V.map && V.R && V.R.S && V.cam) {
+      if (V.playing && !V.ocupado) { V.tt += dt; if (V.tt >= V.total) { V.tt = V.total; V.playing = false; if (V.rec) finGrabacion(); setUI(); } V.dirty = true; }
+      if (V.dirty && !V.ocupado) { aplicarCam(); V.dirty = false; }
+      dibujar();
+      if (V.playing || V.rec) { const s = $('v-seek'); if (s) s.value = Math.round(V.tt / V.total * 1000); if (V.rec) estado('🔴 Grabando… ' + Math.round(V.tt) + ' s / ' + Math.round(V.total) + ' s. No cambies de aplicación.'); }
+    }
+  }
+  function estado(t, err) { const e = $('v-msg'); if (!e) return; e.textContent = t || ''; e.style.color = err ? '#fca5a5' : '#e2e8f0'; }
+  function setUI() {
+    const oc = V.ocupado, gr = !!V.rec;
+    $('v-play').textContent = V.playing ? '⏸' : '▶'; $('v-play').disabled = oc || gr; $('v-seek').disabled = oc || gr; $('v-rec').disabled = oc || gr; $('v-opc').style.pointerEvents = (oc || gr) ? 'none' : ''; $('v-opc').style.opacity = (oc || gr) ? .5 : 1;
+  }
+  function mimeSoportado() {
+    const L = ['video/mp4;codecs=avc1', 'video/mp4;codecs=avc1.42E01E', 'video/mp4', 'video/webm;codecs=vp9', 'video/webm;codecs=vp8', 'video/webm'];
+    if (!window.MediaRecorder) return ''; for (const m of L) { try { if (MediaRecorder.isTypeSupported(m)) return m; } catch (e) {} } return '';
+  }
+  async function grabar() {
+    if (V.rec || V.ocupado || !V.map) return;
+    const mime = mimeSoportado(); if (!mime || !V.comp.captureStream) { estado('Este navegador no permite grabar video. Usa Chrome (Android o PC) actualizado.', true); return; }
+    try { if (navigator.wakeLock) V.wl = await navigator.wakeLock.request('screen'); } catch (e) {}
+    V.chunks = []; V.mime = mime; V.tt = 0; V.dirty = true; V.dB = 0; V.dP = 0; V.lastIdx = -1;
+    try { const st = V.comp.captureStream(30); V.rec = new MediaRecorder(st, { mimeType: mime, videoBitsPerSecond: V.W * V.H > 700000 ? 6e6 : 4e6 }); }
+    catch (e) { console.error(e); estado('No se pudo iniciar la grabación: ' + (e && e.message), true); V.rec = null; return; }
+    V.rec.ondataavailable = e => { if (e.data && e.data.size) V.chunks.push(e.data); };
+    V.rec.onstop = mostrarResultado; V.rec.start(1000); V.playing = true; setUI();
+  }
+  function finGrabacion() { const r = V.rec; setTimeout(() => { try { if (r && r.state !== 'inactive') r.stop(); } catch (e) {} }, 600); }
+  function mostrarResultado() {
+    try { if (V.wl) { V.wl.release(); V.wl = null; } } catch (e) {}
+    const tipo = (V.mime.split(';')[0]) || 'video/webm', blob = new Blob(V.chunks, { type: tipo }); V.rec = null; V.blob = blob;
+    if (V.url) URL.revokeObjectURL(V.url); V.url = URL.createObjectURL(blob);
+    const mp4 = /mp4/.test(tipo); V.ext = mp4 ? 'mp4' : 'webm';
+    $('v-video').src = V.url; $('v-res').style.display = 'flex'; $('v-resinfo').textContent = (mp4 ? 'MP4' : 'WebM') + ' · ' + (blob.size / 1048576).toFixed(1) + ' MB · ' + V.W + '×' + V.H;
+    $('v-webm').style.display = mp4 ? 'none' : ''; $('v-share').style.display = (navigator.canShare && navigator.share) ? '' : 'none'; estado('✔ Video listo. Revísalo y descárgalo o compártelo.'); setUI();
+  }
+  const slug = s => String(s || 'ruta').normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[^A-Za-z0-9_-]+/g, '_').replace(/^_+|_+$/g, '').slice(0, 50) || 'ruta';
+  function descargar() { if (!V.url) return; const a = document.createElement('a'); a.href = V.url; a.download = slug(V.R.nombre) + '_video3d.' + V.ext; document.body.appendChild(a); a.click(); setTimeout(() => a.remove(), 500); }
+  async function compartir() {
+    try { const f = new File([V.blob], slug(V.R.nombre) + '_video3d.' + V.ext, { type: V.blob.type }); if (navigator.canShare && navigator.canShare({ files: [f] })) await navigator.share({ files: [f], title: V.R.nombre }); else descargar(); } catch (e) { if (e && e.name !== 'AbortError') descargar(); }
+  }
+  function opcionesDeUI() { const o = V.opt; o.fmt = $('v-fmt').value; o.dur = +$('v-dur').value; o.base = $('v-base').value; o.exag = +$('v-exag').value; o.color = $('v-col').value; o.marca = $('v-marca').checked; }
+
+  function construirUI() {
+    if (V.ui) return; V.ui = true;
+    const st = document.createElement('style'); st.textContent = `
+#vid3d{position:fixed;inset:0;z-index:6000;background:#0b1220;color:#e2e8f0;display:none;flex-direction:column;font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
+#vid3d .v-cab{display:flex;align-items:center;gap:8px;padding:10px 12px;font-size:15px}#vid3d .v-cab b{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+#vid3d button{border:0;border-radius:10px;background:#1e293b;color:#fff;font-size:14px;padding:9px 14px;cursor:pointer;font-weight:600}#vid3d button:disabled{opacity:.45;cursor:default}
+#vid3d button.pri{background:#ef4444}#vid3d button.ok{background:#16a34a}
+#vid3d .v-stage{flex:1;min-height:0;display:flex;align-items:center;justify-content:center;position:relative;padding:0 8px}
+#v-cv{max-width:100%;max-height:100%;border-radius:10px;touch-action:none;background:#000;box-shadow:0 6px 30px rgba(0,0,0,.5)}
+#v-map{position:fixed;left:-10000px;top:0;pointer-events:none}
+#vid3d .v-ctl{padding:8px 12px 12px;display:flex;flex-direction:column;gap:8px}#vid3d .v-fila{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+#v-seek{flex:1;min-width:120px}#v-msg{font-size:12.5px;min-height:34px;line-height:1.35}
+#v-opc summary{cursor:pointer;font-size:13px;font-weight:600}#v-opc .v-g{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:8px}
+#v-opc label{font-size:11.5px;color:#94a3b8;display:flex;flex-direction:column;gap:3px}#v-opc select{background:#1e293b;color:#fff;border:1px solid #334155;border-radius:8px;padding:6px;font-size:13px}
+#v-res{position:absolute;inset:0;background:#0b1220;display:none;flex-direction:column;align-items:center;gap:8px;padding:8px;z-index:2}
+#v-video{flex:1;min-height:0;max-width:100%;border-radius:10px;background:#000}#v-resinfo{font-size:12px;color:#94a3b8}
+@media (min-width:900px){#vid3d .v-ctl{max-width:760px;width:100%;margin:0 auto}}`;
+    document.head.appendChild(st);
+    const d = document.createElement('div'); d.id = 'vid3d';
+    d.innerHTML = `<div class="v-cab"><b id="v-tit">🎬 Video 3D de tu ruta</b><button id="v-x" type="button">✕ Cerrar</button></div>
+<div class="v-stage"><canvas id="v-cv"></canvas>
+ <div id="v-res"><video id="v-video" controls playsinline loop></video><div id="v-resinfo"></div>
+  <div class="v-fila" style="justify-content:center"><button id="v-dl" class="ok" type="button">⬇ Descargar video</button><button id="v-share" type="button">📤 Compartir</button><button id="v-back" type="button">↩ Volver a la vista 3D</button></div>
+  <div id="v-webm" style="display:none;font-size:11.5px;color:#fbbf24;max-width:520px;text-align:center">Tu navegador grabó en WebM. Instagram y Facebook suelen pedir MP4: conviértelo (p. ej. con CloudConvert o InShot) o genera el video desde Chrome para Android actualizado, que graba MP4.</div></div></div>
+<div class="v-ctl"><div id="v-msg"></div>
+ <div class="v-fila"><button id="v-play" type="button">▶</button><input id="v-seek" type="range" min="0" max="1000" value="0"><button id="v-rec" class="pri" type="button">🎥 Grabar video</button></div>
+ <details id="v-opc"><summary>⚙ Opciones del video</summary><div class="v-g">
+  <label>Formato<select id="v-fmt">${Object.keys(FMT).map(k => `<option value="${k}">${FMT[k][2]}</option>`).join('')}</select></label>
+  <label>Duración del recorrido<select id="v-dur"><option value="20">20 s</option><option value="30" selected>30 s</option><option value="45">45 s</option><option value="60">60 s</option></select></label>
+  <label>Mapa<select id="v-base"><option value="sat">Satélite</option><option value="topo">Topográfico</option></select></label>
+  <label>Relieve (exageración)<select id="v-exag"><option value="1">Real ×1</option><option value="1.4" selected>×1,4</option><option value="2">×2</option><option value="3">×3</option></select></label>
+  <label>Color de la ruta<select id="v-col"><option value="naranja">Naranja</option><option value="amarillo">Amarillo</option><option value="rosa">Rosa</option><option value="cian">Cian</option><option value="rojo">Rojo</option></select></label>
+  <label>Marca<span style="display:flex;gap:6px;align-items:center;font-size:13px;color:#e2e8f0"><input type="checkbox" id="v-marca" checked> Mostrar «GeoPortal»</span></label></div></details>
+ <div style="font-size:11px;color:#94a3b8">Necesita internet (o la zona descargada). Arrastra sobre el video para girar la cámara; doble toque para restablecerla.</div></div>
+<div id="v-map"></div>`;
+    document.body.appendChild(d);
+    V.comp = $('v-cv');
+    $('v-x').onclick = cerrar; $('v-play').onclick = () => { if (V.ocupado || V.rec) return; if (V.tt >= V.total - 0.05) V.tt = 0; V.playing = !V.playing; V.dirty = true; setUI(); };
+    $('v-seek').oninput = () => { if (V.ocupado || V.rec) return; V.playing = false; V.tt = $('v-seek').value / 1000 * V.total; V.dirty = true; setUI(); };
+    $('v-rec').onclick = grabar; $('v-dl').onclick = descargar; $('v-share').onclick = compartir;
+    $('v-back').onclick = () => { $('v-res').style.display = 'none'; $('v-video').pause(); V.tt = 0; V.dirty = true; estado('Listo. Puedes cambiar las opciones y grabar otra versión.'); setUI(); };
+    ['v-fmt', 'v-dur', 'v-base', 'v-exag', 'v-col', 'v-marca'].forEach(id => $(id).onchange = () => { opcionesDeUI(); if (V.R && V.R.S) { V.playing = false; crearMapa(); } });
+    // arrastrar = girar/inclinar la cámara (solo en la vista previa)
+    let px = null, py = null, ult = 0;
+    V.comp.addEventListener('pointerdown', e => { px = e.clientX; py = e.clientY; try { V.comp.setPointerCapture(e.pointerId); } catch (x) {} const n = Date.now(); if (n - ult < 320) { V.dB = 0; V.dP = 0; V.dirty = true; } ult = n; });
+    V.comp.addEventListener('pointermove', e => { if (px == null || V.rec || V.ocupado) return; V.dB += (e.clientX - px) * 0.45; V.dP = clamp(V.dP - (e.clientY - py) * 0.2, -40, 18); px = e.clientX; py = e.clientY; V.dirty = true; });
+    ['pointerup', 'pointercancel'].forEach(ev => V.comp.addEventListener(ev, () => { px = null; }));
+  }
+  function cerrar() {
+    V.gen++; V.abierto = false; V.playing = false; cancelAnimationFrame(V.raf);
+    if (V.rec) { try { V.rec.onstop = null; V.rec.stop(); } catch (e) {} V.rec = null; }
+    try { if (V.wl) { V.wl.release(); V.wl = null; } } catch (e) {}
+    destruirMapa(); if (V.url) { URL.revokeObjectURL(V.url); V.url = null; } try { $('v-video').pause(); $('v-video').removeAttribute('src'); } catch (e) {}
+    $('v-res').style.display = 'none'; $('vid3d').style.display = 'none'; document.body.style.overflow = '';
+  }
+  async function abrir(ruta) {
+    if (!ruta || !ruta.pts || ruta.pts.length < 2) { alert('La ruta necesita al menos 2 puntos.'); return; }
+    construirUI(); V.ruta = ruta; V.R = null; V.cam = null; V.abierto = true; V.playing = false; V.tt = 0; V.ocupado = true; V.dB = 0; V.dP = 0;
+    $('vid3d').style.display = 'flex'; document.body.style.overflow = 'hidden'; $('v-res').style.display = 'none'; $('v-tit').textContent = '🎬 ' + (ruta.nombre || 'Video 3D de tu ruta');
+    opcionesDeUI(); V.comp.width = FMT[V.opt.fmt][0]; V.comp.height = FMT[V.opt.fmt][1]; setUI();
+    cancelAnimationFrame(V.raf); V.last = performance.now(); V.raf = requestAnimationFrame(tick);
+    try {
+      estado('Cargando el motor 3D…'); await v3dCargarLib();
+      const R = preparar(ruta); estado('Preparando la ruta…'); await rellenarAlt(R, estado); estadisticas(R); V.R = R;
+      if (!V.abierto) return; crearMapa();
+    } catch (e) { console.error(e); estado('No se pudo preparar el video: ' + (e && e.message ? e.message : 'revisa tu conexión a internet.'), true); V.ocupado = false; setUI(); }
+  }
+  window.trkVideo3D = abrir;
+  window.__vid3d = V;   // para pruebas
 })();
 
 // ---- Modo sin conexión: service worker (app + librerías + mapas descargados) ----
@@ -13273,6 +13666,12 @@ document.getElementById('dis-capa') && (document.getElementById('dis-capa').onch
   if (el) new MutationObserver(() => { if (el.classList.contains('on')) poblarSelectsGeo(); }).observe(el, { attributes: true, attributeFilter: ['class'] });
 });
 
+// Todos los paneles viven dentro del área del mapa (como Leyenda y Trekking) para que se abran en la misma posición
+(function () { const mw = document.getElementById('mapwrap'); if (!mw) return; document.querySelectorAll('.pnl, .pnl-float').forEach(p => { if (p.parentNode !== mw) mw.appendChild(p); });
+  // al abrirse por cualquier vía (menú, atajos, botones internos) el panel se ancla igual que Trekking, salvo que el usuario lo haya movido
+  document.querySelectorAll('.pnl').forEach(p => new MutationObserver(() => { if (!p.classList.contains('on')) { delete p.dataset.mov; return; } if (!p.dataset.mov && window.pnlAnclar) window.pnlAnclar(p); }).observe(p, { attributes: true, attributeFilter: ['class'] }));
+})();
+
 // Paneles flotantes: arrastrar y redimensionar
 document.querySelectorAll('.pnl').forEach(pnl => {
   const h = document.createElement('div');
@@ -13285,7 +13684,7 @@ document.querySelectorAll('.pnl').forEach(pnl => {
   h.onmousedown = e => {
     if (e.button !== 0) return;
     ox = e.clientX; oy = e.clientY; sx = pnl.offsetLeft; sy = pnl.offsetTop;
-    const move = ev => { pnl.style.left = (sx + ev.clientX - ox) + 'px'; pnl.style.top = (sy + ev.clientY - oy) + 'px'; };
+    const move = ev => { pnl.dataset.mov = '1'; pnl.style.left = (sx + ev.clientX - ox) + 'px'; pnl.style.top = (sy + ev.clientY - oy) + 'px'; };
     const up = () => { document.removeEventListener('mousemove', move); document.removeEventListener('mouseup', up); };
     document.addEventListener('mousemove', move); document.addEventListener('mouseup', up);
   };
@@ -13313,6 +13712,9 @@ document.querySelectorAll('.pnl').forEach(pnl => {
     mas.innerHTML = '<button type="button" id="btn-mas" title="Más" aria-label="Más" aria-haspopup="true"><span class="ico">⋯</span><span class="lbl">Más</span></button><div id="menu-mas" class="tb-menu" role="menu"></div>';
     const menuM = mas.querySelector('#menu-mas');
     [ley, b3d, man].forEach(b => b && menuM.appendChild(b));
+    const inst = document.createElement('button'); inst.type = 'button'; inst.id = 'btn-instalar'; inst.innerHTML = '<span class="ico">📲</span><span class="lbl"> Instalar app</span>'; inst.onclick = () => { if (window.instalarApp) window.instalarApp(); };
+    try { if (window.matchMedia('(display-mode: standalone)').matches || navigator.standalone === true) inst.style.display = 'none'; } catch (e) {}
+    menuM.appendChild(inst);
     mas.querySelector('#btn-mas').onclick = () => { const ab = !menuM.classList.contains('abierto'); menuM.classList.toggle('abierto', ab); if (ab && menuP) menuP.classList.remove('abierto'); };
     menuM.addEventListener('click', e => { if (e.target.closest('button')) cerrarMas(); });
     document.addEventListener('click', ev => { if (!ev.target.closest('#tb-mas')) cerrarMas(); });

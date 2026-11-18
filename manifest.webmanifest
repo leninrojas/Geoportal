@@ -2,11 +2,12 @@
   "name": "GeoPortal",
   "short_name": "GeoPortal",
   "description": "Geoportal con mapas, capas y trekking con GPS que funciona sin conexión",
+  "id": "./",
   "start_url": "./",
   "scope": "./",
   "display": "standalone",
   "orientation": "any",
-  "background_color": "#3b82f6",
+  "background_color": "#eaf1fd",
   "theme_color": "#1e40af",
   "lang": "es",
   "icons": [
