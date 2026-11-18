@@ -13113,7 +13113,7 @@ function trkTeselasRuta(ruta, buffer, z, tope) {
     const wb = Math.max(3, Math.round(N * 0.04)); R.brg = brg.map((_, i) => { let sx = 0, sy = 0; for (let q = Math.max(0, i - wb); q <= Math.min(N - 1, i + wb); q++) { sx += Math.sin(brg[q] * RAD); sy += Math.cos(brg[q] * RAD); } return norm360(Math.atan2(sx, sy) / RAD); });
     let w0 = 1e9, w1 = -1e9, s0 = 1e9, s1 = -1e9; for (let k = 0; k < N; k++) { w0 = Math.min(w0, R.lng[k]); w1 = Math.max(w1, R.lng[k]); s0 = Math.min(s0, R.lat[k]); s1 = Math.max(s1, R.lat[k]); }
     R.bounds = [[w0, s0], [w1, s1]];
-    R.zoomF = clamp(15.6 - 0.45 * Math.log2(Math.max(total, 500) / 1000), 12.6, 16.2);
+    R.zoomF = clamp(16.0 - 0.45 * Math.log2(Math.max(total, 500) / 1000), 13.0, 16.6);
     R.wpts = (ruta.wpts || []).filter(w => w && isFinite(w.lat) && isFinite(w.lng));
     R.statsIn = ruta.stats || null; R.tTotal = ruta.tTotal != null ? ruta.tTotal : (R.statsIn && R.statsIn.tTotal) || (hayT ? (R.t[N - 1] - R.t[0]) / 1000 : null);
     return R;
@@ -13147,7 +13147,7 @@ function trkTeselasRuta(ruta, buffer, z, tope) {
   function mezcla(a, b, k) { return { center: [lerp(a.center[0], b.center[0], k), lerp(a.center[1], b.center[1], k)], zoom: lerp(a.zoom, b.zoom, k), pitch: lerp(a.pitch, b.pitch, k), bearing: lerpAng(a.bearing, b.bearing, k) }; }
   function camSeg(p) {
     const R = V.R, f = clamp(p, 0, 1) * (R.n - 1), i = Math.floor(f), j = Math.min(R.n - 1, i + 1), u = f - i;
-    return { center: [lerp(R.cLng[i], R.cLng[j], u), lerp(R.cLat[i], R.cLat[j], u)], zoom: R.zoomF, pitch: 62, bearing: lerpAng(R.brg[i], R.brg[j], u) };
+    return { center: [lerp(R.cLng[i], R.cLng[j], u), lerp(R.cLat[i], R.cLat[j], u)], zoom: R.zoomF, pitch: 58, bearing: lerpAng(R.brg[i], R.brg[j], u) };
   }
   function camaras() {
     const R = V.R, m = V.map, W = V.W, H = V.H, pad = Math.round(Math.min(W, H) * 0.14);
@@ -13188,7 +13188,10 @@ function trkTeselasRuta(ruta, buffer, z, tope) {
     V.map = map;
     setTimeout(() => { if (gen === V.gen && V.ocupado && !V.cam) { estado('El mapa 3D no terminó de cargar. Revisa tu conexión a internet y vuelve a abrir el video.', true); V.ocupado = false; setUI(); } }, 25000);
     map.on('error', e => { /* tiles que fallan: se ignoran */ });
-    map.on('render', () => { if (V.pend && V.ctx && V.cam && V.R && V.R.S) { V.pend = false; dibujar(); } });
+    map.on('render', () => {   // el lienzo WebGL solo es copiable en este mismo instante: se guarda una instantánea y se compone
+      try { if (!V.snap) V.snap = document.createElement('canvas'); if (V.snap.width !== V.W || V.snap.height !== V.H) { V.snap.width = V.W; V.snap.height = V.H; } V.snap.getContext('2d').drawImage(map.getCanvas(), 0, 0, V.W, V.H); V.snapOK = true; } catch (e) {}
+      if (V.ctx && V.cam && V.R && V.R.S) { V.pend = false; V.drawn = true; dibujar(); }
+    });
     map.on('load', async () => {
       if (gen !== V.gen) return;
       try { map.setSky({ 'sky-color': '#7ab8ff', 'sky-horizon-blend': .5, 'horizon-color': '#ffffff', 'horizon-fog-blend': .5, 'fog-color': '#dfeaff', 'fog-ground-blend': .4 }); } catch (e) {}
@@ -13197,7 +13200,7 @@ function trkTeselasRuta(ruta, buffer, z, tope) {
       await precargar(gen);
     });
   }
-  function destruirMapa() { if (V.map) { try { V.map.remove(); } catch (e) {} V.map = null; } }
+  function destruirMapa() { V.snapOK = false; if (V.map) { try { V.map.remove(); } catch (e) {} V.map = null; } }
   const esperarIdle = () => new Promise(res => { let ok = false; const f = () => { if (!ok) { ok = true; clearTimeout(to); res(); } }; const to = setTimeout(f, 2500); try { V.map.once('idle', f); } catch (e) { f(); } });
   async function precargar(gen) {
     V.ocupado = true; setUI();
@@ -13307,7 +13310,7 @@ function trkTeselasRuta(ruta, buffer, z, tope) {
   function dibujar() {
     if (!V.map || !V.ctx) return; const c = V.ctx;
     c.setTransform(1, 0, 0, 1, 0, 0); c.shadowBlur = 0; c.globalAlpha = 1; c.globalCompositeOperation = 'source-over'; c.clearRect(0, 0, V.W, V.H); c.fillStyle = '#0b1220'; c.fillRect(0, 0, V.W, V.H);   // fondo opaco: sin «fantasmas» de cuadros anteriores
-    try { c.drawImage(V.map.getCanvas(), 0, 0, V.W, V.H); } catch (e) {}
+    try { if (V.snap && V.snapOK) c.drawImage(V.snap, 0, 0, V.W, V.H); } catch (e) {}
     hud(V.tt);
   }
 
@@ -13321,7 +13324,7 @@ function trkTeselasRuta(ruta, buffer, z, tope) {
     if (V.map && V.R && V.R.S && V.cam) {
       if (V.playing && !V.ocupado) { V.tt += dt; if (V.tt >= V.total) { V.tt = V.total; V.playing = false; if (V.rec) finGrabacion(); setUI(); } V.dirty = true; }
       if (V.dirty && !V.ocupado) { aplicarCam(); V.dirty = false; }
-      dibujar();
+      if (!V.drawn) dibujar(); V.drawn = false;
       if (V.playing || V.rec) { const s = $('v-seek'); if (s) s.value = Math.round(V.tt / V.total * 1000); if (V.rec) estado('🔴 Grabando… ' + Math.round(V.tt) + ' s / ' + Math.round(V.total) + ' s. No cambies de aplicación.'); }
     }
   }
