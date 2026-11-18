@@ -1,6 +1,6 @@
 /* GeoPortal · service worker: permite abrir la app y ver los mapas descargados sin internet.
    No toca Supabase, clima ni servicios satelitales (siempre van directo a la red). */
-const VER = 'v2';
+const VER = 'v4';
 const APP = 'geoportal-app-' + VER;       // código de la aplicación y librerías
 const TILES = 'geoportal-tiles-v1';       // mapas base y DEM (también los llena la propia página)
 const LIBS = [
@@ -16,7 +16,7 @@ const LIBS = [
   'https://cdn.jsdelivr.net/npm/shpjs@4.0.4/dist/shp.min.js',
   'https://unpkg.com/geotiff@2.1.3/dist-browser/geotiff.js'
 ];
-const SHELL = ['./', 'index.html', 'manifest.webmanifest', 'icon-192.png', 'icon-512.png'];
+const SHELL = ['./', 'index.html', 'manifest.webmanifest', 'icon-v2-192.png', 'icon-v2-512.png'];
 const HOST_LIBS = /^(unpkg\.com|cdn\.jsdelivr\.net|cdnjs\.cloudflare\.com)$/;
 const HOST_TILES = /^(server\.arcgisonline\.com|services\.arcgisonline\.com|s3\.amazonaws\.com)$/;
 // PNG transparente 1x1 para teselas que no están guardadas (evita el ícono de imagen rota)
@@ -67,13 +67,15 @@ async function libreria(req) {
   if (hit) return hit;
   try { const r = await fetch(req.url, { mode: 'cors' }); if (r.ok) c.put(req.url, r.clone()); return r; } catch (e) { return Response.error(); }
 }
-// Teselas de mapa / DEM: copia guardada primero; si falta, red (y se guarda)
-async function tesela(req, esDEM) {
-  const c = await caches.open(TILES), hit = await c.match(req.url);
+// Teselas de mapa / DEM: copia guardada primero; si falta, red (y se guarda en segundo plano, sin hacer esperar a la imagen)
+let _cT = null;
+const abrirTiles = () => _cT || (_cT = caches.open(TILES));
+async function tesela(req, esDEM, ev) {
+  const c = await abrirTiles(), hit = await c.match(req.url);
   if (hit) return hit;
   try {
     const r = await fetch(req.url, { mode: 'cors' });
-    if (r.ok) { c.put(req.url, r.clone()); recortar(c); }
+    if (r.ok) { const p = c.put(req.url, r.clone()).then(() => recortar(c)).catch(() => {}); try { ev.waitUntil(p); } catch (e) {} }
     return r;
   } catch (e) { return esDEM ? Response.error() : new Response(VACIO, { status: 200, headers: { 'Content-Type': 'image/png' } }); }
 }
@@ -92,5 +94,5 @@ self.addEventListener('fetch', ev => {
     return;
   }
   if (HOST_LIBS.test(u.hostname)) { ev.respondWith(libreria(req)); return; }
-  if (HOST_TILES.test(u.hostname) && /\/(tile|terrarium)\//.test(u.pathname)) { ev.respondWith(tesela(req, u.hostname === 's3.amazonaws.com')); return; }
+  if (HOST_TILES.test(u.hostname) && /\/(tile|terrarium)\//.test(u.pathname)) { ev.respondWith(tesela(req, u.hostname === 's3.amazonaws.com', ev)); return; }
 });

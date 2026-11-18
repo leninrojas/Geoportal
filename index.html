@@ -3,14 +3,16 @@
 <head>
 <meta charset="utf-8">
 <title>GeoPortal Moderno - PostGIS & Geoprocesamiento</title>
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<link rel="preconnect" href="https://server.arcgisonline.com" crossorigin>
+<link rel="dns-prefetch" href="https://server.arcgisonline.com">
 <meta name="theme-color" content="#1e40af">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="GeoPortal">
 <link rel="manifest" href="manifest.webmanifest">
-<link rel="icon" type="image/png" href="icon-192.png">
-<link rel="apple-touch-icon" href="icon-192.png">
+<link rel="icon" type="image/png" href="icon-v2-192.png">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
@@ -611,13 +613,36 @@
     #coord select, #coord label { display: none !important; }
     #coord-txt { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
     /* Clima: chip pequeño sobre la barra, a la derecha, con °C */
-    .clima-widget { top: auto; bottom: calc(var(--barh) + 40px); right: 8px; max-width: none; }
+    .clima-widget { top: 10px; bottom: auto; left: 8px; right: auto; max-width: none; z-index: 1200; }
     .clima-w-btn { max-width: 110px; padding: 5px 9px; }
+    .clima-w-drop { top: 100% !important; bottom: auto !important; left: 0 !important; right: auto !important; margin: 6px 0 0 !important; max-height: 50vh; }
     .cw-main { max-width: 56px; }
     .cw-title { font-size: 12.5px; }
-    #trk-hud { bottom: calc(var(--barh) + 40px); left: 8px; right: 100px; }
+    #trk-hud { bottom: calc(var(--barh) + 40px); left: 8px; right: 8px; }
     #v3d-ctrl { bottom: calc(var(--barh) + 40px); left: 8px; max-width: calc(100% - 100px); }
     .cruce { bottom: var(--barh); }
+  }
+  /* Perfil flotante de la ruta y avisos de selección */
+  #trk-flot { position:absolute; left:16px; bottom:44px; width:min(520px, calc(100% - 110px)); z-index:1060; background:rgba(255,255,255,.97); border:1px solid #e2e8f0; border-radius:12px; box-shadow:0 4px 16px rgba(15,23,42,.2); padding:6px 8px 6px; box-sizing:border-box; }
+  #trk-flot .tf-cab { display:flex; align-items:center; gap:6px; font-size:12px; color:#0f172a; }
+  #trk-flot .tf-cab b { flex:none; max-width:42%; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  #trk-flot #tf-datos { flex:1; min-width:0; font-size:11px; color:#475569; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  #trk-flot button { border:0; background:transparent; font-size:14px; cursor:pointer; color:#64748b; padding:0 4px; line-height:1; }
+  #trk-flot canvas { width:100%; height:120px; display:block; margin-top:4px; touch-action:none; cursor:crosshair; }
+  #trk-flot.min canvas, #trk-flot.min #tf-pie { display:none; }
+  #tf-pie { font-size:11px; color:#475569; min-height:14px; margin-top:2px; }
+  #tk-toast { position:fixed; top:64px; left:50%; transform:translateX(-50%); z-index:1500; background:#0f172a; color:#fff; padding:8px 14px; border-radius:999px; font-size:12.5px; font-weight:600; max-width:calc(100% - 24px); text-align:center; box-shadow:0 4px 14px rgba(0,0,0,.3); pointer-events:none; }
+  #pnl-trek .panel-tabs { flex-wrap:wrap; }
+  #pnl-trek .panel-tabs .tab-btn { padding:6px 8px; font-size:12px; }
+  #nv-res .nv-fila { display:flex; gap:6px; margin-top:6px; }
+  #nv-res .nv-opc { flex:1; text-align:center; padding:6px 4px; border:1px solid #e2e8f0; border-radius:8px; background:#f8fafc; font-size:11.5px; cursor:pointer; }
+  #nv-res .nv-opc.on { border-color:var(--primary); background:#e8f0fe; }
+  #nv-res .nv-opc b { display:block; font-size:14px; color:#0f172a; }
+  #nv-res ol { margin:6px 0 0; padding-left:20px; font-size:12px; color:#334155; }
+  @media (max-width: 768px) {
+    #trk-flot { left:8px; right:8px; width:auto; bottom:calc(var(--barh) + 40px); }
+    #trk-flot canvas { height:105px; }
+    #tk-toast { top:60px; }
   }
 </style>
 </head>
@@ -736,6 +761,7 @@
     <div class="panel-tabs">
       <button class="tab-btn active" data-tk="rec" type="button">Grabar</button>
       <button class="tab-btn" data-tk="ruta" type="button">Ruta meta</button>
+      <button class="tab-btn" data-tk="nav" type="button">Ir a…</button>
       <button class="tab-btn" data-tk="mis" type="button">Mis rutas</button>
       <button class="tab-btn" data-tk="off" type="button">Sin conexión</button>
     </div>
@@ -804,7 +830,46 @@
       <button class="btn sec" id="tk-plan-dem" type="button" style="display:none;">⛰ Calcular altitudes con el DEM</button>
       <button class="btn sec" id="tk-plan-corr" type="button" style="display:none;">📥 Descargar mapas a lo largo de esta ruta</button>
       <button class="btn sec" id="tk-quitar-plan" type="button" style="display:none; color:#dc2626; border-color:#dc2626;">🗑 Quitar ruta meta</button>
+      <div id="tk-plan-acc" style="display:none; gap:6px; margin-top:6px;">
+        <button class="btn sec" id="tk-plan-perfil" type="button" style="margin:0; flex:1; padding:6px; font-size:11.5px;">⛰ Perfil topográfico</button>
+        <button class="btn sec" id="tk-plan-tiempo" type="button" style="margin:0; flex:1; padding:6px; font-size:11.5px;">⏱ Tiempo</button>
+      </div>
+      <div class="tk-sec">🧭 Mejor ruta entre A y B (según el relieve)</div>
+      <div style="display:flex; gap:6px;">
+        <button class="btn sec" id="ar-a" type="button" style="margin:0; flex:1; padding:6px; font-size:11.5px;">🚩 Punto A</button>
+        <button class="btn sec" id="ar-a-gps" type="button" style="margin:0; width:auto; padding:6px 9px;" title="Usar mi ubicación como A">📍</button>
+        <button class="btn sec" id="ar-b" type="button" style="margin:0; flex:1; padding:6px; font-size:11.5px;">🏁 Punto B</button>
+      </div>
+      <div id="ar-info" style="font-size:11.5px; color:#475569; margin:6px 0;">Marca A y B en el mapa.</div>
+      <label class="tk-lbl">Criterio</label>
+      <select id="ar-crit" style="width:100%; padding:5px; font-size:12px;"><option value="rapida" selected>Más rápida (equilibra distancia y pendiente)</option><option value="suave">Menos desnivel (más suave)</option><option value="directa">Más directa</option></select>
+      <label class="tk-lbl">Pendiente máxima permitida</label>
+      <select id="ar-pmax" style="width:100%; padding:5px; font-size:12px;"><option value="25">25 % (camino cómodo)</option><option value="35">35 %</option><option value="45" selected>45 % (ladera empinada)</option><option value="70">70 % (muy empinada)</option></select>
+      <label class="tk-lbl">Preferir caminos de una capa (opcional)</label>
+      <select id="ar-caminos" style="width:100%; padding:5px; font-size:12px;"><option value="">— ninguna —</option></select>
+      <button class="btn" id="ar-calc" type="button">🧭 Calcular mejor ruta</button>
+      <div id="ar-msg" style="font-size:12px; font-weight:600; min-height:16px; margin-top:4px;"></div>
+      <div style="font-size:11px; color:#64748b;">Busca la ruta de menor esfuerzo sobre el modelo de elevación (~30 m), con la velocidad de caminata de Tobler. No conoce caminos reales salvo que elijas una capa de caminos; verifica la ruta en campo.</div>
       <div style="font-size:11.5px; color:#64748b; margin-top:8px;">Al grabar, el geoportal te muestra cuánto falta, el rumbo a la meta, la hora estimada de llegada y te avisa (vibración y sonido) si te sales de la ruta o llegas a la meta. La ruta queda guardada en el teléfono.</div>
+    </div>
+
+    <div id="tk-t-nav" style="display:none;">
+      <div class="tk-aviso" style="background:#f8fafc; border-color:#e2e8f0; color:#334155;">Elige origen y destino (el origen puede ser tu ubicación) y obtén el tiempo de recorrido en auto, a pie y en bicicleta. Luego puedes seguir el recorrido con el GPS, también en vehículo.</div>
+      <label class="tk-lbl">Origen</label>
+      <div style="display:flex; gap:6px;"><input type="text" id="nv-o" readonly placeholder="Elige el origen" style="flex:1; min-width:0; padding:6px; font-size:12px; border:1px solid var(--border-color); border-radius:4px;"><button class="btn sec" id="nv-o-gps" type="button" style="margin:0; width:auto; padding:5px 9px;" title="Usar mi ubicación">📍</button><button class="btn sec" id="nv-o-map" type="button" style="margin:0; width:auto; padding:5px 9px;" title="Elegir en el mapa">🗺</button></div>
+      <label class="tk-lbl">Destino</label>
+      <div style="display:flex; gap:6px;"><input type="text" id="nv-d" placeholder="Buscar un lugar o elegir en el mapa" style="flex:1; min-width:0; padding:6px; font-size:12px; border:1px solid var(--border-color); border-radius:4px;"><button class="btn sec" id="nv-d-buscar" type="button" style="margin:0; width:auto; padding:5px 9px;" title="Buscar">🔎</button><button class="btn sec" id="nv-d-map" type="button" style="margin:0; width:auto; padding:5px 9px;" title="Elegir en el mapa">🗺</button></div>
+      <label class="tk-lbl">Medio de transporte</label>
+      <select id="nv-modo" style="width:100%; padding:6px; font-size:12px; border:1px solid var(--border-color); border-radius:4px;"><option value="car" selected>🚗 Auto / camioneta</option><option value="foot">🚶 A pie</option><option value="bike">🚲 Bicicleta</option></select>
+      <button class="btn" id="nv-calc" type="button">⏱ Calcular recorrido</button>
+      <div id="nv-msg" style="font-size:12px; font-weight:600; min-height:16px; margin-top:4px;"></div>
+      <div id="nv-res"></div>
+      <div id="nv-acc" style="display:none; gap:6px; flex-wrap:wrap; margin-top:6px;">
+        <button class="btn" id="nv-seguir" type="button" style="margin:0; flex:1 1 100%; background:#16a34a;">▶ Iniciar recorrido (seguimiento GPS)</button>
+        <button class="btn sec" id="nv-usar" type="button" style="margin:0; flex:1; padding:6px; font-size:11.5px;">Usar como ruta meta</button>
+        <button class="btn sec" id="nv-quitar" type="button" style="margin:0; flex:1; padding:6px; font-size:11.5px; color:#dc2626; border-color:#dc2626;">Quitar</button>
+      </div>
+      <div style="font-size:11.5px; color:#64748b; margin-top:8px;">El cálculo usa un servicio de rutas en línea (OpenStreetMap): requiere internet y no incluye tráfico. Si no hay señal se muestra una estimación en línea recta. Mientras sigues el recorrido, el geoportal avisa los giros, la distancia restante, la hora de llegada y recalcula si te sales de la ruta.</div>
     </div>
 
     <div id="tk-t-mis" style="display:none;">
@@ -850,6 +915,13 @@
     <div class="th-btns"><button id="th-pausa" type="button" title="Pausar / reanudar">⏸</button><button id="th-marca" type="button" title="Marcar punto">📍</button><button id="th-fin" type="button" title="Finalizar">⏹</button><button id="th-abrir" type="button" title="Abrir panel">☰</button></div>
   </div>
 
+  <!-- Perfil flotante de la ruta (solo gráfico y datos básicos) -->
+  <div id="trk-flot" style="display:none;">
+    <div class="tf-cab"><b id="tf-tit">Perfil</b><span id="tf-datos"></span><button type="button" id="tf-min" title="Minimizar / mostrar">▾</button><button type="button" id="tf-x" title="Cerrar">✕</button></div>
+    <canvas id="tf-cv"></canvas>
+    <div id="tf-pie">Pasa el dedo o el cursor sobre el perfil para ver la altitud y la pendiente.</div>
+  </div>
+
   <!-- PANEL CLIMA (detalle expandible; el resumen flotante es #clima-widget) -->
   <div class="pnl" id="pnl-clima" style="width:340px;padding:0;overflow:hidden;">
     <button class="x" data-close title="Cerrar" style="z-index:2;">✕</button>
@@ -890,7 +962,7 @@
     
     <div class="panel-tabs">
       <button type="button" class="tab-btn active" id="tab-add-file">📁 Archivo</button>
-      <button type="button" class="tab-btn" id="tab-add-manual">📍 UTM</button>
+      <button type="button" class="tab-btn" id="tab-add-manual">📍 Puntos</button>
       <button type="button" class="tab-btn" id="tab-add-dron">🛰️ Imágenes</button>
     </div>
 
@@ -924,55 +996,60 @@
       <div class="msg" id="add-msg" style="font-size:12px; margin-top:8px;"></div>
     </div>
 
-    <!-- Pestaña 2: Ingreso Manual de Coordenadas UTM -->
+    <!-- Pestaña 2: Puntos de referencia (UTM / grados), pensado para campo -->
     <div id="subpnl-add-manual" style="display:none;">
-      <div style="font-size:11.5px; color:#64748b; margin-bottom:8px;">
-        Ingreso directo de puntos UTM con etiqueta de prioridad (SONDAJE, PLATAFORMA o CÓDIGO):
+      <div style="font-size:11.5px; color:#64748b; margin-bottom:8px; line-height:1.4;">
+        Puntos de referencia: escribe lo que marca tu GPS o usa tu ubicación. Se guardan en este equipo (sirven sin señal) y puedes bajarlos en Excel o KMZ.
       </div>
       <div style="display:flex; flex-direction:column; gap:6px;">
         <div>
-          <label style="font-size:11px; color:#334155; font-weight:600;">SONDAJE (Prioridad 1)</label>
-          <input type="text" id="man-sondaje" placeholder="Ej. DDH-2024-01" style="width:100%; box-sizing:border-box; padding:6px; font-size:12px; border:1px solid var(--border-color); border-radius:4px;">
+          <label style="font-size:11px; color:#334155; font-weight:600;">Nombre</label>
+          <input type="text" id="man-nombre" placeholder="Ej. P-001" style="width:100%; box-sizing:border-box; padding:6px; font-size:12px; border:1px solid var(--border-color); border-radius:4px;">
+        </div>
+        <div>
+          <label style="font-size:10.5px; color:#334155;">Formato de coordenadas</label>
+          <select id="man-fmt" style="width:100%; padding:5px; font-size:11.5px; border:1px solid var(--border-color); border-radius:4px;">
+            <option value="utm" selected>UTM (Este / Norte)</option>
+            <option value="dec">Geográficas (grados decimales)</option>
+            <option value="gms">Geográficas (grados ° ′ ″)</option>
+          </select>
         </div>
         <div style="display:flex; gap:6px;">
           <div style="flex:1;">
-            <label style="font-size:11px; color:#334155; font-weight:600;">PLATAFORMA</label>
-            <input type="text" id="man-plataforma" placeholder="Ej. PLAT-05" style="width:100%; box-sizing:border-box; padding:6px; font-size:12px; border:1px solid var(--border-color); border-radius:4px;">
+            <label id="man-lbl-e" style="font-size:11px; color:#334155; font-weight:600;">Este (X)</label>
+            <input type="text" id="man-este" inputmode="decimal" placeholder="Ej. 245100" style="width:100%; box-sizing:border-box; padding:6px; font-size:12px; border:1px solid var(--border-color); border-radius:4px;">
           </div>
           <div style="flex:1;">
-            <label style="font-size:11px; color:#334155; font-weight:600;">CÓDIGO</label>
-            <input type="text" id="man-codigo" placeholder="Ej. COD-101" style="width:100%; box-sizing:border-box; padding:6px; font-size:12px; border:1px solid var(--border-color); border-radius:4px;">
-          </div>
-        </div>
-        <div style="display:flex; gap:6px;">
-          <div style="flex:1;">
-            <label style="font-size:11px; color:#334155; font-weight:600;">Este (X)</label>
-            <input type="text" id="man-este" placeholder="Ej. 245100" style="width:100%; box-sizing:border-box; padding:6px; font-size:12px; border:1px solid var(--border-color); border-radius:4px;">
-          </div>
-          <div style="flex:1;">
-            <label style="font-size:11px; color:#334155; font-weight:600;">Norte (Y)</label>
-            <input type="text" id="man-norte" placeholder="Ej. 8450200" style="width:100%; box-sizing:border-box; padding:6px; font-size:12px; border:1px solid var(--border-color); border-radius:4px;">
+            <label id="man-lbl-n" style="font-size:11px; color:#334155; font-weight:600;">Norte (Y)</label>
+            <input type="text" id="man-norte" inputmode="decimal" placeholder="Ej. 8450200" style="width:100%; box-sizing:border-box; padding:6px; font-size:12px; border:1px solid var(--border-color); border-radius:4px;">
           </div>
         </div>
-        <div style="display:flex; gap:6px;">
+        <div id="man-fila-zona" style="display:flex; gap:6px;">
           <div style="flex:1;">
-            <label style="font-size:10.5px; color:#334155;">Zona UTM</label>
-            <select id="man-zona" style="width:100%; padding:5px; font-size:11.5px; border:1px solid var(--border-color); border-radius:4px;">
-              <option value="EPSG:32718" selected>18S (Perú Central)</option>
-              <option value="EPSG:32717">17S (Perú Occidental)</option>
-              <option value="EPSG:32719">19S (Perú Oriental)</option>
-            </select>
+            <label style="font-size:10.5px; color:#334155;">Zona (como la indica el GPS)</label>
+            <input type="text" id="man-zona" value="18L" placeholder="Ej. 18L, 18S, 19L" list="man-zonas" style="width:100%; box-sizing:border-box; padding:6px; font-size:12px; border:1px solid var(--border-color); border-radius:4px;">
+            <datalist id="man-zonas"><option value="17L"><option value="18L"><option value="19L"><option value="17M"><option value="18M"><option value="17S"><option value="18S"><option value="19S"></datalist>
           </div>
           <div style="flex:1;">
             <label style="font-size:10.5px; color:#334155;">Datum</label>
-            <select id="man-datum" style="width:100%; padding:5px; font-size:11.5px; border:1px solid var(--border-color); border-radius:4px;">
+            <select id="man-datum" style="width:100%; padding:6px; font-size:11.5px; border:1px solid var(--border-color); border-radius:4px;">
               <option value="WGS84" selected>WGS84</option>
               <option value="PSAD56">PSAD56 → convertir a WGS84</option>
             </select>
           </div>
         </div>
-        <button class="btn" id="man-btn-agregar" type="button" style="margin-top:6px;">＋ Agregar Punto UTM al Mapa</button>
-        <div class="msg" id="man-msg" style="font-size:12px; margin-top:4px;"></div>
+        <div style="display:flex; gap:6px;">
+          <button class="btn sec" id="man-btn-gps" type="button" style="flex:1; margin:0; font-size:11.5px; padding:7px 4px;">📍 Mi ubicación</button>
+          <button class="btn sec" id="man-btn-centro" type="button" style="flex:1; margin:0; font-size:11.5px; padding:7px 4px;">🎯 Centro del mapa</button>
+        </div>
+        <button class="btn" id="man-btn-agregar" type="button" style="margin-top:2px;">＋ Agregar punto al mapa</button>
+        <div class="msg" id="man-msg" style="font-size:12px; margin-top:2px;"></div>
+        <div id="man-lista" style="margin-top:4px;"></div>
+        <div id="man-acciones" style="display:none; gap:6px;">
+          <button class="btn sec" id="man-btn-xlsx" type="button" style="flex:1; margin:0; font-size:11.5px; padding:7px 4px;">📊 Excel</button>
+          <button class="btn sec" id="man-btn-kmz" type="button" style="flex:1; margin:0; font-size:11.5px; padding:7px 4px;">🌍 KMZ</button>
+          <button class="btn sec" id="man-btn-borrar" type="button" style="flex:0 0 auto; margin:0; font-size:11.5px; padding:7px 8px;" title="Borrar todos los puntos">🗑</button>
+        </div>
       </div>
     </div>
 
@@ -1898,14 +1975,14 @@ const escXML = s => String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/<
 function tokenSesion() { try { return (sesion && sesion.access_token) || SUPABASE_KEY; } catch (e) { return SUPABASE_KEY; } }
 const hdrBase = { apikey: SUPABASE_KEY, get Authorization() { return 'Bearer ' + tokenSesion(); } };
 
-const map = L.map('map', { maxZoom: 22, minZoom: 4, zoomControl: false }).fitBounds(PERU, { padding: [28, 28], maxZoom: 5.5 });
+const map = L.map('map', { maxZoom: 22, minZoom: 4, zoomControl: false, maxBounds: [[-85.05, -180], [85.05, 180]], maxBoundsViscosity: 1.0 }).fitBounds(PERU, { padding: [28, 28], maxZoom: 5.5 });
 L.control.zoom({ position: 'topright' }).addTo(map);
 
 [['p_dep',410],['p_prov',420],['p_dist',430],['p_uh',435],['p_lag',436],['p_hum',437],['p_lom',438],['p_gla',439],['p_ram',439],['p_cat',440],['p_pas',444],['p_cpp',441],['p_pob',442],['p_com',443],['p_add',450],['p_hl',470]].forEach(p => {
   map.createPane(p[0]).style.zIndex = p[1];
 });
 
-const tile = (path, opt) => L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/' + path + '/MapServer/tile/{z}/{y}/{x}', Object.assign({ maxZoom: 22, attribution: 'Esri' }, opt || {}));
+const tile = (path, opt) => L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/' + path + '/MapServer/tile/{z}/{y}/{x}', Object.assign({ maxZoom: 22, attribution: 'Esri', noWrap: true, updateWhenIdle: false, updateWhenZooming: false, keepBuffer: 3 }, opt || {}));
 const imgBase = tile('Canvas/World_Light_Gray_Base', { maxNativeZoom: 16, maxZoom: 22 });
 const imgSat = tile('World_Imagery', { maxNativeZoom: 19, maxZoom: 22, className: 'capa-sat' });
 const imgLab = tile('Reference/World_Boundaries_and_Places', { maxNativeZoom: 17, maxZoom: 22, opacity: 0.9 });
@@ -2642,7 +2719,7 @@ function dibujarLeyenda() {
         });
         return;
       }
-      h += '<div class="lg-row' + (deseadas[c.tabla] ? '' : ' off') + '">' + swatch(c) + '<span>' + esc(c.nombre) + '</span></div>';
+      h += '<div class="lg-row' + (deseadas[c.tabla] ? '' : ' off') + '">' + swatch(c) + '<span>' + esc(c.listaNombre || c.nombre) + '</span></div>';
     });
   });
   const agregadas = userLayers.filter(u => !u.isDibujo && u.color);
@@ -2835,6 +2912,23 @@ function limpiarNumeroCoordenada(val) {
   return num;
 }
 
+
+// Coordenada como número: acepta decimales, texto con hemisferio (12.05 S) y grados ° ′ ″ (12°03′45″ S)
+function numCoord(val) {
+  if (typeof val === 'number') return val;
+  const s = String(val == null ? '' : val).trim();
+  if (!s) return NaN;
+  if (/[°º′'’″"”]|[NSEWO]\s*$/i.test(s)) {
+    let m = /^([+-]?)\s*(\d{1,3})\s*[°º\s]\s*(\d{1,2})\s*[′'’m\s]\s*(\d{1,2}(?:[.,]\d+)?)\s*(?:″|"|”|''|s)?\s*([NSEWO])?$/i.exec(s);
+    if (m) { const v = parseInt(m[2], 10) + parseInt(m[3], 10) / 60 + parseFloat(m[4].replace(',', '.')) / 3600; return (m[1] === '-' || /[SWO]/i.test(m[5] || '')) ? -v : v; }
+    m = /^([+-]?)\s*(\d{1,3})\s*[°º\s]\s*(\d{1,2}(?:[.,]\d+)?)\s*[′'’m]?\s*([NSEWO])?$/i.exec(s);
+    if (m) { const v = parseInt(m[2], 10) + parseFloat(m[3].replace(',', '.')) / 60; return (m[1] === '-' || /[SWO]/i.test(m[4] || '')) ? -v : v; }
+    m = /^([+-]?)\s*(\d{1,3}(?:[.,]\d+)?)\s*[°º]?\s*([NSEWO])?$/i.exec(s);
+    if (m) { const v = parseFloat(m[2].replace(',', '.')); return (m[1] === '-' || /[SWO]/i.test(m[3] || '')) ? -v : v; }
+  }
+  return limpiarNumeroCoordenada(val);
+}
+
 // Columnas de coordenadas, en este orden de prioridad (siempre como pareja X/Y):
 //   1. Este / Norte     2. X / Y     3. variantes (EsteWGS84, CoordenadaEste, UTM_X, East/North, Lon/Lat...)
 //   4. último recurso: coincidencia parcial, evitando columnas de otra referencia (este_cliente, este_cogo, orig...)
@@ -2857,6 +2951,14 @@ function detectarColumnasCoordenadas(keys) {
     const xKey = keys.find(k => px.test(norm(k)));
     const yKey = keys.find(k => py.test(norm(k)));
     if (xKey && yKey) return { xKey, yKey };
+  }
+
+  // Derivados por palabras del encabezado: COORD_ESTE_UTM, ESTE (m), LATITUD_DEC, LONG_DD, X_UTM...
+  const toks = k => String(k || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().split(/[^a-z0-9]+/).filter(Boolean);
+  const AJ = /cliente|cogo|orig|anterior|dwg/;
+  for (const [sx, sy] of [[['este', 'easting', 'east', 'estes'], ['norte', 'northing', 'north']], [['lon', 'long', 'lng', 'longitud', 'longitude'], ['lat', 'latitud', 'latitude']], [['x', 'xutm', 'coordx', 'xcoord'], ['y', 'yutm', 'coordy', 'ycoord']]]) {
+    const xs = keys.filter(k => !AJ.test(norm(k)) && toks(k).some(t => sx.indexOf(t) >= 0)), ys = keys.filter(k => !AJ.test(norm(k)) && toks(k).some(t => sy.indexOf(t) >= 0));
+    if (xs.length && ys.length) return { xKey: xs[0], yKey: ys[0] };
   }
 
   const ajena = n => /cliente|cogo|orig|anterior|dwg/.test(n);
@@ -3300,6 +3402,8 @@ window.limpiarCapasUsuario = () => {
     u.geojson = null;
     userLayers.splice(i, 1);
   }
+  // Imágenes georreferenciadas / teselas XYZ
+  try { if (typeof ortos !== 'undefined') { ortos.slice().forEach(o => { try { map.removeLayer(o.layer); } catch (e) {} if (o.urlObj) { try { URL.revokeObjectURL(o.urlObj); } catch (e) {} } }); ortos.length = 0; if (typeof ortoRender === 'function') ortoRender(); } } catch (e) {}
   // Limpiar mensajes
   const addMsgEl = document.getElementById('add-msg');
   if (addMsgEl) { addMsgEl.textContent = ''; addMsgEl.innerHTML = ''; }
@@ -3356,18 +3460,29 @@ window.descargarExcelCapa = idx => {
   const ul = userLayers[idx];
   if (!ul || !ul.features || !ul.features.length) { alert('No hay entidades en esta capa para exportar.'); return; }
   if (typeof XLSX === 'undefined') { alert('No se cargó el lector de Excel; usa la descarga en KMZ.'); return; }
-  const filas = ul.features.filter(f => f.geometry && !f._oculto).map(f => {
+  const grupos = {}, orden = [];
+  ul.features.filter(f => f.geometry && !f._oculto).forEach(f => {
     const t = f.geometry.type, o = { NOMBRE: etiquetaNombre(f.properties || {}, null) || '', TIPO: /Point/.test(t) ? 'Punto' : (/Line/.test(t) ? 'Línea' : 'Polígono') };
     try {
-      if (t === 'Point') { o.LON = Number(f.geometry.coordinates[0].toFixed(7)); o.LAT = Number(f.geometry.coordinates[1].toFixed(7)); }
-      else { const c = turf.centroid(f).geometry.coordinates; o.LON = Number(c[0].toFixed(7)); o.LAT = Number(c[1].toFixed(7));
-        if (/Line/.test(t)) o.LONGITUD_M = Number((turf.length(f, { units: 'kilometers' }) * 1000).toFixed(1)); else o.AREA_HA = Number((turf.area(f) / 10000).toFixed(4)); }
+      let c;
+      if (t === 'Point') c = f.geometry.coordinates; else c = turf.centroid(f).geometry.coordinates;
+      o.LON = Number(c[0].toFixed(7)); o.LAT = Number(c[1].toFixed(7));
+      try { const u = utmDe(c[0], c[1]); o.ESTE_UTM = Math.round(u.este * 100) / 100; o.NORTE_UTM = Math.round(u.norte * 100) / 100; o.ZONA_UTM = u.zona; } catch (e) {}
+      if (/Line/.test(t)) o.LONGITUD_M = Number((turf.length(f, { units: 'kilometers' }) * 1000).toFixed(1)); else if (/Polygon/.test(t)) o.AREA_HA = Number((turf.area(f) / 10000).toFixed(4));
     } catch (e) {}
     const pr = limpiarPropsExport(f.properties || {}); Object.keys(pr).forEach(k => { if (!(k in o) && !/^(name|nombre)$/i.test(k)) o[k] = pr[k]; });
-    return o;
+    const hoja = String((f.properties || {})._carpeta || 'Datos').split(' / ')[0] || 'Datos';
+    if (!grupos[hoja]) { grupos[hoja] = []; orden.push(hoja); }
+    grupos[hoja].push(o);
   });
-  if (!filas.length) { alert('No hay elementos visibles en esta capa para exportar.'); return; }
-  const wb = XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(filas), 'Datos');
+  if (!orden.length) { alert('No hay elementos visibles en esta capa para exportar.'); return; }
+  const wb = XLSX.utils.book_new(), usados = new Set();
+  orden.forEach(h => {
+    let nm = h.replace(/[\\\/\?\*\[\]:]/g, ' ').trim().slice(0, 31) || 'Datos', k = 2;
+    while (usados.has(nm.toLowerCase())) nm = nm.slice(0, 28) + '_' + (k++);
+    usados.add(nm.toLowerCase());
+    XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(grupos[h]), nm);
+  });
   XLSX.writeFile(wb, (ul.name || 'capa').replace(/\.[^/.]+$/, '') + '.xlsx');
 };
 document.addEventListener('contextmenu', e => {
@@ -3627,6 +3742,66 @@ function kmlConCarpetas(dom) {
   });
   return fc;
 }
+
+// Convierte una fila de Excel/CSV (UTM, grados decimales o grados ° ′ ″) a un punto WGS84; null si no tiene coordenadas válidas
+function convertirFilaCoord(row, xKey, yKey) {
+  const valX = numCoord(row[xKey]), valY = numCoord(row[yKey]);
+  if (isNaN(valX) || isNaN(valY)) return null;
+  let este = valX, norte = valY;
+  if (este > 1000000 && norte < 1000000) { este = valY; norte = valX; }
+  let lon = este, lat = norte;
+  if (este > 100000 && norte > 1000000) {
+    const zonaCol = Object.keys(row).find(k => /^zona|zone$/i.test(k.trim()));
+    let zonaEpsg = addUtmZone ? addUtmZone.value : 'EPSG:32718';
+    const datum = addUtmDatum ? addUtmDatum.value : 'WGS84';
+    const zM = (zonaCol && row[zonaCol]) ? /^(?:zona|zone|utm|z)?[\s_-]*(17|18|19)\s*[A-Za-z]?$/i.exec(String(row[zonaCol]).trim()) : null;
+    const zVal = zM ? zM[1] : '';
+    if (zVal === '17' || zVal === '18' || zVal === '19') {
+      const z = { '17': ['EPSG:24877', 'EPSG:32717'], '18': ['EPSG:24878', 'EPSG:32718'], '19': ['EPSG:24879', 'EPSG:32719'] }[zVal];
+      zonaEpsg = datum === 'PSAD56' ? z[0] : z[1];
+    } else if (zonaEpsg === 'auto') {
+      zonaEpsg = datum === 'PSAD56' ? 'EPSG:24878' : 'EPSG:32718';
+    } else if (datum === 'PSAD56') {
+      if (zonaEpsg === 'EPSG:32717') zonaEpsg = 'EPSG:24877';
+      if (zonaEpsg === 'EPSG:32718') zonaEpsg = 'EPSG:24878';
+      if (zonaEpsg === 'EPSG:32719') zonaEpsg = 'EPSG:24879';
+    }
+    const conv = convertirUTM(este, norte, zonaEpsg);
+    if (conv) { lon = conv.lng; lat = conv.lat; }
+  } else {
+    if (lat > 0 && lat <= 20) lat = -lat;
+    if (lon > 0 && lon >= 65 && lon <= 85) lon = -lon;
+    if (addUtmDatum && addUtmDatum.value === 'PSAD56') {
+      const g = molodenskyPSAD56aWGS84(lon, lat, 0);
+      if (isFinite(g.lng) && isFinite(g.lat)) { lon = g.lng; lat = g.lat; }
+    }
+  }
+  return { type: 'Feature', geometry: { type: 'Point', coordinates: [lon, lat] }, properties: { ...row } };
+}
+// Todas las hojas con datos: cada hoja con columnas de coordenadas pasa a ser una carpeta (_carpeta) de la misma capa
+function excelAFeatures(workbook) {
+  const hojasData = [], omitidas = [], hojas = [], features = [];
+  workbook.SheetNames.forEach(nombre => {
+    const rows = XLSX.utils.sheet_to_json(workbook.Sheets[nombre], { defval: '' }).filter(r => Object.values(r).some(v => String(v).trim() !== ''));
+    if (!rows.length) return;
+    const keys = []; rows.slice(0, 50).forEach(r => Object.keys(r).forEach(k => { if (keys.indexOf(k) < 0) keys.push(k); }));
+    const { xKey, yKey } = detectarColumnasCoordenadas(keys);
+    if (!xKey || !yKey) { omitidas.push(nombre); return; }
+    hojasData.push({ nombre, rows, xKey, yKey });
+  });
+  const multi = hojasData.length > 1;
+  hojasData.forEach(h => {
+    let n = 0;
+    h.rows.forEach(row => {
+      const ft = convertirFilaCoord(row, h.xKey, h.yKey); if (!ft) return;
+      if (multi) { ft.properties.HOJA = h.nombre; ft.properties._carpeta = h.nombre; }
+      features.push(ft); n++;
+    });
+    hojas.push({ nombre: h.nombre, xKey: h.xKey, yKey: h.yKey, n });
+  });
+  return { features, hojas, omitidas, primeraEsSond: hojasData.length ? esPlantillaSondajes(hojasData[0].rows) : false };
+}
+
 async function procesarArchivoLocal(file) {
   const fileName = file.name;
   const ext = fileName.split('.').pop().toLowerCase();
@@ -3646,83 +3821,16 @@ async function procesarArchivoLocal(file) {
         else if (ext === 'xlsx' || ext === 'xls' || ext === 'csv' || ext === 'txt' || ext === 'tsv') {
           const data = (ext === 'xlsx' || ext === 'xls') ? new Uint8Array(e.target.result) : e.target.result;
           const workbook = XLSX.read(data, { type: (ext === 'xlsx' || ext === 'xls') ? 'array' : 'binary', cellDates: true });
-          const firstSheet = workbook.SheetNames[0];
-          const sheet = workbook.Sheets[firstSheet];
-          const rows = XLSX.utils.sheet_to_json(sheet, { defval: '' });
-          window._esSondajes = esPlantillaSondajes(rows);
-          
-          if (!rows.length) {
-            alert(`El archivo ${fileName} no contiene filas con datos.`);
+          const res = excelAFeatures(workbook);
+          if (!res.features.length) {
+            alert('No se detectaron columnas de coordenadas (Este/Norte, X/Y o Latitud/Longitud) con datos válidos en ' + fileName + '.' + (res.omitidas.length ? '\nHojas revisadas sin coordenadas: ' + res.omitidas.join(', ') : ''));
             return resolve(false);
           }
-
-          const keys = Object.keys(rows[0]);
-          const { xKey, yKey } = detectarColumnasCoordenadas(keys);
-          window._ultColsCoord = (xKey && yKey) ? ('«' + xKey + '» / «' + yKey + '»') : '';
+          window._esSondajes = res.hojas.length === 1 && res.primeraEsSond;
+          window._ultColsCoord = res.hojas.map(h => (res.hojas.length > 1 ? h.nombre + ': ' : '') + '«' + h.xKey + '» / «' + h.yKey + '» (' + h.n + ' puntos)').join(' · ') +
+            (res.omitidas.length ? ' · Hojas sin coordenadas (omitidas): ' + res.omitidas.join(', ') : '');
           if (addUtmDatum && addUtmDatum.value === 'PSAD56') window._ultPSAD56 = 'Datum PSAD56 → WGS84 aplicado a las coordenadas del archivo.';
-
-          if (!xKey || !yKey) {
-            alert(`No se detectaron columnas de coordenadas (X/Este, Y/Norte) en ${fileName}. Columnas encontradas: ${keys.join(', ')}`);
-            return resolve(false);
-          }
-
-          const features = [];
-          rows.forEach((row, rIdx) => {
-            let valX = limpiarNumeroCoordenada(row[xKey]);
-            let valY = limpiarNumeroCoordenada(row[yKey]);
-
-            if (!isNaN(valX) && !isNaN(valY)) {
-              let este = valX;
-              let norte = valY;
-
-              if (este > 1000000 && norte < 1000000) {
-                este = valY;
-                norte = valX;
-              }
-
-              let lon = este;
-              let lat = norte;
-
-              if (este > 100000 && norte > 1000000) {
-                let zonaCol = Object.keys(row).find(k => /^zona|zone$/i.test(k.trim()));
-                let zonaEpsg = addUtmZone ? addUtmZone.value : 'EPSG:32718';
-                let datum = addUtmDatum ? addUtmDatum.value : 'WGS84';
-
-                const zM = (zonaCol && row[zonaCol]) ? /^(?:zona|zone|utm|z)?[\s_-]*(17|18|19)\s*[A-Za-z]?$/i.exec(String(row[zonaCol]).trim()) : null;
-                const zVal = zM ? zM[1] : '';
-                if (zVal === '17' || zVal === '18' || zVal === '19') {
-                  const z = { '17': ['EPSG:24877', 'EPSG:32717'], '18': ['EPSG:24878', 'EPSG:32718'], '19': ['EPSG:24879', 'EPSG:32719'] }[zVal];
-                  zonaEpsg = datum === 'PSAD56' ? z[0] : z[1];
-                } else if (zonaEpsg === 'auto') {
-                  zonaEpsg = datum === 'PSAD56' ? 'EPSG:24878' : 'EPSG:32718';
-                } else if (datum === 'PSAD56') {
-                  if (zonaEpsg === 'EPSG:32717') zonaEpsg = 'EPSG:24877';
-                  if (zonaEpsg === 'EPSG:32718') zonaEpsg = 'EPSG:24878';
-                  if (zonaEpsg === 'EPSG:32719') zonaEpsg = 'EPSG:24879';
-                }
-
-                const conv = convertirUTM(este, norte, zonaEpsg);
-                if (conv) {
-                  lon = conv.lng;
-                  lat = conv.lat;
-                }
-              } else {
-                if (lat > 0 && lat <= 20) lat = -lat;
-                if (lon > 0 && lon >= 65 && lon <= 85) lon = -lon;
-                if (addUtmDatum && addUtmDatum.value === 'PSAD56') {
-                  const g = molodenskyPSAD56aWGS84(lon, lat, 0);
-                  if (isFinite(g.lng) && isFinite(g.lat)) { lon = g.lng; lat = g.lat; }
-                }
-              }
-
-              features.push({
-                type: 'Feature',
-                geometry: { type: 'Point', coordinates: [lon, lat] },
-                properties: { ...row }
-              });
-            }
-          });
-
+          const features = res.features;
           geojsonFeatureCol = { type: 'FeatureCollection', features };
           // Aviso si los puntos convertidos caen fuera del Perú (zona UTM o datum mal elegidos)
           if (features.length) {
@@ -3952,122 +4060,130 @@ if (fileBtn) {
 }
 
 // INGRESO MANUAL DE COORDENADAS UTM (PUNTOS SÓLIDOS ROJOS)
-$('man-btn-agregar').onclick = () => {
-  const sondaje = $('man-sondaje').value.trim();
-  const plataforma = $('man-plataforma').value.trim();
-  const codigo = $('man-codigo').value.trim();
-  const esteVal = limpiarNumeroCoordenada($('man-este').value);
-  const norteVal = limpiarNumeroCoordenada($('man-norte').value);
-  const zona = $('man-zona').value;
-  const datum = $('man-datum').value;
-
-  if (isNaN(esteVal) || isNaN(norteVal)) {
-    $('man-msg').textContent = 'Ingrese valores numéricos válidos para Este y Norte.';
-    $('man-msg').style.color = '#ef4444';
-    return;
-  }
-
-  let zonaEpsg = zona;
-  if (datum === 'PSAD56') {
-    if (zona === 'EPSG:32717') zonaEpsg = 'EPSG:24877';
-    if (zona === 'EPSG:32718') zonaEpsg = 'EPSG:24878';
-    if (zona === 'EPSG:32719') zonaEpsg = 'EPSG:24879';
-  }
-
-  const conv = convertirUTM(esteVal, norteVal, zonaEpsg);
-  if (!conv) {
-    $('man-msg').textContent = 'Error al convertir coordenadas UTM.';
-    $('man-msg').style.color = '#ef4444';
-    return;
-  }
-
-  const props = {
-    SONDAJE: sondaje,
-    PLATAFORMA: plataforma,
-    CODIGO: codigo,
-    ESTE_UTM: esteVal,
-    NORTE_UTM: norteVal,
-    ZONA: zona.replace('EPSG:', ''),
-    DATUM: datum
-  };
-
-  const feat = {
-    type: 'Feature',
-    geometry: { type: 'Point', coordinates: [conv.lng, conv.lat] },
-    properties: props
-  };
-
-  let manualLayerObj = userLayers.find(u => u.isManual);
-  if (!manualLayerObj) {
-    const colorCapa = colorAleatorioCapa();
-    const featureCol = { type: 'FeatureCollection', features: [feat] };
-    const layer = L.geoJSON(featureCol, {
-      pane: 'p_add',
-      pointToLayer: (f, ll) => L.circleMarker(ll, {
-        radius: 5,
-        fillColor: colorCapa,
-        color: '#ffffff',
-        weight: 1.5,
-        fillOpacity: 1.0,
-        opacity: 1.0
-      }),
-      style: (ft) => ({
-        radius: 5,
-        fillColor: colorCapa,
-        color: '#ffffff',
-        weight: 1.5,
-        fillOpacity: 1.0,
-        opacity: 1.0
-      }),
+// ---------- Puntos de referencia: ingreso manual UTM / grados, ubicación GPS, Excel y KMZ ----------
+const PTOS_KEY = 'geoportal_ptos_ref';
+let PTOS_REF = [];
+try { PTOS_REF = JSON.parse(localStorage.getItem(PTOS_KEY) || '[]') || []; } catch (e) { PTOS_REF = []; }
+const ptosGuardar = () => { try { localStorage.setItem(PTOS_KEY, JSON.stringify(PTOS_REF)); } catch (e) {} };
+const ptosMsg = (t, ok) => { const m = $('man-msg'); if (m) { m.textContent = t; m.style.color = ok === false ? '#ef4444' : (ok ? '#16a34a' : '#475569'); } };
+// «18L», «18S», «19» → zona y hemisferio (C–M y «S» = sur, como se usa en Perú; N–X = norte)
+function zonaDesdeTexto(t) {
+  const m = /^\s*(\d{1,2})\s*([A-Za-z])?\s*$/.exec(String(t || ''));
+  if (!m) return null;
+  const z = parseInt(m[1], 10); if (z < 1 || z > 60) return null;
+  const L = (m[2] || 'S').toUpperCase();
+  return { z, sur: 'CDEFGHJKLMS'.indexOf(L) >= 0 };
+}
+function utmALatLng(este, norte, z, sur, datum) {
+  if (datum === 'PSAD56' && sur && z >= 17 && z <= 19) return convertirUTM(este, norte, 'EPSG:2487' + (z - 10));
+  try {
+    const [lng, lat] = proj4('+proj=utm +zone=' + z + (sur ? ' +south' : '') + ' +datum=WGS84 +units=m +no_defs', 'EPSG:4326', [este, norte]);
+    if (isFinite(lng) && isFinite(lat)) return { lng, lat };
+  } catch (e) {}
+  return null;
+}
+function ptoSiguienteNombre() {
+  let n = PTOS_REF.length + 1; const usados = new Set(PTOS_REF.map(p => p.nombre));
+  while (usados.has('P-' + String(n).padStart(3, '0'))) n++;
+  return 'P-' + String(n).padStart(3, '0');
+}
+function ptoFeature(p) {
+  return { type: 'Feature', geometry: { type: 'Point', coordinates: [p.lng, p.lat] }, properties: {
+    NOMBRE: p.nombre, ESTE_UTM: p.este, NORTE_UTM: p.norte, ZONA_UTM: p.zona, BANDA_UTM: p.banda,
+    LATITUD: Number(p.lat.toFixed(7)), LONGITUD: Number(p.lng.toFixed(7)), DATUM: p.datum, FECHA: p.fecha } };
+}
+function ptosFormato() {
+  const f = $('man-fmt').value;
+  $('man-lbl-e').textContent = f === 'utm' ? 'Este (X)' : 'Longitud';
+  $('man-lbl-n').textContent = f === 'utm' ? 'Norte (Y)' : 'Latitud';
+  $('man-este').placeholder = f === 'utm' ? 'Ej. 245100' : (f === 'dec' ? 'Ej. -76.5731' : 'Ej. 76°34′23″ O');
+  $('man-norte').placeholder = f === 'utm' ? 'Ej. 8450200' : (f === 'dec' ? 'Ej. -11.9501' : 'Ej. 11°57′00″ S');
+  $('man-fila-zona').children[0].style.display = f === 'utm' ? '' : 'none';
+}
+function ptosSincronizar(zoom) {
+  let ul = userLayers.find(u => u.isManual);
+  if (ul) { try { map.removeLayer(ul.layer); } catch (e) {} userLayers.splice(userLayers.indexOf(ul), 1); }
+  if (PTOS_REF.length) {
+    const fc = { type: 'FeatureCollection', features: PTOS_REF.map(ptoFeature) };
+    const color = '#ef4444';
+    const layer = L.geoJSON(fc, { pane: 'p_add',
+      pointToLayer: (f, ll) => L.circleMarker(ll, { radius: 6, fillColor: color, color: '#ffffff', weight: 1.5, fillOpacity: 1, opacity: 1 }),
       onEachFeature: (ft, l) => {
-        const lbl = obtenerEtiquetaPunto(ft.properties);
-        if (lbl) {
-          l.bindTooltip(String(lbl), { permanent: true, direction: 'right', className: 'etiqueta-usuario', offset: [6, 0] });
-        }
-        l.on('click', ev => {
-          L.DomEvent.stopPropagation(ev);
-          identificarMultiCapas(ev.latlng);
-        });
-      }
-    }).addTo(map);
-
-    manualLayerObj = {
-      name: 'Puntos_UTM_Manual',
-      layer: layer,
-      features: [feat],
-      geojson: featureCol,
-      color: colorCapa,
-      isManual: true
-    };
-    userLayers.push(manualLayerObj);
+        l.bindTooltip(String(ft.properties.NOMBRE), { permanent: true, direction: 'right', className: 'etiqueta-usuario', offset: [6, 0] });
+        l.on('click', ev => { L.DomEvent.stopPropagation(ev); identificarMultiCapas(ev.latlng); });
+      } }).addTo(map);
+    userLayers.push({ name: 'Puntos de referencia', layer, features: fc.features, geojson: fc, color, isManual: true });
+  }
+  try { actualizarAddLista(); poblarSelectsCruce(); poblarSelectCapasQuery(); } catch (e) {}
+  ptosLista();
+  if (zoom && PTOS_REF.length) { const p = PTOS_REF[PTOS_REF.length - 1]; map.setView([p.lat, p.lng], Math.max(map.getZoom(), 16)); }
+}
+function ptosLista() {
+  const cont = $('man-lista'); if (!cont) return;
+  $('man-acciones').style.display = PTOS_REF.length ? 'flex' : 'none';
+  if (!PTOS_REF.length) { cont.innerHTML = ''; return; }
+  cont.innerHTML = '<div style="font-size:12px; font-weight:700; color:var(--primary-dark); margin:4px 0;">Puntos guardados (' + PTOS_REF.length + ')</div>' +
+    PTOS_REF.map((p, i) => '<div style="display:flex; align-items:center; gap:6px; padding:4px 0; border-bottom:1px solid #f1f5f9; font-size:11.5px;">' +
+      '<div style="flex:1; min-width:0;"><b>' + esc(p.nombre) + '</b><div style="color:#64748b; font-size:10.5px;">' + esc(p.zona) + ' · E ' + Math.round(p.este) + ' · N ' + Math.round(p.norte) + '</div></div>' +
+      '<button type="button" class="dr-ico" data-pz="' + i + '" title="Ir al punto">🔍</button>' +
+      '<button type="button" class="dr-ico" data-pd="' + i + '" title="Quitar este punto">✕</button></div>').join('');
+  cont.querySelectorAll('[data-pz]').forEach(b => b.onclick = () => { const p = PTOS_REF[+b.dataset.pz]; if (p) map.setView([p.lat, p.lng], Math.max(map.getZoom(), 17)); });
+  cont.querySelectorAll('[data-pd]').forEach(b => b.onclick = () => { PTOS_REF.splice(+b.dataset.pd, 1); ptosGuardar(); ptosSincronizar(false); });
+}
+function ptosRellenar(lat, lng, extra) {
+  const u = utmDe(lng, lat), banda = (typeof bandaUTMde === 'function' ? bandaUTMde(lat) : '') || (lat < 0 ? 'S' : 'N');
+  $('man-fmt').value = 'utm'; ptosFormato();
+  $('man-este').value = Math.round(u.este); $('man-norte').value = Math.round(u.norte);
+  $('man-zona').value = parseInt(u.zona, 10) + banda; $('man-datum').value = 'WGS84';
+  if (!$('man-nombre').value.trim()) $('man-nombre').value = ptoSiguienteNombre();
+  ptosMsg('Coordenadas cargadas' + (extra ? ' (' + extra + ')' : '') + '. Revisa el nombre y pulsa «Agregar punto».', true);
+}
+function ptosAgregar() {
+  const fmt = $('man-fmt').value, datum = $('man-datum').value;
+  let lat, lng, este, norte, zona, banda;
+  if (fmt === 'utm') {
+    este = numCoord($('man-este').value); norte = numCoord($('man-norte').value);
+    if (isNaN(este) || isNaN(norte)) { ptosMsg('Escribe valores numéricos válidos para Este y Norte.', false); return; }
+    const zi = zonaDesdeTexto($('man-zona').value);
+    if (!zi) { ptosMsg('Zona no válida. Escríbela como la indica el GPS, por ejemplo 18L.', false); return; }
+    if (este < 100000 || este > 900000 || norte < 0 || norte > 10000000) { ptosMsg('Este/Norte fuera de rango UTM. ¿Están invertidos o falta la zona?', false); return; }
+    const c = utmALatLng(este, norte, zi.z, zi.sur, datum);
+    if (!c) { ptosMsg('No se pudo convertir las coordenadas UTM.', false); return; }
+    lat = c.lat; lng = c.lng; zona = zi.z + (zi.sur ? 'S' : 'N');
   } else {
-    manualLayerObj.features.push(feat);
-    manualLayerObj.geojson.features.push(feat);
-    manualLayerObj.layer.addData(feat);
+    lng = numCoord($('man-este').value); lat = numCoord($('man-norte').value);
+    if (isNaN(lng) || isNaN(lat)) { ptosMsg('Escribe longitud y latitud válidas.', false); return; }
+    if (lat > 0 && lat <= 20) lat = -lat;
+    if (lng > 0 && lng >= 65 && lng <= 85) lng = -lng;
+    if (datum === 'PSAD56') { const g = molodenskyPSAD56aWGS84(lng, lat, 0); if (isFinite(g.lng) && isFinite(g.lat)) { lng = g.lng; lat = g.lat; } }
+    if (Math.abs(lat) > 90 || Math.abs(lng) > 180) { ptosMsg('Coordenadas fuera de rango.', false); return; }
+    const u = utmDe(lng, lat); este = u.este; norte = u.norte; zona = u.zona;
   }
-
-  map.setView([conv.lat, conv.lng], 16);
-  actualizarAddLista();
-  poblarSelectsCruce();
-  poblarSelectCapasQuery();
-
-  const idxManual = userLayers.indexOf(manualLayerObj);
-  if ($('man-msg')) {
-    $('man-msg').innerHTML = `
-      <div style="color:#16a34a; font-size:11.5px; margin-bottom:4px; font-weight:600;">
-        ✓ Punto agregado (Lat ${conv.lat.toFixed(5)}, Lon ${conv.lng.toFixed(5)}). Total manuales: ${manualLayerObj.features.length}
-      </div>
-      <button type="button" class="btn" style="background:#10b981; border-color:#059669; color:#fff; font-size:11px; padding:5px 8px; width:100%; display:inline-flex; align-items:center; justify-content:center; gap:4px; font-weight:600;" onclick="descargarCapaUsuarioKMZ(${idxManual})">
-        🌍 Descargar Puntos Manuales en KMZ
-      </button>`;
-  }
-
-  $('man-sondaje').value = '';
-  $('man-plataforma').value = '';
-  $('man-codigo').value = '';
-  $('man-este').value = '';
-  $('man-norte').value = '';
+  banda = (typeof bandaUTMde === 'function' ? bandaUTMde(lat) : '') || '';
+  const nombre = $('man-nombre').value.trim() || ptoSiguienteNombre();
+  PTOS_REF.push({ nombre, este: Math.round(este * 100) / 100, norte: Math.round(norte * 100) / 100, zona, banda, lat, lng, datum: 'WGS84', fecha: new Date().toLocaleString('es-PE') });
+  ptosGuardar(); ptosSincronizar(true);
+  const fuera = !(lng > -82 && lng < -68.5 && lat > -18.6 && lat < 0.2);
+  ptosMsg('✓ «' + nombre + '» agregado (Lat ' + lat.toFixed(5) + ', Lon ' + lng.toFixed(5) + ')' + (fuera ? '. Atención: queda fuera del Perú; revisa zona y datum.' : '.'), !fuera);
+  $('man-nombre').value = ''; $('man-este').value = ''; $('man-norte').value = '';
+}
+$('man-fmt').onchange = ptosFormato;
+$('man-btn-agregar').onclick = ptosAgregar;
+$('man-btn-centro').onclick = () => { const c = map.getCenter(); ptosRellenar(c.lat, c.lng, 'centro del mapa'); };
+$('man-btn-gps').onclick = () => {
+  if (!navigator.geolocation) { ptosMsg('Este navegador no tiene geolocalización.', false); return; }
+  if (window.isSecureContext === false) { ptosMsg('La ubicación solo funciona en una página segura (HTTPS).', false); return; }
+  ptosMsg('Obteniendo ubicación…');
+  navigator.geolocation.getCurrentPosition(pos => ptosRellenar(pos.coords.latitude, pos.coords.longitude, '±' + Math.round(pos.coords.accuracy || 0) + ' m'),
+    err => ptosMsg(err.code === 1 ? 'Permiso de ubicación denegado. Habilítalo en el navegador.' : 'No se pudo obtener la ubicación (revisa el GPS).', false),
+    { enableHighAccuracy: true, timeout: 20000, maximumAge: 0 });
 };
+const ptosIdx = () => userLayers.findIndex(u => u.isManual);
+$('man-btn-xlsx').onclick = () => { const i = ptosIdx(); if (i >= 0) descargarExcelCapa(i); };
+$('man-btn-kmz').onclick = () => { const i = ptosIdx(); if (i >= 0) descargarCapaUsuarioKMZ(i); };
+$('man-btn-borrar').onclick = () => { if (PTOS_REF.length && confirm('¿Borrar los ' + PTOS_REF.length + ' puntos de referencia guardados?')) { PTOS_REF = []; ptosGuardar(); ptosSincronizar(false); ptosMsg('Puntos borrados.'); } };
+ptosFormato();
+setTimeout(() => { try { if (PTOS_REF.length) ptosSincronizar(false); else ptosLista(); } catch (e) { console.error(e); } }, 900);
 
 // Drag & drop en el mapa
 const mapDiv = $('mapwrap');
@@ -4160,6 +4276,19 @@ window.descargarCapaUsuarioKMZ = async idx => {
       { nombre: 'Sondajes', features: sond },
       { nombre: 'Proyección de sondajes', features: lProy }
     ] });
+    return;
+  }
+  if (feats.some(ft => ft.properties && ft.properties._carpeta)) {   // Excel con varias hojas: una carpeta por hoja
+    const raiz = [], mapa = [], sin = []; const dic = {};
+    feats.forEach(ft => {
+      const partes = String((ft.properties || {})._carpeta || '').split(' / ').filter(Boolean);
+      if (!partes.length) { sin.push(ft); return; }
+      let lista = raiz, ruta = '', nodo = null;
+      partes.forEach(seg => { ruta += '/' + seg; nodo = dic[ruta]; if (!nodo) { nodo = { nombre: seg, features: [], hijos: [] }; dic[ruta] = nodo; lista.push(nodo); } lista = nodo.hijos; });
+      nodo.features.push(ft);
+    });
+    if (sin.length) raiz.push({ nombre: '(sin carpeta)', features: sin, hijos: [] });
+    await exportarAKMZ(feats, cleanName + '_GoogleEarth', { carpetas: raiz });
     return;
   }
   await exportarAKMZ(feats, cleanName + '_GoogleEarth');
@@ -5045,6 +5174,7 @@ async function exportarAKMZ(features, baseName, opciones) {
       if (!(opciones && opciones.sinCoord)) {
         if (!props.LONGITUD_WGS84 && c[0] !== undefined) props.LONGITUD_WGS84 = Number(c[0]).toFixed(6);
         if (!props.LATITUD_WGS84 && c[1] !== undefined) props.LATITUD_WGS84 = Number(c[1]).toFixed(6);
+        if (!props.ESTE_UTM && !props.ESTE && c[0] !== undefined && c[1] !== undefined) { try { const u = utmDe(Number(c[0]), Number(c[1])); props.ESTE_UTM = Math.round(u.este * 100) / 100; props.NORTE_UTM = Math.round(u.norte * 100) / 100; props.ZONA_UTM = u.zona; } catch (e) {} }
       }
     }
 
@@ -5155,11 +5285,17 @@ $('modal-cruce-dl-excel').onclick = () => exportarAExcel(cruceResultadosGlobal, 
 $('cruce-dl-kmz').onclick = () => exportarAKMZ(cruceResultadosGlobal, cruceNombreArchivo, { sinCoord: true });
 $('modal-cruce-dl-kmz').onclick = () => exportarAKMZ(cruceResultadosGlobal, cruceNombreArchivo, { sinCoord: true });
 
+// Posición común de los paneles (a la altura de la Leyenda); siguen siendo movibles con «Arrastrar»
+window.pnlAnclar = p => {
+  if (window.innerWidth <= 768) { p.style.left = ''; p.style.top = ''; return; }
+  const tb = document.getElementById('toolbar');
+  p.style.left = ''; p.style.top = ((tb ? tb.offsetTop + tb.offsetHeight : 52) + 10) + 'px';
+};
 // Control de apertura/cierre de paneles principales
 document.querySelectorAll('#toolbar button[data-pnl]').forEach(b => {
   b.onclick = () => {
     const target = 'pnl-' + b.getAttribute('data-pnl');
-    document.querySelectorAll('.pnl').forEach(p => p.classList.toggle('on', p.id === target && !p.classList.contains('on')));
+    document.querySelectorAll('.pnl').forEach(p => { const abrir = p.id === target && !p.classList.contains('on'); p.classList.toggle('on', abrir); if (abrir && window.pnlAnclar) window.pnlAnclar(p); });
     if (b.getAttribute('data-pnl') === 'query') {
       poblarSelectsCruce();
       poblarSelectCapasQuery();
@@ -11587,18 +11723,7 @@ async function cargarCatalogoCapas() {
 dibujarLista();
 dibujarLeyenda();
 cargarCatalogoCapas();
-// Vista general: departamentos activos al abrir (negro, sólido)
-setTimeout(() => {
-  const dep = CAPAS.find(c => c.key === 'dep');
-  if (dep) {
-    const lista = document.getElementById('lista');
-    if (lista) {
-      const chk = Array.from(lista.querySelectorAll('input[type=checkbox]')).find(el =>
-        el.closest('.capa') && el.closest('.capa').textContent.indexOf('Departamentos') >= 0);
-      if (chk && !chk.checked) { chk.checked = true; chk.dispatchEvent(new Event('change')); }
-    }
-  }
-}, 100);
+// Al abrir el geoportal no se activa ninguna capa (los límites departamentales saturaban la vista).
 
 // =============================================================================
 // ACCESO (Supabase Auth: código temporal por correo) + USUARIOS EN LÍNEA (Supabase Realtime)
@@ -12092,7 +12217,7 @@ function trkTeselasRuta(ruta, buffer, z) {
     if (u && !TK.nuevoTramo) {
       const d = trkDist(u, p), dt = (p.t - u.t) / 1000;
       if (dt <= 0) return;
-      if (d / dt > 15 && dt < 120 && TK.rechazos < 5) { TK.rechazos++; return; }   // salto imposible a pie (se acepta si persiste)
+      if (d / dt > (TK.vehiculo ? 70 : 15) && dt < 120 && TK.rechazos < 5) { TK.rechazos++; return; }   // salto imposible a pie (se acepta si persiste)
       if (d < Math.max(4, Math.min(p.acc * 0.5, 15))) return;                        // quieto / ruido del GPS
       TK.dist += d;
     }
@@ -12126,16 +12251,19 @@ function trkTeselasRuta(ruta, buffer, z) {
   function resumenPlan(pl) {
     if (!pl) return null;
     const total = pl.acum[pl.acum.length - 1], sube = pl.des ? pl.des.sube : null, baja = pl.des ? pl.des.baja : null;
-    return { total, sube, baja, tEst: trkNaismith(total, sube || 0) };
+    return { total, sube, baja, tEst: pl.tRouter || pl.tTobler || trkNaismith(total, sube || 0), tipo: pl.tRouter ? 'ruta' : (pl.tTobler ? 'tobler' : 'naismith') };
   }
-  function setPlan(pts, nombre, origen, sinPersistir, noMover) {
+  function setPlan(pts, nombre, origen, sinPersistir, noMover, extra) {
     const lim = pts.filter((p, i) => i === 0 || trkDist(pts[i - 1], p) > 0.5);
     if (lim.length < 2) { msg('La ruta necesita al menos 2 puntos distintos.', false); return false; }
     const acum = trkAcum(lim), todosCero = lim.every(p => !p.alt), conAlt = !todosCero && lim.filter(p => p.alt != null && isFinite(p.alt)).length / lim.length >= 0.8;
     if (todosCero) lim.forEach(p => { p.alt = null; });   // KML sin altitud: viene con 0
     const pl = { nombre: nombre || 'Ruta meta', origen: origen || '', pts: lim, acum, des: conAlt ? trkDesnivel(lim.map(p => p.alt), CFG.umbral) : null };
+    if (extra) { Object.assign(pl, extra); pl.extra = extra; }
+    if (!sinPersistir) FL.cerrado = false; else if (!TK.plan) FL.cerrado = true;
     TK.plan = pl; TK.planIdx = null; TK.fuera = 0; TK.llegada = false; TK.avisos = {};
-    pintarPlan(); if (!sinPersistir) DB.set('plan', { nombre: pl.nombre, origen: pl.origen, pts: lim }).catch(() => {});
+    pintarPlan(); if (!sinPersistir) DB.set('plan', { nombre: pl.nombre, origen: pl.origen, pts: lim, extra: pl.extra }).catch(() => {});
+    planComoCapa(pl);
     if (!noMover) map.fitBounds(lnPlan.getBounds(), { padding: [50, 50] });
     planUI(); hud(); perfil(); return true;
   }
@@ -12147,7 +12275,7 @@ function trkTeselasRuta(ruta, buffer, z) {
     L.marker(ll(a), { pane: 'p_trek', icon: icono('🚩', 6, 26), interactive: false }).addTo(grpPlan);
     L.marker(ll(b), { pane: 'p_trek', icon: icono('🏁', 6, 26), interactive: false }).addTo(grpPlan);
   }
-  function quitarPlan() { TK.plan = null; TK.planIdx = null; TK.fuera = 0; pintarPlan(); DB.borrar('plan').catch(() => {}); planUI(); hud(); perfil(); }
+  function quitarPlan() { planComoCapa(null); TK.plan = null; TK.planIdx = null; TK.fuera = 0; pintarPlan(); DB.borrar('plan').catch(() => {}); planUI(); hud(); perfil(); }
 
   function navegar(p) {
     const pl = TK.plan; TK.nav = null; if (!pl) return;
@@ -12157,12 +12285,18 @@ function trkTeselasRuta(ruta, buffer, z) {
     const dm = trkDist(p, meta), rb = trkRumbo(p, meta);
     let subeResta = null; if (pl.des) { const k = Math.min(pr.idx + 1, pl.pts.length - 1); subeResta = Math.max(0, pl.des.sube - pl.des.cumSube[k]); }
     const v = velReciente(), vm = stats().vMov, vel = Math.max(v, 0) > 0.5 ? v : (vm > 0.5 ? vm : 0);
-    let tResta = vel > 0 ? resta / vel : trkNaismith(resta, subeResta || 0);
+    let tResta = vel > 0 ? resta / vel : (pl.tRouter && total > 0 ? pl.tRouter * resta / total : (pl.tTobler && total > 0 ? pl.tTobler * resta / total : trkNaismith(resta, subeResta || 0)));
     TK.nav = { s: pr.s, total, resta, desv: pr.dist, dm, rb, subeResta, tResta, pct: total > 0 ? Math.min(100, pr.s / total * 100) : 0, eta: new Date(Date.now() + tResta * 1000) };
+    if (pl.pasos && pl.pasos.length) {
+      let k = 0; while (k + 1 < pl.pasos.length && pl.pasos[k + 1].s <= pr.s + 1) k++;
+      const nx = pl.pasos[k + 1];
+      if (nx) { const dd = Math.max(0, nx.s - pr.s); TK.nav.paso = { txt: nx.txt, d: dd }; if (dd <= 200 && !TK.avisos['p' + k]) { TK.avisos['p' + k] = 1; aviso('paso' + k, '↪ ' + nx.txt + ' (' + trkFmtD(dd) + ')', 'info', 0, [150], 0); hablar('En ' + Math.max(10, Math.round(dd / 10) * 10) + ' metros, ' + nx.txt); } }
+    }
     // Alertas
     if (pr.dist > CFG.desvio && p.acc < Math.max(CFG.desvio, 30)) {
       TK.fuera++;
       if (TK.fuera >= 2) aviso('fuera', '⚠ Fuera de ruta: ' + Math.round(pr.dist) + ' m. Vuelve hacia la línea rosada.', 'mal', 30000, [300, 120, 300], 2);
+    if (pl.origen === 'nav' && TK.fuera >= 3 && Date.now() - NV.ult > 45000) nvRecalcular(p);
     } else if (TK.fuera >= 2) { TK.fuera = 0; aviso('dentro', '✔ De vuelta en la ruta', 'ok', 0, [120], 1); } else TK.fuera = 0;
     if (!TK.llegada && resta < 60 && dm <= 30) { TK.llegada = true; aviso('meta', '🏁 ¡Llegaste a la meta! Finaliza la grabación cuando quieras.', 'ok', 0, [500, 150, 500, 150, 500], 3); }
   }
@@ -12195,6 +12329,7 @@ function trkTeselasRuta(ruta, buffer, z) {
     if (TK.pts.length > 1) { const ac = trkAcum(TK.pts), d = trkDesnivel(TK.pts.map(p => p.alt), CFG.umbral); if (d.max != null) S.push({ xs: ac, ys: d.lisa, color: '#2563eb', relleno: 'rgba(37,99,235,.12)', ancho: 2 }); }
     dibujar(q('tk-perfil'), S, TK.nav ? TK.nav.s : null);
     dibujar(q('tk-perfil2'), pl && pl.des ? [{ xs: pl.acum, ys: pl.des.lisa, color: '#db2777', relleno: 'rgba(219,39,119,.10)', ancho: 2 }] : [], TK.nav ? TK.nav.s : null);
+    flotRender();
   }
 
   // ---------- Interfaz: HUD y panel ----------
@@ -12215,6 +12350,7 @@ function trkTeselasRuta(ruta, buffer, z) {
   function hud() {
     const h = q('trk-hud'); if (!h) return;
     h.style.display = (TK.estado !== 'idle' || TK.watch != null) ? '' : 'none';
+    if (TK.plan && q('trk-flot').style.display !== 'none') flotPos();
     if (h.style.display === 'none') return;
     const s = TK.pts.length > 1 ? stats() : null, t = tTotalVivo(), cur = TK.cur;
     const alt = cur && cur.alt != null ? cur.alt : (s && s.altFin);
@@ -12223,7 +12359,7 @@ function trkTeselasRuta(ruta, buffer, z) {
     if (n) {
       const hh = n.eta.getHours(), mm = String(n.eta.getMinutes()).padStart(2, '0');
       nv.style.display = ''; nv.innerHTML = '<b>🏁 ' + trkFmtD(n.resta) + '</b> a la meta · ' + Math.round(n.pct) + '% · llegada ~' + hh + ':' + mm + (n.subeResta != null ? ' · ↑' + Math.round(n.subeResta) + ' m' : '') +
-        '<br><span class="' + (n.desv > CFG.desvio ? 'mal' : '') + '">' + (n.desv > CFG.desvio ? '⚠ ' : '') + 'Desvío ' + Math.round(n.desv) + ' m</span> · rumbo ' + Math.round(n.rb) + '° ' + trkPunto(n.rb);
+        (n.paso ? '<br>↪ <b>' + esc(n.paso.txt) + '</b> en ' + trkFmtD(n.paso.d) : '') + '<br><span class="' + (n.desv > CFG.desvio ? 'mal' : '') + '">' + (n.desv > CFG.desvio ? '⚠ ' : '') + 'Desvío ' + Math.round(n.desv) + ' m</span> · rumbo ' + Math.round(n.rb) + '° ' + trkPunto(n.rb);
     } else nv.style.display = 'none';
     // panel
     set('tk-v-d', trkFmtD(TK.dist)); set('tk-v-t', trkFmtT(t)); set('tk-v-tm', s ? trkFmtT(s.tMov) : '0:00:00');
@@ -12234,7 +12370,7 @@ function trkTeselasRuta(ruta, buffer, z) {
     if (cur) { const u = trkUTM(cur.lat, cur.lng); set('tk-v-pos', cur.lat.toFixed(5) + ', ' + cur.lng.toFixed(5) + (u ? '  ·  UTM ' + u.zona + ' ' + Math.round(u.e) + ' E ' + Math.round(u.n) + ' N' : '')); }
     const nb = q('tk-nav-box'); if (nb) { nb.style.display = n ? '' : 'none'; if (n) nb.innerHTML = q('th-nav').innerHTML; }
   }
-  setInterval(() => { if (TK.estado === 'rec' || TK.watch != null) { hud(); } if (TK.estado === 'rec' && q('pnl-trek').classList.contains('on')) perfil(); }, 1000);
+  setInterval(() => { if (TK.estado === 'rec' || TK.watch != null) { hud(); } if (TK.estado === 'rec' && q('pnl-trek').classList.contains('on')) perfil(); else if (TK.estado === 'rec' && TK.plan && (TK.tick = (TK.tick || 0) + 1) % 3 === 0) flotRender(); }, 1000);
   setInterval(() => { try { if (navigator.getBattery) navigator.getBattery().then(b => { set('tk-bat', '🔋 ' + Math.round(b.level * 100) + '%'); if (b.level < 0.15 && !b.charging && TK.estado === 'rec') aviso('bat', '🔋 Batería baja (' + Math.round(b.level * 100) + '%). Reduce el brillo de la pantalla.', 'mal', 600000, [200], 1); }); } catch (e) {} }, 30000);
   function redUI() { const on = navigator.onLine; const r = q('tk-red'); if (r) { r.textContent = on ? '🟢 En línea' : '🔴 Sin conexión'; r.className = 'tk-chip ' + (on ? 'bien' : 'mal'); } }
   window.addEventListener('online', redUI); window.addEventListener('offline', redUI);
@@ -12407,9 +12543,9 @@ function trkTeselasRuta(ruta, buffer, z) {
   function trazoIniciar() { TK.trazando = true; window.trkPlanActivo = true; map.getContainer().style.cursor = 'crosshair'; trazo.lin.addTo(map); trazo.mks.addTo(map); map.on('click', trazoClick); trazoUI(); }
   function planUI() {
     const pl = TK.plan, r = resumenPlan(pl), box = q('tk-plan-info');
-    q('tk-quitar-plan').style.display = pl ? '' : 'none'; q('tk-plan-dem').style.display = pl && !pl.des ? '' : 'none'; q('tk-plan-corr').style.display = pl ? '' : 'none'; q('tk-perfil2').style.display = pl && pl.des ? '' : 'none';
+    q('tk-quitar-plan').style.display = pl ? '' : 'none'; q('tk-plan-dem').style.display = pl && !pl.des ? '' : 'none'; q('tk-plan-corr').style.display = pl ? '' : 'none'; q('tk-plan-acc').style.display = pl ? 'flex' : 'none'; q('tk-perfil2').style.display = pl && pl.des ? '' : 'none';
     if (!pl) { box.innerHTML = '<span style="color:#64748b;">Sin ruta meta. Carga un GPX/KML, trázala en el mapa o elige una ruta guardada («Seguir»).</span>'; poblarCapas(); return; }
-    box.innerHTML = '<b>' + esc(pl.nombre) + '</b><br>Longitud <b>' + trkFmtD(r.total) + '</b>' + (r.sube != null ? ' · Desnivel <b>+' + Math.round(r.sube) + ' / −' + Math.round(r.baja) + ' m</b>' : ' · <i>sin altitudes</i>') + '<br>Tiempo estimado a pie (Naismith): <b>' + trkFmtT(r.tEst) + '</b>';
+    box.innerHTML = '<b>' + esc(pl.nombre) + '</b><br>Longitud <b>' + trkFmtD(r.total) + '</b>' + (r.sube != null ? ' · Desnivel <b>+' + Math.round(r.sube) + ' / −' + Math.round(r.baja) + ' m</b>' : ' · <i>sin altitudes</i>') + '<br>' + ({ ruta: 'Tiempo de recorrido (servicio de rutas, sin tráfico)', tobler: 'Tiempo estimado a pie (según pendiente, Tobler)', naismith: 'Tiempo estimado a pie (Naismith)' }[r.tipo]) + ': <b>' + trkFmtT(r.tEst) + '</b>';
     poblarCapas();
   }
   function poblarCapas() {
@@ -12421,8 +12557,8 @@ function trkTeselasRuta(ruta, buffer, z) {
   // ---------- Pestañas ----------
   function tab(k) {
     document.querySelectorAll('#pnl-trek [data-tk]').forEach(b => b.classList.toggle('active', b.dataset.tk === k));
-    ['rec', 'ruta', 'mis', 'off'].forEach(t => { const e = q('tk-t-' + t); if (e) e.style.display = t === k ? '' : 'none'; });
-    if (k === 'mis') listar(); if (k === 'off') { offUI(); } setTimeout(() => { hud(); perfil(); }, 30);
+    ['rec', 'ruta', 'nav', 'mis', 'off'].forEach(t => { const e = q('tk-t-' + t); if (e) e.style.display = t === k ? '' : 'none'; });
+    if (k === 'ruta') poblarVias(); if (k === 'mis') listar(); if (k === 'off') { offUI(); } setTimeout(() => { hud(); perfil(); }, 30);
   }
 
   // =========================================================================================
@@ -12518,7 +12654,7 @@ function trkTeselasRuta(ruta, buffer, z) {
       for (let i = 0; i < pl.pts.length; i++) { const p = pl.pts[i]; try { const z = await demElevacion(p.lng, p.lat, 13); if (z != null) { p.alt = Math.round(z * 10) / 10; ok++; } } catch (e) {} if (i % 40 === 0) { b.textContent = '⛰ Calculando… ' + Math.round(i / pl.pts.length * 100) + '%'; await new Promise(r => setTimeout(r, 0)); } }
       b.disabled = false; b.textContent = '⛰ Calcular altitudes con el DEM';
       if (ok < pl.pts.length * 0.8) { msg('No se pudo leer el DEM (sin internet y sin zona descargada). Descarga la zona con la opción «Incluir altitudes (DEM)».', false); return; }
-      pl.des = trkDesnivel(pl.pts.map(p => p.alt), CFG.umbral); DB.set('plan', { nombre: pl.nombre, origen: pl.origen, pts: pl.pts }).catch(() => {}); planUI(); perfil(); hud();
+      pl.des = trkDesnivel(pl.pts.map(p => p.alt), CFG.umbral); DB.set('plan', { nombre: pl.nombre, origen: pl.origen, pts: pl.pts, extra: pl.extra }).catch(() => {}); planUI(); perfil(); hud();
     };
     q('tk-plan-corr').onclick = () => { if (!TK.plan) return; document.querySelectorAll('.pnl').forEach(p => p.classList.toggle('on', p.id === 'pnl-trek')); tab('off'); q('off-modo').value = 'ruta'; estimar(); };
     q('tk-lista').onclick = ev => { const b = ev.target.closest('button[data-a]'); if (!b) return; accionRuta(b.dataset.a, b.closest('.tk-card').dataset.id); };
@@ -12529,10 +12665,330 @@ function trkTeselasRuta(ruta, buffer, z) {
     q('off-inst').onclick = async () => { const ev = window.__pwaPrompt; if (!ev) return; ev.prompt(); try { await ev.userChoice; } catch (e) {} window.__pwaPrompt = null; offUI(); };
     q('off-actualizar').onclick = async () => { try { const rg = await navigator.serviceWorker.getRegistration(); if (rg) { await rg.update(); } if (window.caches) { const ks = await caches.keys(); await Promise.all(ks.filter(k => k.indexOf('geoportal-app') === 0).map(k => caches.delete(k))); } alert('Listo. Recarga la página con internet para guardar la versión más reciente.'); } catch (e) { alert('No se pudo actualizar: ' + (e && e.message)); } };
     new MutationObserver(() => { if (q('pnl-trek').classList.contains('on')) { poblarCapas(); setTimeout(() => { hud(); perfil(); }, 30); } }).observe(q('pnl-trek'), { attributes: true, attributeFilter: ['class'] });
-    redUI(); estadoUI(); planUI(); tab('rec');
-    DB.get('plan').then(pl => { if (pl && pl.pts && pl.pts.length > 1) setPlan(pl.pts, pl.nombre, pl.origen, true, true); }).catch(() => {});
+    bindExtra(); redUI(); estadoUI(); planUI(); tab('rec');
+    DB.get('plan').then(pl => { if (pl && pl.pts && pl.pts.length > 1) setPlan(pl.pts, pl.nombre, pl.origen, true, true, pl.extra); }).catch(() => {});
     recuperar();
   }
+  // =========================================================================================
+  //  RUTA COMO CAPA, PERFIL FLOTANTE, MEJOR RUTA SEGÚN EL DEM E «IR A…» (tiempo de recorrido y seguimiento)
+  // =========================================================================================
+  const FL = { cerrado: false, min: false, mk: null, marcaX: null };
+  const NV = { o: null, d: null, dNombre: '', ruta: null, modo: 'car', ult: 0, recalc: false, opciones: {} };
+  const AR = { a: null, b: null };
+  const grpNV = L.layerGroup().addTo(map), mkNV = {};
+  const toast = (t, ms) => {
+    let e = q('tk-toast'); if (!e) { e = document.createElement('div'); e.id = 'tk-toast'; document.body.appendChild(e); }
+    e.textContent = t || ''; e.style.display = t ? '' : 'none'; clearTimeout(e._t); if (t && ms) e._t = setTimeout(() => { e.style.display = 'none'; }, ms);
+  };
+  const txtPt = p => p.lat.toFixed(5) + ', ' + p.lng.toFixed(5);
+  function ponerMarca(k, p, emoji) { if (mkNV[k]) grpNV.removeLayer(mkNV[k]); if (!p) { mkNV[k] = null; return; } mkNV[k] = L.marker([p.lat, p.lng], { pane: 'p_trek', icon: L.divIcon({ className: '', html: '<div style="font-size:24px;line-height:24px;text-shadow:0 1px 3px #fff">' + emoji + '</div>', iconSize: [26, 26], iconAnchor: [13, 24] }), interactive: false }).addTo(grpNV); }
+  function elegirEnMapa(txt, cb) {
+    const pn = q('pnl-trek'), mov = window.innerWidth <= 768;
+    if (mov) pn.style.visibility = 'hidden';
+    window.trkPlanActivo = true; map.getContainer().style.cursor = 'crosshair'; toast(txt, 0);
+    map.once('click', e => { window.trkPlanActivo = false; map.getContainer().style.cursor = ''; pn.style.visibility = ''; toast(''); cb({ lat: e.latlng.lat, lng: e.latlng.lng }); });
+  }
+  function miPosicion(cb, err) {
+    const c = TK.cur; if (c && c.lat != null && Date.now() - (c.t || 0) < 20000) { cb({ lat: c.lat, lng: c.lng }); return; }
+    if (!navigator.geolocation) { err('Este navegador no tiene geolocalización.'); return; }
+    navigator.geolocation.getCurrentPosition(p => cb({ lat: p.coords.latitude, lng: p.coords.longitude }),
+      e => err(e.code === 1 ? 'Permiso de ubicación denegado.' : 'No se pudo obtener tu ubicación (revisa el GPS).'), { enableHighAccuracy: true, timeout: 20000, maximumAge: 5000 });
+  }
+  const hablar = t => { try { if (CFG.sonido && window.speechSynthesis) { const u = new SpeechSynthesisUtterance(t); u.lang = 'es-PE'; speechSynthesis.cancel(); speechSynthesis.speak(u); } } catch (e) {} };
+
+  // ---------- La ruta meta también es una capa: sirve para el perfil topográfico, el tiempo y las consultas ----------
+  function planComoCapa(pl) {
+    try {
+      const i = userLayers.findIndex(u => u && u.isRutaTrek);
+      if (i >= 0) { try { map.removeLayer(userLayers[i].layer); } catch (e) {} userLayers.splice(i, 1); }
+      if (pl) {
+        const fc = { type: 'FeatureCollection', features: [{ type: 'Feature', geometry: { type: 'LineString', coordinates: pl.pts.map(p => [p.lng, p.lat]) },
+          properties: { name: 'Ruta de trekking: ' + pl.nombre, NOMBRE: pl.nombre, ORIGEN: pl.origen || '' } }] };
+        const layer = L.geoJSON(fc, { pane: 'p_add', style: { color: '#db2777', weight: 1, opacity: 0 }, interactive: false }).addTo(map);
+        userLayers.push({ name: '🥾 Ruta de trekking', layer, features: fc.features, geojson: fc, color: '#db2777', isRutaTrek: true });
+      }
+      ['actualizarAddLista', 'poblarSelectsCruce', 'poblarSelectCapasQuery'].forEach(f => { try { if (typeof window[f] === 'function') window[f](); } catch (e) {} });
+    } catch (e) { console.error(e); }
+  }
+  function abrirPanel(id) { document.querySelectorAll('.pnl').forEach(p => p.classList.toggle('on', p.id === id)); if (window.pnlAnclar) window.pnlAnclar(q(id)); }
+  function planAPerfil() {
+    if (!TK.plan) return; abrirPanel('pnl-perfil');
+    const sel = q('pf-capa'); if (!sel) return; sel.dispatchEvent(new Event('focus'));
+    const o = Array.from(sel.options).find(x => /Ruta de trekking/.test(x.textContent));
+    if (o) { sel.value = o.value; const b = q('pf-usar'); if (b) b.click(); } else toast('No se encontró la ruta en el perfil topográfico.', 3000);
+  }
+  function planATiempo() {
+    if (!TK.plan) return; abrirPanel('pnl-tiempo');
+    const i = userLayers.findIndex(u => u && u.isRutaTrek), sel = q('tm-capa'); if (i < 0 || !sel) return;
+    sel.dispatchEvent(new Event('focus')); sel.value = String(i); sel.dispatchEvent(new Event('change'));
+  }
+
+  // ---------- Altitudes de la ruta con el DEM (en tandas; si hay muchos puntos se interpola entre muestras) ----------
+  async function planDEM(pl, boton) {
+    if (!pl || pl._demCalc) return; pl._demCalc = true;
+    const n = pl.pts.length, paso = n > 700 ? Math.ceil(n / 700) : 1, idx = [];
+    for (let i = 0; i < n; i += paso) idx.push(i); if (idx[idx.length - 1] !== n - 1) idx.push(n - 1);
+    let ok = 0;
+    for (let k = 0; k < idx.length; k += 24) {
+      await Promise.all(idx.slice(k, k + 24).map(async i => { const p = pl.pts[i]; try { const z = await demElevacion(p.lng, p.lat, 13); if (z != null) { p.alt = Math.round(z * 10) / 10; ok++; } } catch (e) {} }));
+      if (boton) boton.textContent = '⛰ Calculando… ' + Math.round(k / idx.length * 100) + '%';
+      if (TK.plan !== pl) { pl._demCalc = false; return; }
+    }
+    pl._demCalc = false;
+    if (ok < idx.length * 0.8) { pl._demFallo = true; msg('No se pudo leer el DEM (sin internet y sin zona descargada). Descarga la zona con la opción «Incluir altitudes (DEM)».', false); planUI(); perfil(); return; }
+    if (paso > 1) { let a = 0; for (let j = 1; j < idx.length; j++) { const i0 = idx[a], i1 = idx[j]; if (pl.pts[i1].alt == null) continue; if (pl.pts[i0].alt != null) for (let i = i0 + 1; i < i1; i++) { const t = (i - i0) / (i1 - i0); pl.pts[i].alt = Math.round((pl.pts[i0].alt + (pl.pts[i1].alt - pl.pts[i0].alt) * t) * 10) / 10; } a = j; } }
+    pl.des = trkDesnivel(pl.pts.map(p => p.alt), CFG.umbral);
+    DB.set('plan', { nombre: pl.nombre, origen: pl.origen, pts: pl.pts, extra: pl.extra }).catch(() => {});
+    planUI(); perfil(); hud();
+  }
+
+  // ---------- Perfil flotante ----------
+  function flotPos() {
+    const f = q('trk-flot'), h = q('trk-hud'), mov = window.innerWidth <= 768;
+    let base = mov ? 62 + 40 : 44;
+    if (mov) { const tb = q('toolbar'); if (tb && tb.offsetHeight) base = tb.offsetHeight + 40; }
+    if (h && h.style.display !== 'none') base += h.offsetHeight + 10;
+    f.style.bottom = base + 'px';
+  }
+  function flotSeries(pl) {
+    const S = [{ xs: pl.acum, ys: pl.des.lisa, color: '#db2777', relleno: 'rgba(219,39,119,.12)', ancho: 2 }];
+    if (TK.pts.length > 1) { const ac = trkAcum(TK.pts), d = trkDesnivel(TK.pts.map(p => p.alt), CFG.umbral); if (d.max != null) S.push({ xs: ac, ys: d.lisa, color: '#2563eb', ancho: 2 }); }
+    return S;
+  }
+  function quitarMarcaFlot() { if (FL.mk) { map.removeLayer(FL.mk); FL.mk = null; } FL.marcaX = null; }
+  function flotRender() {
+    const f = q('trk-flot'); if (!f) return; const pl = TK.plan;
+    if (!pl || FL.cerrado) { f.style.display = 'none'; quitarMarcaFlot(); return; }
+    f.style.display = ''; f.classList.toggle('min', FL.min); q('tf-min').textContent = FL.min ? '▴' : '▾'; flotPos();
+    const r = resumenPlan(pl);
+    q('tf-tit').textContent = '⛰ ' + pl.nombre;
+    q('tf-datos').innerHTML = trkFmtD(r.total) + (r.sube != null ? ' · <b>+' + Math.round(r.sube) + '</b>/<b>−' + Math.round(r.baja) + '</b> m' : '') + (pl.des && pl.des.max != null ? ' · ' + Math.round(pl.des.min) + '–' + Math.round(pl.des.max) + ' m' : '') + ' · ⏱ ' + trkFmtT(r.tEst);
+    if (FL.min) return;
+    if (!pl.des) {
+      dibujar(q('tf-cv'), [], null);
+      q('tf-pie').textContent = pl._demFallo ? 'No hay altitudes (se necesita internet o la zona descargada).' : 'Calculando altitudes con el DEM…';
+      if (!pl._demFallo && !pl._demCalc) planDEM(pl);
+      return;
+    }
+    dibujar(q('tf-cv'), flotSeries(pl), TK.nav ? TK.nav.s : FL.marcaX);
+  }
+  function flotHover(ev) {
+    const pl = TK.plan; if (!pl || !pl.des || FL.min) return;
+    const cv = q('tf-cv'), r = cv.getBoundingClientRect(), t = ev.touches ? ev.touches[0] : ev, S = flotSeries(pl);
+    let xmax = 0; S.forEach(s => { xmax = Math.max(xmax, s.xs[s.xs.length - 1]); });
+    const L0 = 38, R0 = 6, d = Math.max(0, Math.min(xmax, (t.clientX - r.left - L0) / (r.width - L0 - R0) * xmax)), total = pl.acum[pl.acum.length - 1];
+    if (d > total) { quitarMarcaFlot(); return; }
+    let a = 0, b = pl.acum.length - 1; while (b - a > 1) { const m = (a + b) >> 1; if (pl.acum[m] <= d) a = m; else b = m; }
+    const u = pl.acum[b] > pl.acum[a] ? (d - pl.acum[a]) / (pl.acum[b] - pl.acum[a]) : 0, P = pl.pts[a], Q = pl.pts[b];
+    const lat = P.lat + (Q.lat - P.lat) * u, lng = P.lng + (Q.lng - P.lng) * u, alt = pl.des.lisa[a] + (pl.des.lisa[b] - pl.des.lisa[a]) * u;
+    const i0 = Math.max(0, a - 3), i1 = Math.min(pl.pts.length - 1, b + 3), dd = pl.acum[i1] - pl.acum[i0], pend = dd > 0 ? (pl.des.lisa[i1] - pl.des.lisa[i0]) / dd * 100 : 0;
+    if (!FL.mk) FL.mk = L.circleMarker([lat, lng], { pane: 'p_trek', radius: 7, color: '#fff', weight: 2, fillColor: '#16a34a', fillOpacity: 1, interactive: false }).addTo(map); else FL.mk.setLatLng([lat, lng]);
+    FL.marcaX = d; q('tf-pie').textContent = 'km ' + (d / 1000).toFixed(2).replace('.', ',') + ' · ' + Math.round(alt).toLocaleString('es-PE') + ' m · pendiente ' + (pend >= 0 ? '+' : '−') + Math.abs(pend).toFixed(0) + ' %';
+    dibujar(cv, S, d);
+  }
+
+  // ---------- Mejor ruta según el relieve (A* sobre una malla del DEM, función de caminata de Tobler) ----------
+  async function rutaDEM(A, B, op, progreso) {
+    const R = Math.PI / 180, P2 = z => Math.pow(2, z) * 256;
+    const wx = (lng, z) => (lng + 180) / 360 * P2(z), wy = (lat, z) => (1 - Math.log(Math.tan(lat * R) + 1 / Math.cos(lat * R)) / Math.PI) / 2 * P2(z);
+    const lngDe = (x, z) => x / P2(z) * 360 - 180, latDe = (y, z) => Math.atan(Math.sinh(Math.PI * (1 - 2 * y / P2(z)))) / R;
+    const distAB = trkDist(A, B), margen = Math.max(1500, distAB * 0.35), latM = (A.lat + B.lat) / 2;
+    const dLat = margen / 110574, dLng = margen / (111320 * Math.cos(latM * R));
+    const lo = { lng: Math.min(A.lng, B.lng) - dLng, lat: Math.min(A.lat, B.lat) - dLat }, hi = { lng: Math.max(A.lng, B.lng) + dLng, lat: Math.max(A.lat, B.lat) + dLat };
+    let z = 13, gx0 = 0, gy0 = 0, W = 0, H = 0;
+    for (; z >= 9; z--) { gx0 = Math.floor(wx(lo.lng, z)); gy0 = Math.floor(wy(hi.lat, z)); W = Math.ceil(wx(hi.lng, z)) - gx0 + 1; H = Math.ceil(wy(lo.lat, z)) - gy0 + 1; if (W * H <= 260000) break; }
+    if (W * H > 260000) throw new Error('A y B están demasiado lejos para calcular la ruta (máx. ≈ 150 km).');
+    const res = 40075016.686 / P2(z) * Math.cos(latM * R);
+    const E = new Float32Array(W * H).fill(NaN), tx0 = Math.floor(gx0 / 256), tx1 = Math.floor((gx0 + W - 1) / 256), ty0 = Math.floor(gy0 / 256), ty1 = Math.floor((gy0 + H - 1) / 256), jobs = [];
+    for (let ty = ty0; ty <= ty1; ty++) for (let tx = tx0; tx <= tx1; tx++) jobs.push([tx, ty]);
+    let faltan = 0;
+    for (let i = 0; i < jobs.length; i += 6) {
+      if (progreso) progreso('Descargando el relieve (' + Math.min(jobs.length, i + 6) + '/' + jobs.length + ' teselas)…');
+      await Promise.all(jobs.slice(i, i + 6).map(async ([tx, ty]) => {
+        const d = await demTile(z, tx, ty); if (!d) { faltan++; return; }
+        for (let py = 0; py < 256; py++) { const Y = ty * 256 + py - gy0; if (Y < 0 || Y >= H) continue; for (let px = 0; px < 256; px++) { const X = tx * 256 + px - gx0; if (X < 0 || X >= W) continue; const k = (py * 256 + px) * 4; E[Y * W + X] = d[k] * 256 + d[k + 1] + d[k + 2] / 256 - 32768; } }
+      }));
+    }
+    if (faltan) throw new Error('No se pudo leer el relieve de la zona (sin internet y sin zona descargada).');
+    const Z = new Float32Array(W * H);
+    for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) { let s = 0, c = 0; for (let dy = -1; dy <= 1; dy++) { const yy = y + dy; if (yy < 0 || yy >= H) continue; for (let dx = -1; dx <= 1; dx++) { const xx = x + dx; if (xx < 0 || xx >= W) continue; const v = E[yy * W + xx]; if (v === v) { s += v; c++; } } } Z[y * W + x] = c ? s / c : NaN; }
+    let via = null;
+    if (op.capa !== '' && op.capa != null && userLayers[+op.capa]) {
+      via = new Uint8Array(W * H); const ul = userLayers[+op.capa], marcar = (x, y) => { const X = Math.round(x), Y = Math.round(y); if (X >= 0 && X < W && Y >= 0 && Y < H) via[Y * W + X] = 1; };
+      const lineas = g => !g ? [] : g.type === 'LineString' ? [g.coordinates] : g.type === 'MultiLineString' ? g.coordinates : [];
+      (ul.features || []).forEach(ft => lineas(ft.geometry).forEach(ln => { for (let i = 1; i < ln.length; i++) { const x0 = wx(ln[i - 1][0], z) - gx0, y0 = wy(ln[i - 1][1], z) - gy0, x1 = wx(ln[i][0], z) - gx0, y1 = wy(ln[i][1], z) - gy0, n = Math.max(1, Math.ceil(Math.hypot(x1 - x0, y1 - y0) * 2)); for (let k = 0; k <= n; k++) marcar(x0 + (x1 - x0) * k / n, y0 + (y1 - y0) * k / n); } }));
+    }
+    const sx = Math.max(0, Math.min(W - 1, Math.round(wx(A.lng, z) - gx0))), sy = Math.max(0, Math.min(H - 1, Math.round(wy(A.lat, z) - gy0))), gx = Math.max(0, Math.min(W - 1, Math.round(wx(B.lng, z) - gx0))), gy = Math.max(0, Math.min(H - 1, Math.round(wy(B.lat, z) - gy0)));
+    const OFF = [[1, 0], [-1, 0], [0, 1], [0, -1], [1, 1], [1, -1], [-1, 1], [-1, -1], [2, 1], [2, -1], [-2, 1], [-2, -1], [1, 2], [1, -2], [-1, 2], [-1, -2]].map(a => ({ dx: a[0], dy: a[1], d: Math.hypot(a[0], a[1]) * res }));
+    const hf = (op.crit === 'directa' ? 1 : 0.6) * (via ? 0.45 : 1);
+    const buscar = pmax => {
+      const NN = W * H, g = new Float64Array(NN).fill(Infinity), prev = new Int32Array(NN).fill(-1), cerr = new Uint8Array(NN), hk = [], hv = [];
+      const push = (k, v) => { let i = hk.length; hk.push(k); hv.push(v); while (i > 0) { const p = (i - 1) >> 1; if (hk[p] <= k) break; hk[i] = hk[p]; hv[i] = hv[p]; i = p; } hk[i] = k; hv[i] = v; };
+      const pop = () => { const rv = hv[0], lk = hk.pop(), lv = hv.pop(), n = hk.length; if (n) { let i = 0; for (;;) { let c = 2 * i + 1; if (c >= n) break; if (c + 1 < n && hk[c + 1] < hk[c]) c++; if (hk[c] >= lk) break; hk[i] = hk[c]; hv[i] = hv[c]; i = c; } hk[i] = lk; hv[i] = lv; } return rv; };
+      const s0 = sy * W + sx, goal = gy * W + gx; g[s0] = 0; push(0, s0);
+      while (hk.length) {
+        const cur = pop(); if (cerr[cur]) continue; cerr[cur] = 1; if (cur === goal) return prev;
+        const cy = (cur / W) | 0, cx = cur - cy * W, zc = Z[cur]; if (zc !== zc) continue;
+        for (let o = 0; o < OFF.length; o++) {
+          const nx = cx + OFF[o].dx, ny = cy + OFF[o].dy; if (nx < 0 || ny < 0 || nx >= W || ny >= H) continue;
+          const ni = ny * W + nx; if (cerr[ni]) continue; const zn = Z[ni]; if (zn !== zn) continue;
+          const dz = zn - zc, d = OFF[o].d, sl = dz / d; if (Math.abs(sl) > pmax) continue;
+          const s3 = Math.hypot(d, dz), v = Math.max(6 * Math.exp(-3.5 * Math.abs(sl + 0.05)) / 3.6, 0.15);
+          let c = op.crit === 'directa' ? s3 : (op.crit === 'suave' ? s3 / v + 14 * Math.abs(dz) : s3 / v);
+          if (via && (via[cur] || via[ni])) c *= 0.45;
+          const ng = g[cur] + c; if (ng < g[ni]) { g[ni] = ng; prev[ni] = cur; push(ng + Math.hypot(nx - gx, ny - gy) * res * hf, ni); }
+        }
+      }
+      return null;
+    };
+    if (progreso) progreso('Buscando la mejor ruta…'); await new Promise(r => setTimeout(r, 30));
+    let prev = buscar(op.pmax), pendFuerte = false;
+    if (!prev) { prev = buscar(1.5); pendFuerte = true; }
+    if (!prev) throw new Error('No se encontró una ruta entre A y B.');
+    const camino = []; for (let c = gy * W + gx; c >= 0; c = prev[c]) { camino.push(c); if (c === sy * W + sx) break; } camino.reverse();
+    const xy = camino.map(c => { const y = (c / W) | 0; return [c - y * W, y]; });
+    const dp = (pts, tol) => { const keep = new Uint8Array(pts.length); keep[0] = keep[pts.length - 1] = 1; const st = [[0, pts.length - 1]]; while (st.length) { const [a, b] = st.pop(); let md = 0, mi = -1; const ax = pts[a][0], ay = pts[a][1], bx = pts[b][0], by = pts[b][1], L2 = (bx - ax) ** 2 + (by - ay) ** 2; for (let i = a + 1; i < b; i++) { let t = L2 ? ((pts[i][0] - ax) * (bx - ax) + (pts[i][1] - ay) * (by - ay)) / L2 : 0; t = Math.max(0, Math.min(1, t)); const d = Math.hypot(pts[i][0] - (ax + t * (bx - ax)), pts[i][1] - (ay + t * (by - ay))); if (d > md) { md = d; mi = i; } } if (md > tol && mi > 0) { keep[mi] = 1; st.push([a, mi], [mi, b]); } } return pts.filter((p, i) => keep[i]); };
+    const sg = dp(xy, 0.9);
+    const altG = (x, y) => { const X = Math.max(0, Math.min(W - 1.001, x)), Y = Math.max(0, Math.min(H - 1.001, y)), x0 = Math.floor(X), y0 = Math.floor(Y), fx = X - x0, fy = Y - y0, v = (a, b) => Z[b * W + a]; return (v(x0, y0) * (1 - fx) + v(x0 + 1, y0) * fx) * (1 - fy) + (v(x0, y0 + 1) * (1 - fx) + v(x0 + 1, y0 + 1) * fx) * fy; };
+    const pts = [];
+    for (let i = 0; i < sg.length; i++) {
+      if (i > 0) { const a = sg[i - 1], b = sg[i], n = Math.max(1, Math.floor(Math.hypot(b[0] - a[0], b[1] - a[1]) / 1.5)); for (let k = 1; k < n; k++) { const x = a[0] + (b[0] - a[0]) * k / n, y = a[1] + (b[1] - a[1]) * k / n; pts.push({ lat: latDe(gy0 + y + 0.5, z), lng: lngDe(gx0 + x + 0.5, z), alt: Math.round(altG(x, y) * 10) / 10 }); } }
+      pts.push({ lat: latDe(gy0 + sg[i][1] + 0.5, z), lng: lngDe(gx0 + sg[i][0] + 0.5, z), alt: Math.round(altG(sg[i][0], sg[i][1]) * 10) / 10 });
+    }
+    pts[0].lat = A.lat; pts[0].lng = A.lng; pts[pts.length - 1].lat = B.lat; pts[pts.length - 1].lng = B.lng;
+    let tT = 0; for (let i = 1; i < pts.length; i++) { const d = trkDist(pts[i - 1], pts[i]), dz = pts[i].alt - pts[i - 1].alt, sl = d > 0 ? dz / d : 0; tT += Math.hypot(d, dz) / Math.max(6 * Math.exp(-3.5 * Math.abs(sl + 0.05)) / 3.6, 0.15); }
+    return { pts, tTobler: tT, pendFuerte, z, res, conVias: !!via };
+  }
+  function arInfo() { q('ar-info').innerHTML = 'A: <b>' + (AR.a ? txtPt(AR.a) : '—') + '</b><br>B: <b>' + (AR.b ? txtPt(AR.b) : '—') + '</b>'; }
+  const arMsg = (t, ok) => { const m = q('ar-msg'); if (m) { m.textContent = t || ''; m.style.color = ok === false ? '#dc2626' : (ok ? '#16a34a' : '#475569'); } };
+  async function arCalcular() {
+    if (!AR.a || !AR.b) { arMsg('Marca el punto A y el punto B.', false); return; }
+    const b = q('ar-calc'); b.disabled = true; arMsg('Calculando…');
+    try {
+      const r = await rutaDEM(AR.a, AR.b, { crit: q('ar-crit').value, pmax: parseFloat(q('ar-pmax').value) / 100, capa: q('ar-caminos').value }, t => arMsg(t));
+      TK.vehiculo = false;
+      if (setPlan(r.pts, 'Mejor ruta A→B', 'auto', false, false, { tTobler: r.tTobler })) {
+        arMsg('✔ Ruta calculada' + (r.pendFuerte ? ' (hay tramos más empinados que el límite elegido: no había otra opción)' : '') + (r.z <= 10 ? ' · relieve de baja resolución (~' + Math.round(r.res) + ' m)' : '') + '.', !r.pendFuerte);
+      }
+    } catch (e) { console.error(e); arMsg(e.message || 'No se pudo calcular la ruta.', false); }
+    finally { b.disabled = false; }
+  }
+  function poblarVias() {
+    const sel = q('ar-caminos'); if (!sel) return; const prev = sel.value; sel.innerHTML = '<option value="">— ninguna —</option>';
+    userLayers.forEach((ul, i) => { if (!ul || ul.isRutaTrek) return; const n = (ul.features || []).filter(f => f.geometry && /LineString/.test(f.geometry.type)).length; if (n) { const o = document.createElement('option'); o.value = i; o.textContent = ul.name + ' (' + n + ' líneas)'; sel.appendChild(o); } });
+    if (prev && sel.querySelector('option[value="' + prev + '"]')) sel.value = prev;
+  }
+
+  // ---------- «Ir a…»: tiempo de recorrido (servicio de rutas en línea) y seguimiento tipo navegador ----------
+  const RUTEO = { car: ['https://routing.openstreetmap.de/routed-car/route/v1/driving/', 'Auto', '🚗', 40], foot: ['https://routing.openstreetmap.de/routed-foot/route/v1/foot/', 'A pie', '🚶', 4.5], bike: ['https://routing.openstreetmap.de/routed-bike/route/v1/bike/', 'Bicicleta', '🚲', 14] };
+  function pasoTxt(st) {
+    const m = st.maneuver || {}, t = m.type, md = m.modifier, nom = st.name ? ' por ' + st.name : '';
+    const dir = { left: 'a la izquierda', right: 'a la derecha', 'slight left': 'ligeramente a la izquierda', 'slight right': 'ligeramente a la derecha', 'sharp left': 'cerrado a la izquierda', 'sharp right': 'cerrado a la derecha', straight: 'recto', uturn: 'en U' }[md] || '';
+    switch (t) {
+      case 'depart': return 'Inicia' + (st.name ? ' en ' + st.name : '');
+      case 'arrive': return 'Llegaste a tu destino';
+      case 'turn': case 'end of road': return 'Gira ' + dir + (st.name ? ' hacia ' + st.name : '');
+      case 'fork': return 'Toma la bifurcación ' + dir;
+      case 'merge': return 'Incorpórate ' + dir;
+      case 'roundabout': case 'rotary': return 'En la rotonda toma la salida ' + (m.exit || '');
+      case 'roundabout turn': return 'En la rotonda gira ' + dir;
+      case 'on ramp': case 'off ramp': return 'Toma el desvío ' + dir;
+      default: return 'Continúa' + (dir && dir !== 'recto' ? ' ' + dir : '') + nom;
+    }
+  }
+  async function rutaOSRM(a, b, modo) {
+    const url = RUTEO[modo][0] + a.lng.toFixed(6) + ',' + a.lat.toFixed(6) + ';' + b.lng.toFixed(6) + ',' + b.lat.toFixed(6) + '?overview=full&geometries=geojson&steps=true';
+    const ctl = new AbortController(), to = setTimeout(() => ctl.abort(), 15000);
+    try {
+      const r = await fetch(url, { signal: ctl.signal }); if (!r.ok) throw new Error('ruteo ' + r.status);
+      const j = await r.json(); if (j.code !== 'Ok' || !j.routes || !j.routes.length) throw new Error('sin ruta');
+      const rt = j.routes[0]; let s = 0;
+      const pasos = ((rt.legs && rt.legs[0] && rt.legs[0].steps) || []).map(st => { const o = { s, txt: pasoTxt(st), d: st.distance }; s += st.distance; return o; });
+      return { dist: rt.distance, dur: rt.duration, pts: rt.geometry.coordinates.map(c => ({ lat: c[1], lng: c[0], alt: null })), pasos, aprox: false };
+    } finally { clearTimeout(to); }
+  }
+  function rutaRecta(a, b, modo) {
+    const d = trkDist(a, b) * 1.3;
+    return { dist: d, dur: d / (RUTEO[modo][3] / 3.6), pts: [{ lat: a.lat, lng: a.lng, alt: null }, { lat: b.lat, lng: b.lng, alt: null }], pasos: [], aprox: true };
+  }
+  const fmtDur = s => { s = Math.round(s / 60); return s < 60 ? s + ' min' : Math.floor(s / 60) + ' h ' + String(s % 60).padStart(2, '0') + ' min'; };
+  const nvMsg = (t, ok) => { const m = q('nv-msg'); if (m) { m.textContent = t || ''; m.style.color = ok === false ? '#dc2626' : (ok ? '#16a34a' : '#475569'); } };
+  function nvDibujar() {
+    if (mkNV.ruta) { grpNV.removeLayer(mkNV.ruta); mkNV.ruta = null; }
+    const r = NV.ruta; if (!r) return;
+    mkNV.ruta = L.polyline(r.pts.map(ll), { pane: 'p_trek', color: '#2563eb', weight: 6, opacity: .85, interactive: false }).addTo(grpNV);
+  }
+  function nvResumen() {
+    const box = q('nv-res'), o = NV.opciones, r = NV.ruta; if (!r) { box.innerHTML = ''; q('nv-acc').style.display = 'none'; return; }
+    const eta = new Date(Date.now() + r.dur * 1000), hh = eta.getHours() + ':' + String(eta.getMinutes()).padStart(2, '0');
+    box.innerHTML = '<div class="nv-fila">' + ['car', 'foot', 'bike'].map(k => '<div class="nv-opc' + (k === NV.modo ? ' on' : '') + '" data-m="' + k + '">' + RUTEO[k][2] + '<b>' + (o[k] && !o[k].aprox ? fmtDur(o[k].dur) : '—') + '</b>' + (o[k] && !o[k].aprox ? trkFmtD(o[k].dist) : '') + '</div>').join('') + '</div>' +
+      '<div style="font-size:12px; margin-top:6px;"><b>' + RUTEO[NV.modo][2] + ' ' + trkFmtD(r.dist) + ' · ' + fmtDur(r.dur) + '</b> · llegada ~' + hh + (r.aprox ? '<br><span style="color:#b45309;">Estimación en línea recta (no se pudo consultar el servicio de rutas).</span>' : '<br><span style="color:#64748b;">Sin tráfico. Tiempo de referencia.</span>') + '</div>' +
+      (r.pasos.length ? '<details style="margin-top:6px;"><summary style="cursor:pointer; font-size:12px; font-weight:600;">Indicaciones (' + r.pasos.length + ')</summary><ol>' + r.pasos.map(p => '<li>' + esc(p.txt) + (p.d ? ' <span style="color:#64748b;">· ' + trkFmtD(p.d) + '</span>' : '') + '</li>').join('') + '</ol></details>' : '');
+    box.querySelectorAll('.nv-opc').forEach(e => e.onclick = () => { const k = e.dataset.m; if (!o[k]) return; NV.modo = k; NV.ruta = o[k]; q('nv-modo').value = k; nvDibujar(); nvResumen(); });
+    q('nv-acc').style.display = 'flex';
+  }
+  async function nvCalcular() {
+    if (!NV.o || !NV.d) { nvMsg('Elige el origen y el destino.', false); return; }
+    const b = q('nv-calc'); b.disabled = true; nvMsg('Calculando recorrido…'); NV.opciones = {};
+    const sel = q('nv-modo').value; NV.modo = sel;
+    const modos = ['car', 'foot', 'bike'];
+    const rs = await Promise.all(modos.map(m => rutaOSRM(NV.o, NV.d, m).catch(() => null)));
+    modos.forEach((m, i) => { if (rs[i]) NV.opciones[m] = rs[i]; });
+    if (!NV.opciones[sel]) { NV.opciones[sel] = rutaRecta(NV.o, NV.d, sel); nvMsg('No se pudo consultar el servicio de rutas: estimación en línea recta.', false); } else nvMsg('✔ Recorrido calculado.', true);
+    NV.ruta = NV.opciones[sel]; nvDibujar(); nvResumen();
+    try { map.fitBounds(L.latLngBounds(NV.ruta.pts.map(ll)), { padding: [50, 50] }); } catch (e) {}
+    b.disabled = false;
+  }
+  function nvQuitar() { NV.ruta = null; NV.opciones = {}; nvDibujar(); nvResumen(); nvMsg(''); }
+  function nvComoPlan(seguir) {
+    const r = NV.ruta; if (!r) return;
+    TK.vehiculo = NV.modo !== 'foot';
+    const nombre = 'Ruta a ' + (NV.dNombre || 'destino') + ' (' + RUTEO[NV.modo][1].toLowerCase() + ')';
+    if (!setPlan(r.pts.map(p => ({ lat: p.lat, lng: p.lng, alt: null })), nombre, 'nav', false, false, { tRouter: r.aprox ? null : r.dur, pasos: r.pasos, distRouter: r.dist, modoNav: NV.modo, destino: NV.d })) return;
+    grpNV.clearLayers(); mkNV.ruta = null;
+    if (seguir) {
+      FL.cerrado = false; flotRender();
+      if (TK.estado === 'idle') iniciarRec();
+      if (window.innerWidth <= 768) q('pnl-trek').classList.remove('on');
+      hablar('Recorrido iniciado. ' + fmtDur(r.dur) + ' hasta tu destino.');
+    }
+  }
+  async function nvRecalcular(p) {
+    const pl = TK.plan; if (!pl || !pl.extra || !pl.extra.destino || NV.recalc) return;
+    NV.recalc = true; NV.ult = Date.now();
+    try {
+      const r = await rutaOSRM({ lat: p.lat, lng: p.lng }, pl.extra.destino, pl.extra.modoNav || 'car');
+      if (TK.plan === pl) { setPlan(r.pts, pl.nombre, 'nav', true, true, { tRouter: r.dur, pasos: r.pasos, distRouter: r.dist, modoNav: pl.extra.modoNav, destino: pl.extra.destino }); aviso('reruta', '🔄 Ruta recalculada', 'ok', 0, [120], 1); hablar('Ruta recalculada'); }
+    } catch (e) {} finally { NV.recalc = false; }
+  }
+  async function buscarLugar(txt) {
+    const r = await fetch('https://nominatim.openstreetmap.org/search?format=json&limit=1&accept-language=es&q=' + encodeURIComponent(txt)); const j = await r.json();
+    if (!j.length) throw new Error('No se encontró ese lugar.'); return { lat: parseFloat(j[0].lat), lng: parseFloat(j[0].lon), nombre: (j[0].display_name || txt).split(',').slice(0, 2).join(',') };
+  }
+  function bindExtra() {
+    const cv = q('tf-cv'); if (!cv) return;
+    q('tf-x').onclick = () => { FL.cerrado = true; flotRender(); };
+    q('tf-min').onclick = () => { FL.min = !FL.min; flotRender(); };
+    ['mousemove', 'touchmove', 'touchstart'].forEach(ev => cv.addEventListener(ev, e => { if (e.cancelable && e.touches) e.preventDefault(); flotHover(e); }, { passive: false }));
+    ['mouseleave', 'touchend'].forEach(ev => cv.addEventListener(ev, () => { quitarMarcaFlot(); const pl = TK.plan; if (pl) { q('tf-pie').textContent = 'Pasa el dedo o el cursor sobre el perfil para ver la altitud y la pendiente.'; if (pl.des) dibujar(cv, flotSeries(pl), TK.nav ? TK.nav.s : null); } }));
+    window.addEventListener('resize', () => { if (TK.plan) flotRender(); });
+    q('tk-plan-perfil').onclick = planAPerfil; q('tk-plan-tiempo').onclick = planATiempo;
+    q('ar-a').onclick = () => elegirEnMapa('Toca el mapa para marcar el punto A', p => { AR.a = p; ponerMarca('a', p, '🚩'); arInfo(); });
+    q('ar-b').onclick = () => elegirEnMapa('Toca el mapa para marcar el punto B', p => { AR.b = p; ponerMarca('b', p, '🏁'); arInfo(); });
+    q('ar-a-gps').onclick = () => miPosicion(p => { AR.a = p; ponerMarca('a', p, '🚩'); arInfo(); }, t => arMsg(t, false));
+    q('ar-calc').onclick = arCalcular; arInfo();
+    q('nv-o-gps').onclick = () => miPosicion(p => { NV.o = p; q('nv-o').value = 'Mi ubicación (' + txtPt(p) + ')'; ponerMarca('o', p, '🟢'); }, t => nvMsg(t, false));
+    q('nv-o-map').onclick = () => elegirEnMapa('Toca el mapa para elegir el origen', p => { NV.o = p; q('nv-o').value = txtPt(p); ponerMarca('o', p, '🟢'); });
+    q('nv-d-map').onclick = () => elegirEnMapa('Toca el mapa para elegir el destino', p => { NV.d = p; NV.dNombre = ''; q('nv-d').value = txtPt(p); ponerMarca('d', p, '🏁'); });
+    const buscarD = async () => { const t = q('nv-d').value.trim(); if (!t) return; nvMsg('Buscando…'); try { const r = await buscarLugar(t); NV.d = { lat: r.lat, lng: r.lng }; NV.dNombre = r.nombre; q('nv-d').value = r.nombre; ponerMarca('d', NV.d, '🏁'); map.setView([r.lat, r.lng], Math.max(map.getZoom(), 13)); nvMsg('✔ Destino: ' + r.nombre, true); } catch (e) { nvMsg(e.message || 'No se pudo buscar (¿hay internet?).', false); } };
+    q('nv-d-buscar').onclick = buscarD; q('nv-d').addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); buscarD(); } });
+    q('nv-modo').onchange = () => { const m = q('nv-modo').value; NV.modo = m; if (NV.opciones[m]) { NV.ruta = NV.opciones[m]; nvDibujar(); nvResumen(); } };
+    q('nv-calc').onclick = nvCalcular; q('nv-quitar').onclick = nvQuitar;
+    q('nv-seguir').onclick = () => nvComoPlan(true);
+    q('nv-usar').onclick = () => { nvComoPlan(false); tab('ruta'); };
+    poblarVias();
+  }
+
   window.trkAbrir = () => { document.querySelectorAll('.pnl').forEach(p => p.classList.toggle('on', p.id === 'pnl-trek')); tab('rec'); };
   window.TREK = TK;
   iniciar();
