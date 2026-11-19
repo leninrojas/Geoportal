@@ -1,6 +1,6 @@
 /* GeoPortal · service worker: permite abrir la app y ver los mapas descargados sin internet.
    No toca Supabase, clima ni servicios satelitales (siempre van directo a la red). */
-const VER = 'v4';
+const VER = 'v5';
 const APP = 'geoportal-app-' + VER;       // código de la aplicación y librerías
 const TILES = 'geoportal-tiles-v1';       // mapas base y DEM (también los llena la propia página)
 const LIBS = [
@@ -73,11 +73,16 @@ const abrirTiles = () => _cT || (_cT = caches.open(TILES));
 async function tesela(req, esDEM, ev) {
   const c = await abrirTiles(), hit = await c.match(req.url);
   if (hit) return hit;
-  try {
-    const r = await fetch(req.url, { mode: 'cors' });
-    if (r.ok) { const p = c.put(req.url, r.clone()).then(() => recortar(c)).catch(() => {}); try { ev.waitUntil(p); } catch (e) {} }
-    return r;
-  } catch (e) { return esDEM ? Response.error() : new Response(VACIO, { status: 200, headers: { 'Content-Type': 'image/png' } }); }
+  for (let i = 0; i < 3; i++) {   // reintenta (hasta 3 veces): un fallo pasajero ya no deja la tesela en blanco/plomo
+    try {
+      const r = await fetch(req.url, { mode: 'cors' });
+      if (r.ok) { const p = c.put(req.url, r.clone()).then(() => recortar(c)).catch(() => {}); try { ev.waitUntil(p); } catch (e) {} return r; }
+      if (r.status >= 400 && r.status < 500) return r;
+    } catch (e) {}
+    await new Promise(res => setTimeout(res, 250 * (i + 1)));
+  }
+  // sin red tras reintentar: en línea se deja el error para que el mapa lo reintente; sin conexión, tesela vacía
+  return (self.navigator && self.navigator.onLine === false && !esDEM) ? new Response(VACIO, { status: 200, headers: { 'Content-Type': 'image/png' } }) : Response.error();
 }
 let nPut = 0;
 async function recortar(c) {   // límite de teselas guardadas automáticamente: si pasa de 25 000, borra las más antiguas
