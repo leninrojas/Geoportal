@@ -1,0 +1,18 @@
+{
+  "name": "GeoPortal",
+  "short_name": "GeoPortal",
+  "description": "Geoportal con mapas, capas y trekking con GPS que funciona sin conexión",
+  "id": "./",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#eaf1fd",
+  "theme_color": "#1e40af",
+  "lang": "es",
+  "icons": [
+    { "src": "icon-v2-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "icon-v2-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "icon-v2-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}

@@ -51,7 +51,9 @@
   }
 
   #mapwrap { flex:1; position:relative; min-width:0; height:100%; }
-  #map { position:absolute; top:0; right:0; bottom:0; left:0; background:#e2e8f0; }
+  body.sa-modo-dem #sa-dl-basemap-wrap { display:none !important; }
+  #map { position:absolute; top:0; right:0; bottom:0; left:0; background:#2b3036; }
+  .adv-etq span{position:absolute;left:0;top:0;white-space:nowrap;transform-origin:center;background:rgba(15,23,42,.82);border:1px solid #fff;border-radius:4px;padding:1px 5px;font:700 11px Arial,sans-serif;text-shadow:none;pointer-events:none}
 
   h1 { font-size:21px; letter-spacing: -0.35px; margin:0 0 14px; color:var(--primary-dark); font-weight:800; display:flex; align-items:center; gap:8px; }
   
@@ -455,8 +457,6 @@
   #pnl-query.ancho { width:560px; max-width:calc(100% - 90px); }
   .leaflet-tile-pane img.leaflet-tile { image-rendering:auto; border:none; outline:none; }
   /* Quita las líneas claras entre teselas (escala de pantalla de Windows y zoom ampliado): las teselas del satélite se mezclan de forma aditiva solo entre sí */
-  .leaflet-tile-pane .capa-sat { isolation:isolate; }
-  .leaflet-tile-pane .capa-sat img.leaflet-tile { mix-blend-mode:plus-lighter; }
 
   .draw-alt { font-size:10px; font-weight:600; color:#475569; line-height:1.25; margin-top:1px; }
 
@@ -834,7 +834,7 @@
       <div id="tk-plan-acc" style="display:none; gap:6px; margin-top:6px;">
         <button class="btn sec" id="tk-plan-perfil" type="button" style="margin:0; flex:1; padding:6px; font-size:11.5px;">⛰ Perfil topográfico</button>
         <button class="btn sec" id="tk-plan-tiempo" type="button" style="margin:0; flex:1; padding:6px; font-size:11.5px;">⏱ Tiempo</button>
-        <button class="btn sec" id="tk-plan-video" type="button" style="margin:0; flex:1; padding:6px; font-size:11.5px;">🎬 Video 3D</button>
+        <button class="btn sec" id="tk-plan-video" type="button" style="margin:0; flex:1; padding:6px; font-size:11.5px;">🎬 Video</button>
       </div>
       <div class="tk-sec">🧭 Mejor ruta entre A y B (según el relieve)</div>
       <div style="display:flex; gap:6px;">
@@ -1089,6 +1089,20 @@
 
       <div style="font-weight:600; margin:14px 0 6px; font-size:13px; color:var(--primary-dark); border-top:1px solid #e2e8f0; padding-top:8px;">Imágenes cargadas <span id="dron-count"></span></div>
       <div id="dron-lista"></div>
+    </div>
+
+    <div id="add-altitud-bloque" style="display:none; margin-top:12px; border-top:1px solid #e2e8f0; padding-top:8px;">
+      <div style="font-size:12.5px; font-weight:700; color:var(--primary-dark); margin-bottom:5px;">⛰ Extraer altitud · puntos y sondajes (Copernicus GLO-30)</div>
+      <label for="sa-alt-capa" style="font-size:11px; color:#64748b;">Capa de puntos</label>
+      <select id="sa-alt-capa" style="width:100%; padding:6px; font-size:12px; margin:2px 0 6px; border:1px solid var(--border-color); border-radius:4px;"><option value="">— Selecciona una capa —</option></select>
+      <button class="btn" id="sa-alt-run" type="button" style="font-size:12px;">⛰ Extraer altitud (Copernicus GLO-30)</button>
+      <div id="sa-alt-msg" style="font-size:11px; color:#475569; margin-top:4px;"></div>
+      <div id="sa-alt-res"></div>
+      <div id="sa-alt-actions" style="display:none; margin-top:6px; gap:6px; align-items:center;">
+        <button type="button" class="btn sec" id="sa-alt-dl" style="width:auto; margin:0; padding:4px 8px; font-size:11px;">📄 Descargar CSV</button>
+        <button type="button" class="btn sec" id="sa-alt-kmz" style="width:auto; margin:0; padding:4px 8px; font-size:11px;">🌍 Descargar KMZ</button>
+        <button type="button" class="btn sec" id="sa-alt-limpiar" style="width:auto; margin:0; padding:4px 8px; font-size:11px;">🧹 Limpiar panel</button>
+      </div>
     </div>
 
     <!-- Lista de Capas Agregadas -->
@@ -1376,7 +1390,6 @@
       <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap; margin-bottom:8px;">
         <b style="font-size:14px; color:#1e3a8a; margin-right:auto;">⛰ Perfil topográfico</b>
         <button class="btn sec" id="pf-png" type="button" style="width:auto; margin:0; padding:6px 11px; font-size:12px;">🖼 PNG</button>
-        <button class="btn sec" id="pf-svg" type="button" style="width:auto; margin:0; padding:6px 11px; font-size:12px;">✒️ SVG</button>
         <button class="btn sec" id="pf-dxf" type="button" style="width:auto; margin:0; padding:6px 11px; font-size:12px;">📐 DXF (CAD)</button>
         <button class="btn sec" id="pf-xlsx" type="button" style="width:auto; margin:0; padding:6px 11px; font-size:12px;">📊 Excel con gráfico</button>
         <button class="btn" id="pf-cerrar" type="button" style="width:auto; margin:0; padding:6px 12px; font-size:12px;">✕ Cerrar</button>
@@ -1503,7 +1516,7 @@
       <div style="font-size:11px; color:#64748b; margin-bottom:5px;">Modelo digital de elevación</div>
       <label for="sa-dem-fuente" style="font-size:11px; color:#64748b;">Fuente</label>
       <select id="sa-dem-fuente" style="width:100%; padding:6px; font-size:12px; margin:2px 0 3px; border:1px solid var(--border-color); border-radius:4px;">
-        <option value="cop" selected>Copernicus GLO-30 · fuente principal</option><option value="nasadem">NASADEM · comparación</option><option value="alos">ALOS AW3D30 · comparación</option><option value="srtm">SRTM · DEM histórico (2000)</option><option value="local">DEM propio (GeoTIFF) · ALOS PALSAR 12.5 m, Copernicus, otros</option>
+        <option value="cop" selected>Copernicus GLO-30 · fuente principal</option><option value="nasadem">NASADEM · comparación</option><option value="alos">ALOS AW3D30 · comparación</option><option value="srtm">SRTM · DEM histórico (2000)</option><option value="mdt">FABDEM · solo uso investigativo y comparativo</option><option value="local">DEM propio (GeoTIFF) · ALOS PALSAR 12.5 m, Copernicus, otros</option>
       </select>
       <div id="sa-dem-local" style="display:none; margin:4px 0 6px;"><input type="file" id="sa-dem-archivo" accept=".tif,.tiff" style="width:100%; font-size:12px;"><div id="sa-dem-arch-info" style="font-size:11px; color:#475569; margin-top:3px;"></div></div>
       <div id="sa-dem-nota" class="nota" hidden style="margin:0 0 6px;"></div>
@@ -1511,19 +1524,6 @@
       <select id="sa-dem-res" style="width:100%; padding:6px; font-size:12px; margin-top:2px; border:1px solid var(--border-color); border-radius:4px;">
         <option value="30" selected>30 m (resolución original)</option><option value="20">20 m (remuestreo bilineal)</option><option value="15">15 m (remuestreo bilineal)</option><option value="12.5">12.5 m (ALOS PALSAR, nativo)</option><option value="10">10 m (remuestreo bilineal)</option>
       </select>
-    </div>
-    <div class="bloque">
-      <div style="font-size:11px; color:#64748b; margin-bottom:5px;">Extracción de altitud (solo puntos)</div>
-      <label for="sa-alt-capa" style="font-size:11px; color:#64748b;">Capa de puntos</label>
-      <select id="sa-alt-capa" style="width:100%; padding:6px; font-size:12px; margin:2px 0 6px; border:1px solid var(--border-color); border-radius:4px;"><option value="">— Selecciona una capa —</option></select>
-      <button class="btn" id="sa-alt-run" type="button" style="font-size:12px;">⛰ Extraer altitud (Copernicus GLO-30)</button>
-      <div id="sa-alt-msg" style="font-size:11px; color:#475569; margin-top:4px;"></div>
-      <div id="sa-alt-res"></div>
-      <div id="sa-alt-actions" style="display:none; margin-top:6px; gap:6px; align-items:center;">
-        <button type="button" class="btn sec" id="sa-alt-dl" style="width:auto; margin:0; padding:4px 8px; font-size:11px;">📄 Descargar CSV</button>
-        <button type="button" class="btn sec" id="sa-alt-kmz" style="width:auto; margin:0; padding:4px 8px; font-size:11px;">🌍 Descargar KMZ</button>
-        <button type="button" class="btn sec" id="sa-alt-limpiar" style="width:auto; margin:0; padding:4px 8px; font-size:11px;">🧹 Limpiar panel</button>
-      </div>
     </div>
     </div>
 
@@ -1591,7 +1591,7 @@
   <div class="pnl" id="pnl-tele" style="width:350px;">
     <button class="x" data-close title="Cerrar">✕</button>
     <h2>📡 Teledetección</h2>
-    <details class="tl-det" open>
+    <details class="tl-det">
       <summary>Índices espectrales</summary>
       <div class="tl-g"><div class="tl-t">1. Vegetación</div><div class="tl-chips"><button type="button" data-idx="ndvi">NDVI</button><button type="button" data-idx="evi">EVI</button><button type="button" data-idx="savi">SAVI</button></div></div>
       <div class="tl-g"><div class="tl-t">2. Clorofila</div><div class="tl-chips"><button type="button" data-idx="ndre">NDRE</button><button type="button" data-idx="cire">CIre</button></div></div>
@@ -2033,14 +2033,18 @@ L.control.zoom({ position: 'topright' }).addTo(map);
   map.createPane(p[0]).style.zIndex = p[1];
 });
 
-const tile = (path, opt) => L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/' + path + '/MapServer/tile/{z}/{y}/{x}', Object.assign({ maxZoom: 22, attribution: 'Esri', noWrap: true, updateWhenIdle: false, updateWhenZooming: false, keepBuffer: 3 }, opt || {}));
-const imgBase = tile('Canvas/World_Light_Gray_Base', { maxNativeZoom: 16, maxZoom: 22 });
-const imgSat = tile('World_Imagery', { maxNativeZoom: 19, maxZoom: 22, className: 'capa-sat' });
+const tile = (path, opt) => L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/' + path + '/MapServer/tile/{z}/{y}/{x}', Object.assign({ maxZoom: 22, attribution: 'Esri', noWrap: true, updateWhenIdle: false, updateWhenZooming: false, updateInterval: 120, keepBuffer: 2 }, opt || {}));
+const imgSat = tile('World_Imagery', { maxNativeZoom: 19, maxZoom: 22, className: 'capa-sat', keepBuffer: 2 });
 const imgLab = tile('Reference/World_Boundaries_and_Places', { maxNativeZoom: 17, maxZoom: 22, opacity: 0.9 });
-const imagenesEtiquetas = L.layerGroup([imgBase, imgSat, imgLab]);
+const imagenesEtiquetas = L.layerGroup([imgSat, imgLab]);
 const topografico = tile('World_Topo_Map', { maxNativeZoom: 19, maxZoom: 22 });
 const calles = tile('World_Street_Map', { maxNativeZoom: 19 });
 
+// Si una tesela falla (red lenta), se reintenta sola hasta 2 veces en vez de quedar vacía
+[imgSat, imgLab, topografico, calles].forEach(l => l.on('tileerror', e => {
+  const t = e.tile; if (!t || !t.src) return; t._rt = (t._rt || 0) + 1;
+  if (t._rt <= 2) { const u = t.src.split('#')[0]; setTimeout(() => { t.src = u + '#r' + t._rt; }, 700 * t._rt); }
+}));
 imagenesEtiquetas.addTo(map);
 let basemapActual = imagenesEtiquetas;
 const BASEMAPS = { imagenesEtiquetas: imagenesEtiquetas, topografico: topografico, calles: calles };
@@ -5309,7 +5313,13 @@ async function exportarAKMZ(features, baseName, opciones) {
     Object.keys(porCapa).forEach(k => {
       const g = porCapa[k];
       kml += `      <Folder>\n        <name>${escXML(g.nombre)}</name>\n`;
+      const refVistas = new Set();
       g.items.forEach(l => {
+        if (l.refFeat && !refVistas.has(l.refFeat)) {
+          refVistas.add(l.refFeat);
+          kml += `        <!-- entidad de referencia -->\n`;
+          emitirPlacemark({ geometry: l.refFeat.geometry, properties: Object.assign({ CAPA: g.nombre }, (l.refFeat.properties || {})), _nombre: 'REF: ' + (l.refNombre || g.nombre), _color: '#2563eb' }, 0);
+        }
         let d = `<div style="font-family:Arial,Helvetica,sans-serif; font-size:12px; color:#1e293b; max-width:350px;"><h3 style="margin:0 0 8px; color:#dc2626; border-bottom:2px solid #dc2626; padding-bottom:4px;">${escXML(l.nombre)}</h3><table border="1" cellpadding="4" cellspacing="0" style="border-collapse:collapse; width:100%; border:1px solid #cbd5e1; font-size:11.5px;">`;
         for (const [pk, pv] of Object.entries(l.props || {})) {
           if (pv !== null && pv !== undefined && String(pv).trim() !== '') {
@@ -5712,6 +5722,40 @@ $('adv-ejecutar').onclick = async () => {
   }
 };
 
+const ADV_OCULTOS = /^(id|gid|fid|objectid|updated_at|created_at|geom|geometry|the_geom|shape_.*|_.*)$/i;
+function advCampoOculto(k) { return ADV_OCULTOS.test(String(k)); }
+function advRefProps(f, key) {
+  const out = {};
+  const p = (f && f.properties) || {};
+  Object.keys(p).forEach(k => {
+    if (advCampoOculto(k)) return;
+    const v = p[k];
+    if (v === null || v === undefined || typeof v === 'object' || String(v).trim() === '') return;
+    out[key + '_' + k] = v;
+  });
+  return out;
+}
+// Etiqueta de distancia a lo largo de la línea (rotada según la pantalla)
+const advEtiquetas = [];
+function advEtiquetaLinea(a, b, texto, col) {
+  const mid = [(a[1] + b[1]) / 2, (a[0] + b[0]) / 2];
+  const mk = L.marker(mid, { pane: 'p_hl', interactive: false, keyboard: false,
+    icon: L.divIcon({ className: 'adv-etq', html: '<span></span>', iconSize: [0, 0] }) });
+  const poner = () => {
+    const el = mk.getElement(); if (!el) return;
+    const p1 = map.latLngToContainerPoint([a[1], a[0]]), p2 = map.latLngToContainerPoint([b[1], b[0]]);
+    let ang = Math.atan2(p2.y - p1.y, p2.x - p1.x) * 180 / Math.PI;
+    if (ang > 90) ang -= 180; else if (ang < -90) ang += 180;
+    const sp = el.firstChild; if (!sp) return;
+    sp.textContent = texto;
+    sp.style.transform = 'translate(-50%,-115%) rotate(' + ang.toFixed(1) + 'deg)';
+    sp.style.color = '#fff'; sp.style.borderColor = col;
+  };
+  mk.on('add', () => { poner(); map.on('zoomend moveend', poner); });
+  mk.on('remove', () => map.off('zoomend moveend', poner));
+  return mk;
+}
+
 // Construye resultados, líneas del mapa y tabla con la unidad elegida (sin recalcular)
 function advConstruir() {
   if (!advCache) return;
@@ -5737,17 +5781,22 @@ function advConstruir() {
       props['NOM_' + t.key] = ok ? t.nomFn(r.o) : '';
       props['DIST_' + t.key + '_' + suf] = ok ? Number((r.d * fac).toFixed(dec)) : '';
       props['INTERSECTA_' + t.key] = ok ? (r.dentro ? 'SI' : 'NO') : '';
+      const rp = ok ? advRefProps(r.o.f, t.key) : {};
+      Object.assign(props, rp);
       if (ok && !r.dentro && r.a && r.b) {
         const nomCerc = t.nomFn(r.o) || '(sin nombre)';
         const lp = { ELEMENTO: etiqueta, CAPA_EVALUADA: t.nombre, MAS_CERCANO: nomCerc };
         lp['DISTANCIA_' + suf] = Number((r.d * fac).toFixed(dec));
+        Object.keys(orig).forEach(k => { if (!advCampoOculto(k) && orig[k] !== null && typeof orig[k] !== 'object') lp['ENTRADA_' + k] = orig[k]; });
+        Object.assign(lp, rp);
         advLineasKmz.push({ capaKey: t.key, capa: t.nombre, color: t.color || '#ffffff',
-          nombre: etiqueta + ' → ' + nomCerc + ' (' + advFmt(r.d, u) + ')', coords: [r.a, r.b], props: lp });
+          nombre: etiqueta + ' → ' + nomCerc + ' (' + advFmt(r.d, u) + ')', coords: [r.a, r.b], props: lp, refFeat: r.o.f, refProps: rp, refNombre: nomCerc });
       }
       if (dibujar && ok && !r.dentro && r.a && r.b) {
         const col = t.color || '#ffffff';
         L.polyline([[r.a[1], r.a[0]], [r.b[1], r.b[0]]], { pane: 'p_hl', color: col, weight: 2, dashArray: '5 4', opacity: 0.95 })
           .bindTooltip(esc(t.nombre) + ': ' + advFmt(r.d, u), { sticky: true }).addTo(grupoLineas);
+        advEtiquetaLinea(r.a, r.b, advFmt(r.d, u), col).addTo(grupoLineas);
         L.circleMarker([r.b[1], r.b[0]], { pane: 'p_hl', radius: 3, color: '#ffffff', weight: 1, fillColor: col, fillOpacity: 1 }).addTo(grupoLineas);
       }
     });
@@ -8560,7 +8609,7 @@ const DEMSRC = (function () {
   }
   const nice = (v, arr) => arr.find(a => a >= v) || arr[arr.length - 1];
   const niceLE = (v, arr) => { let r = arr[0]; arr.forEach(a => { if (a <= v) r = a; }); return r; };
-  function svgPerfil(exportar) {
+  function svgPerfil(exportar, real) {
     const D = datos, E = escalas(D), x0 = X0, x1 = X1, PW = x1 - x0, F = 'font-family="Arial, Helvetica, sans-serif"';
     const zr = E.ymax - E.ymin, modo = T('pf-exag').value;
     let PH = modo === 'fit' ? 520 : PW * (zr * parseFloat(modo)) / E.xmax; PH = Math.max(180, Math.min(900, PH));
@@ -8636,7 +8685,7 @@ const DEMSRC = (function () {
     cel(0, (x, w) => { s += lbl(x + 8, yc + 16, 'PROYECTO') + val(x + 8, yc + 34, proy || '—', 13, w) + lbl(x + 8, yc + 58, 'ELABORADO POR') + val(x + 8, yc + 76, (T('pf-autor').value || '—').trim(), 13, w); });
     cel(1, (x, w) => { s += lbl(x + 8, yc + 16, 'SECCIÓN') + val(x + 8, yc + 33, D.nombre, 13, w) + lbl(x + 8, yc + 52, 'LONGITUD') + val(x + 8, yc + 68, fmtN(D.L, 2) + ' m', 12, w) + lbl(x + 8, yc + 84, 'FECHA: ' + D.fecha.toLocaleDateString('es-PE')); });
     cel(2, (x, w) => { const l2 = dosLineas(fuenteTxt, 52); s += lbl(x + 8, yc + 16, 'FUENTE DE ALTITUD') + val(x + 8, yc + 32, l2[0], 11, w) + (l2[1] ? val(x + 8, yc + 46, l2[1], 11, w) : '') + lbl(x + 8, yc + 66, 'SISTEMA') + val(x + 8, yc + 82, 'WGS84 · progresivas en metros', 10.5, w); });
-    cel(3, (x, w) => { s += lbl(x + 8, yc + 16, 'EXAGERACIÓN VERTICAL', w) + val(x + 8, yc + 38, '×' + fmtN(exag, 1), 18, w) + lbl(x + 8, yc + 62, 'COTA DE REFERENCIA', w) + val(x + 8, yc + 78, fmtZ(E.ymin) + ' m', 11, w); });
+    cel(3, (x, w) => { s += lbl(x + 8, yc + 16, 'EXAGERACIÓN VERTICAL', w) + val(x + 8, yc + 38, '×' + fmtN(real ? 1 : exag, 1), 18, w) + lbl(x + 8, yc + 62, 'COTA DE REFERENCIA', w) + val(x + 8, yc + 78, fmtZ(E.ymin) + ' m', 11, w); });
     cel(4, (x, w) => {
       const pxm = PW / E.xmax, nh = niceLE(100 / pxm, [1, 2, 5, 10, 20, 50, 100, 200, 250, 500, 1000, 2000, 5000, 10000]), lw = nh * pxm;
       s += lbl(x + 8, yc + 16, 'ESCALA GRÁFICA') + '<rect x="' + (x + 10) + '" y="' + (yc + 56) + '" width="' + (lw / 2).toFixed(1) + '" height="6" fill="#222"/><rect x="' + (x + 10 + lw / 2).toFixed(1) + '" y="' + (yc + 56) + '" width="' + (lw / 2).toFixed(1) + '" height="6" fill="#fff" stroke="#222"/>'
@@ -8645,7 +8694,7 @@ const DEMSRC = (function () {
       s += '<rect x="' + (x + w - 44) + '" y="' + (yc + 74 - vh).toFixed(1) + '" width="6" height="' + vh.toFixed(1) + '" fill="#222"/><text x="' + (x + w - 34) + '" y="' + (yc + 74 - vh / 2 + 4).toFixed(1) + '" ' + F + ' font-size="10" fill="#111">' + nv + ' m</text>';
     });
     s += '</svg>';
-    return { svg: s, E: E, x0: x0, x1: x1, y0: y0, y1: y1, X: X, Y: Y, VH: VH, exag: exag, est: est };
+    return { y0: y0, svg: s, E: E, x0: x0, x1: x1, y0: y0, y1: y1, X: X, Y: Y, VH: VH, exag: exag, est: est };
   }
 
   function dibujarGrafico() {
@@ -8696,19 +8745,18 @@ const DEMSRC = (function () {
     });
   }
   async function exportarPNG() { if (!datos) return; try { const r = await svgAPngBlob(2); descargarBlob(r.blob, nombreArchivo() + '.png'); } catch (e) { msg(e.message, true); } }
-  function exportarSVG() { if (!datos) return; descargarBlob(new Blob([svgPerfil(true).svg], { type: 'image/svg+xml' }), nombreArchivo() + '.svg'); }
 
   // El DXF se genera a partir del propio SVG del perfil (misma geometría, textos, bandas, cajetín y cortes de línea),
-  // con 1 unidad = 1 m de progresiva en X, y Y = (cota - cota de referencia) x exageración vertical.
+  // con 1 unidad = 1 m en X (progresiva) y 1 m en Y (cota - cota de referencia): escala real, sin exageración (escalaVert).
   function aCp1252(str) {
     const esp = { 0x2026: 0x85, 0x2014: 0x97, 0x2013: 0x96, 0x2019: 0x92 }, out = new Uint8Array(str.length);
     for (let i = 0; i < str.length; i++) { const c = str.charCodeAt(i); out[i] = c < 256 ? c : (esp[c] || 63); }
     return out;
   }
-  function svgADxf(svg, f, x0px, y1px) {
+  function svgADxf(svg, f, x0px, y1px, y0px, escalaVert) {
     const dec = t => t.replace(/&#39;/g, "'").replace(/&quot;/g, '"').replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&amp;/g, '&');
     const attrs = a => { const o = {}; a.replace(/([\w:-]+)="([^"]*)"/g, (m, k, v) => { o[k] = v; return ''; }); return o; };
-    const CX = px => (px - x0px) * f, CY = py => (y1px - py) * f, num = (o, k, d) => o[k] === undefined ? d : parseFloat(o[k]);
+    const CX = px => (px - x0px) * f, CY = py => py > y1px ? (y1px - py) * f : (py >= y0px ? (y1px - py) * f * escalaVert : (y1px - y0px) * f * escalaVert + (y0px - py) * f), num = (o, k, d) => o[k] === undefined ? d : parseFloat(o[k]);
     const trans = t => { if (!t) return null; const m = /translate\(\s*(-?[\d.]+)[ ,]+(-?[\d.]+)\s*\)/.exec(t), r = /rotate\(\s*(-?[\d.]+)\s*\)/.exec(t); return { tx: m ? parseFloat(m[1]) : 0, ty: m ? parseFloat(m[2]) : 0, rot: r ? parseFloat(r[1]) : 0 }; };
     const aMundo = (t, lx, ly) => t ? (t.rot === -90 ? [t.tx + ly, t.ty - lx] : [t.tx + lx, t.ty + ly]) : [lx, ly];
     const out = [], capas = {}, ext = [1e18, 1e18, -1e18, -1e18], masks = [], lineas = [];
@@ -8780,8 +8828,9 @@ const DEMSRC = (function () {
   }
   function exportarDXF() {
     if (!datos) return;
-    const r = svgPerfil(true), f = r.E.xmax / (r.x1 - r.x0);
-    descargarBlob(new Blob([aCp1252(svgADxf(r.svg, f, r.x0, r.y1))], { type: 'application/dxf' }), nombreArchivo() + '.dxf');
+    const r = svgPerfil(true, true), f = r.E.xmax / (r.x1 - r.x0);
+    // Escala real: 1 unidad = 1 m tanto en horizontal (progresiva) como en vertical (cota), sin exageración
+    descargarBlob(new Blob([aCp1252(svgADxf(r.svg, f, r.x0, r.y1, r.y0, 1 / r.exag))], { type: 'application/dxf' }), nombreArchivo() + '.dxf');
   }
 
   async function exportarExcel() {
@@ -8962,7 +9011,7 @@ async function construirXlsxPerfil(JSZipRef, spec) {
   T('pf-trazar').onclick = iniciarTrazo; T('pf-terminar').onclick = terminarTrazo; T('pf-deshacer').onclick = deshacerPunto; T('pf-cancelar').onclick = cancelarTrazo;
   T('pf-usar').onclick = usarLinea; T('pf-gen').onclick = generar; T('pf-ver').onclick = abrirModal;
   T('pf-limpiar').onclick = () => { uid++; detenerEscucha(); pts = []; datos = null; limpiarMapa(); cerrarModal(); T('pf-ver').style.display = 'none'; msg(''); };
-  T('pf-cerrar').onclick = cerrarModal; T('pf-png').onclick = exportarPNG; T('pf-svg').onclick = exportarSVG; T('pf-dxf').onclick = exportarDXF; T('pf-xlsx').onclick = exportarExcel;
+  T('pf-cerrar').onclick = cerrarModal; T('pf-png').onclick = exportarPNG; T('pf-dxf').onclick = exportarDXF; T('pf-xlsx').onclick = exportarExcel;
   T('pf-modal').addEventListener('click', ev => { if (ev.target === T('pf-modal')) cerrarModal(); });
   T('pf-fuente').addEventListener('change', () => { T('pf-file').value = ''; actualizarFuenteUI(); });
   T('pf-file').addEventListener('change', alElegirArchivo);
@@ -9713,6 +9762,7 @@ async function construirXlsxPerfil(JSZipRef, spec) {
     nasadem: { key: 'nasadem', nombre: 'NASADEM', corto: 'NASADEM', col: 'nasadem', activo: 'elevation', nulo: -32000, nota: 'NASA · SRTM reprocesado, 30 m (1 segundo de arco), año 2000' },
     srtm:    { key: 'srtm', nombre: 'SRTM (SRTMGL1)', corto: 'SRTM', col: null, activo: null, nulo: -32000, nota: 'NASA/USGS · SRTM original, 30 m (1 segundo de arco), febrero 2000' },
     local:   { key: 'local', nombre: 'DEM propio (GeoTIFF)', corto: 'DEM propio', col: null, activo: null, nulo: -500, nota: 'Archivo GeoTIFF cargado por el usuario (por ejemplo ALOS PALSAR RTC 12.5 m de ASF o un recorte de Copernicus GLO-30). Se remuestrea con interpolación bilineal.' },
+    mdt:     { key: 'mdt', nombre: 'FABDEM', corto: 'FABDEM', col: null, activo: null, nulo: -500, nota: 'FABDEM (Univ. de Bristol, 30 m): Copernicus GLO-30 sin vegetación ni edificios. Licencia CC BY-NC-SA 4.0: SOLO uso investigativo y comparativo (no comercial); cita a Hawker et al. (2022). Descarga las teselas de 1°×1° de tu zona y cárgalas aquí como GeoTIFF.' },
     alos:    { key: 'alos', nombre: 'ALOS World 3D', corto: 'ALOS AW3D30', col: 'alos-dem', activo: 'data', nulo: -9000, nota: 'JAXA · modelo de superficie de 30 m, 2006–2011' }
   };
   const cortesDe = txt => (txt || '').split(/[;,\s]+/).filter(x => x !== '').map(Number).filter(v => isFinite(v)).sort((a, b) => a - b);
@@ -10116,7 +10166,8 @@ async function construirXlsxPerfil(JSZipRef, spec) {
   }
   async function procesarDEM() {
     if (corriendo) return; if (!aoi) { msg('Primero define el área de estudio.', true); return; }
-    const F = DEMS[T('sa-dem-fuente').value], res = parseFloat(T('sa-dem-res').value) || 30;
+    let F = DEMS[T('sa-dem-fuente').value]; const res = parseFloat(T('sa-dem-res').value) || 30;
+    if (F.key === 'mdt') F = Object.assign({}, DEMS.local, { nombre: 'FABDEM (aportado por el usuario · uso investigativo y comparativo)', corto: 'FABDEM' });
     corriendo = true; cancelar = false; T('sa-run').disabled = true; T('sa-cancel').style.display = 'block'; quitarResultado();
     try {
       await asegurarGeoTIFFS();
@@ -10530,7 +10581,7 @@ async function construirXlsxPerfil(JSZipRef, spec) {
     T('sa-cat').querySelector('option[value="aws"]').disabled = s !== 's2';
   }
   function actualizarCortes() { const def = INDICES[T('sa-indice').value]; if (def.radar && T('sa-sensor').value !== 's1') T('sa-sensor').value = 's1'; else if (!def.radar && T('sa-sensor').value === 's1') T('sa-sensor').value = 's2'; if (def.termico && T('sa-sensor').value === 's2') { T('sa-sensor').value = 'l89'; actualizarSensor(); } if (def.soloS2 && T('sa-sensor').value !== 's2') { T('sa-sensor').value = 's2'; actualizarSensor(); } T('sa-cortes').value = def.cortes ? def.cortes.join(', ') : ''; T('sa-cortes').placeholder = def.cortes ? '' : 'automático (5 clases iguales)'; T('sa-indice-desc').textContent = def.desc; actualizarSensor(); { const rd = T('sa-sensor').value === 's1'; T('sa-nubes').disabled = rd; T('sa-cat').disabled = rd; T('sa-img').disabled = rd; T('sa-multi').disabled = rd; T('sa-rel-wrap').style.display = (!rd && REL_IDX.indexOf(T('sa-indice').value) >= 0) ? 'block' : 'none'; } }
-  function actualizarProducto() { const dem = T('sa-producto').value === 'dem'; T('sa-sec-espectral').style.display = dem ? 'none' : 'block'; T('sa-sec-dem').style.display = dem ? 'block' : 'none'; T('sa-run').textContent = dem ? '🏔 Procesar DEM' : '🛰 Procesar'; T('sa-dem-nota').textContent = DEMS[T('sa-dem-fuente').value].nota; }
+  function actualizarProducto() { const dem = T('sa-producto').value === 'dem'; document.body.classList.toggle('sa-modo-dem', dem); T('sa-sec-espectral').style.display = dem ? 'none' : 'block'; T('sa-sec-dem').style.display = dem ? 'block' : 'none'; T('sa-run').textContent = dem ? '🏔 Procesar DEM' : '🛰 Procesar'; T('sa-dem-nota').textContent = DEMS[T('sa-dem-fuente').value].nota; }
   const hoy = new Date(), iso = d => d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0'), hace = new Date(hoy.getTime() - 90 * 864e5);
   T('sa-hasta').value = iso(hoy); T('sa-desde').value = iso(hace);
   T('sa-rect').onclick = () => iniciarTrazo('rect'); T('sa-poli').onclick = () => iniciarTrazo('poli'); T('sa-terminar').onclick = () => { if (trazando === 'poli') terminarTrazo(); else msg('No hay un polígono en trazado.', true); };
@@ -10541,7 +10592,7 @@ async function construirXlsxPerfil(JSZipRef, spec) {
   T('av-run').onclick = avEjecutar; T('av-cancel').onclick = () => { AV.cancel = true; avMsg('Cancelando…'); };
   T('av-aoi-btn').onclick = () => { document.querySelectorAll('.pnl').forEach(x => x.classList.toggle('on', x.id === 'pnl-sat')); const pr = T('sa-producto'); if (pr.value !== 'espectral') { pr.value = 'espectral'; pr.dispatchEvent(new Event('change')); } const h2 = T('pnl-sat').querySelector('h2'); if (h2) h2.textContent = '🛰 Satélite'; };
   new MutationObserver(() => { if (T('pnl-av').classList.contains('on')) { avInfoAOI(); if (AV.modo === 'clas') avPoblarCapas(); } }).observe(T('pnl-av'), { attributes: true, attributeFilter: ['class'] });
-  T('sa-dem-fuente').addEventListener('change', () => { const f = DEMS[T('sa-dem-fuente').value]; T('sa-dem-local').style.display = f.key === 'local' ? 'block' : 'none'; T('sa-dem-nota').textContent = f.nota; T('sa-dem-nota').hidden = false; if (f.key === 'local') T('sa-dem-archivo').onchange = () => { const a = T('sa-dem-archivo').files[0]; T('sa-dem-arch-info').textContent = a ? a.name + ' · ' + fmtN(a.size / 1048576, 0) + ' MB' : ''; }; });
+  T('sa-dem-fuente').addEventListener('change', () => { const f = DEMS[T('sa-dem-fuente').value]; T('sa-dem-local').style.display = (f.key === 'local' || f.key === 'mdt') ? 'block' : 'none'; T('sa-dem-nota').textContent = f.nota; T('sa-dem-nota').hidden = false; if (f.key === 'local' || f.key === 'mdt') T('sa-dem-archivo').onchange = () => { const a = T('sa-dem-archivo').files[0]; T('sa-dem-arch-info').textContent = a ? a.name + ' · ' + fmtN(a.size / 1048576, 0) + ' MB' : ''; }; });
   T('sa-sensor').onchange = actualizarSensor; T('sa-indice').onchange = actualizarCortes; T('sa-producto').onchange = actualizarProducto; T('sa-producto').addEventListener('change', () => { if (!corriendo) quitarResultado(); }); T('sa-dem-fuente').onchange = actualizarProducto;
   T('sa-run').onclick = () => T('sa-producto').value === 'dem' ? procesarDEM() : procesar(); T('sa-cancel').onclick = () => { cancelar = true; msg('Cancelando…'); };
   T('sa-quitar').onclick = () => { quitarResultado(); msg(''); }; T('sa-dem-quitar').onclick = () => { quitarResultado(); msg(''); };
@@ -11251,8 +11302,8 @@ async function construirXlsxPerfil(JSZipRef, spec) {
   actualizarSensor(); actualizarCortes(); actualizarProducto(); poblarPoligonos();
 })();
 
-const MANUAL_VERSION = "18 de noviembre de 2026";
-const MANUAL = [{"id": "inicio", "icono": "🧭", "titulo": "Primeros pasos", "resumen": "El geoportal reúne un mapa 2D/3D, las capas del portal, tus propios datos, herramientas de análisis y dibujo, y un módulo de Trekking con GPS que funciona sin conexión.", "pasos": ["<b>Barra lateral:</b> busca un lugar o un límite por nombre y activa las capas del portal con su casilla (límites, catastro minero, ecosistemas frágiles y social). Algunas capas aparecen solo al acercarte («Zoom n+»). Los <b>límites departamentales</b> empiezan desmarcados para no saturar el mapa; actívalos cuando los necesites.", "<b>En PC – barra superior:</b> Leyenda, Add Data, <b>Procesamiento</b> (Consultas, Dibujar, Tiempo, Regla, Buffer, Clip, Dissolve, Perfil, Satélite y DEM, en un menú desplegable), Teledetección, Trekking, Vista 3D y Manual.", "<b>En el celular – barra inferior (tipo app):</b> <b>Capas</b> (abre la barra lateral), <b>Datos</b> (Add Data), <b>Procesos</b> (todas las herramientas de análisis y teledetección), <b>Trekking</b> y <b>Más</b> (Leyenda, Vista 3D, Manual e <b>Instalar app</b>).", "<b>Paneles:</b> todos se abren en la misma posición, bajo la barra superior (en PC) o sobre la barra inferior (en el celular). En PC puedes moverlos con <b>⠿ Arrastrar</b>; al cerrarlos y abrirlos de nuevo vuelven a su lugar.", "<b>Globo de mapas base</b> (arriba a la derecha): imágenes con etiquetas, topográfico o calles. Debajo está la flecha de <b>Norte</b>. El mapa muestra solo el mundo: no se desplaza más allá de sus bordes.", "<b>Clima:</b> el resumen flotante aparece arriba a la izquierda en el celular y se despliega hacia abajo sin tapar los paneles.", "<b>Barra inferior de coordenadas:</b> en PC muestra coordenadas y altitud bajo el cursor, formato, zonas UTM y cuadrantes; en el celular se muestra una versión compacta (coordenadas, zona y elevación).", "<b>Instalar como app:</b> en Android (Chrome) usa <b>Más → 📲 Instalar app</b> o la pestaña <b>Trekking → Sin conexión → Instalar como app</b>; en iPhone abre la página en Safari › Compartir › <b>Añadir a pantalla de inicio</b>. Si abres el enlace desde WhatsApp o Facebook, ábrelo antes en Chrome."], "tips": ["Tus dibujos, el formato de coordenadas, las zonas UTM y tus puntos de referencia se guardan en este navegador.", "Si ves una versión anterior después de una actualización: espera el check verde en GitHub, borra los datos del sitio (o recarga con Ctrl+F5 en PC) y, en el celular, desinstala y vuelve a instalar la app. La versión de este manual aparece en su título."], "probar": [["Abrir la Leyenda", "pnl:leyenda"]]}, {"id": "novedades", "icono": "🆕", "titulo": "Novedades de esta versión (18 de noviembre de 2026)", "resumen": "Resumen de lo último que se agregó o corrigió. Cada sección de este manual ya incluye el detalle.", "pasos": ["<b>Ventana de información de las capas</b> ordenada: <b>CAMPO: valor</b> en mayúsculas, solo los campos pedidos para cada capa, sin ID/updated_at (salvo Pasivos mineros) ni duplicados; Humedales costeros y Lomas costeras con título más legible; Sitios Ramsar sin repetidos.", "<b>Trekking:</b> la grabación ya no deja tramos rectos por descartar puntos en vehículo o con GPS regular.", "<b>Video 3D:</b> el punto avanza por el mapa (la cámara ya no queda pegada a él) y el dibujo ya no depende de recargar datos en cada cuadro.", "<b>Video 3D mejorado:</b> el recorrido y el punto que avanza ahora se pintan sobre el relieve (antes salían desplazados), y la tarjeta final muestra tu nombre.", "<b>Video 3D de rutas importadas</b> (GPX/KML/KMZ/GeoJSON) con el tiempo real cuando el archivo trae horas.", "<b>📤 Compartir ubicación y puntos</b> por WhatsApp, redes o correo: el enlace se abre en Google Maps (sin Google Earth); también descarga en KML/GPX.", "<b>Celular tipo app:</b> barra inferior (Capas, Datos, Procesos, Trekking, Más), instalación como app para todos los usuarios y clima arriba a la izquierda.", "<b>Paneles alineados:</b> todos los paneles de procesamiento se abren en la misma posición que Trekking y Leyenda, y siguen siendo movibles.", "<b>Leyenda y capas:</b> nombres sin la fuente repetida; límites departamentales desmarcados al iniciar; mapa limitado al mundo.", "<b>Add Data:</b> Excel de varias hojas en carpetas separadas; pestaña <b>📍 Puntos</b> (Nombre, Este, Norte, Zona, mi ubicación, Excel/KMZ); KMZ y Excel con coordenadas UTM; «Limpiar» de imágenes corregido.", "<b>Trekking:</b> perfil flotante, ruta como insumo del perfil y del tiempo, <b>mejor ruta A→B</b> según el DEM, <b>Ir a…</b> con tiempo de recorrido y seguimiento en vehículo, botones para limpiar marcas, y descarga de mapas sin congelarse.", "<b>🎬 Video 3D</b> de la ruta, con estadísticas y descarga para redes sociales.", "<b>Ícono de la app</b> nuevo, con el contorno del mundo."], "tips": [], "probar": []}, {"id": "capas", "icono": "🗺️", "titulo": "Capas del portal e identificación", "resumen": "Activa capas y consulta la información de cada elemento con un clic.", "pasos": ["Marca la casilla de la capa en la barra lateral. Si aparece «Zoom n+», acércate hasta ese nivel. Debajo del nombre de cada capa, en letra pequeña, se indica su <b>fuente</b>.", "Haz clic sobre un elemento: el cursor cambia a un <b>dedo</b> cuando hay información para mostrar y se abre una ventana con sus atributos.", "Abre <b>Leyenda</b> para ver los colores de las capas activas. La leyenda usa nombres limpios (por ejemplo «Lagos y Lagunas», «Humedales costeros»), sin repetir la fuente.", "Los <b>límites departamentales</b> inician desmarcados; actívalos con su casilla cuando los quieras ver.", "<b>Ventana de información:</b> al hacer clic sobre el mapa se listan las capas activas en ese punto. Cada dato aparece como <b>CAMPO: valor</b> con el nombre en mayúsculas y solo con los campos útiles de cada capa (sin ID ni fecha de actualización, salvo en Pasivos mineros, y sin datos repetidos).", "<b>Campos que se muestran:</b> <b>Concesiones mineras</b>: titular, concesión, departamento, provincia y distrito · <b>Humedales costeros</b> y <b>Lomas costeras</b>: nombre, departamento, distrito y provincia · <b>Glaciares</b>: cuenca, cordillera, vertiente, departamento, provincia y distrito · <b>Sitios Ramsar</b>: nombre y ubicación (sin entidades repetidas) · <b>Unidades hidrográficas</b>: código GDB y nombre UH · <b>Centros poblados</b> y <b>Poblaciones dispersas</b>: CP, tipo, departamento, provincia y distrito · <b>Comunidades campesinas y nativas</b>: nombre, pueblo indígena y tipo."], "tips": ["Las capas se cargan para la zona que estás viendo; si te desplazas mucho, espera un instante a que se actualicen."], "probar": [["Abrir la Leyenda", "pnl:leyenda"]]}, {"id": "adddata", "icono": "📁", "titulo": "Add Data: tus propios datos", "resumen": "Carga archivos o escribe coordenadas para verlos sobre el mapa, usarlos en los análisis y descargarlos en Excel o KMZ.", "pasos": ["Abre <b>Add Data</b> (en el celular: <b>Datos</b>) y, en <b>Cargar archivo</b>, elige Excel (.xlsx/.xls), CSV, KML, KMZ, GeoJSON, GPX o ZIP (shapefile). Puedes seleccionar varios a la vez.", "<b>Excel con varias hojas:</b> se leen <b>todas las hojas llenas</b>. Cada hoja que tenga coordenadas se carga en su <b>propia carpeta</b> dentro de la capa, y el programa informa qué columnas usó en cada una y qué hojas omitió por no tener coordenadas.", "<b>Detección de coordenadas:</b> reconoce ESTE/NORTE, X/Y, LATITUD/LONGITUD y sus derivados (LAT, LON, LNG, COORD_X…), en UTM, grados decimales o grados ° ′ ″ (con letras N/S/E/O). Para tablas ESTE/NORTE elige la <b>zona UTM predeterminada</b> (Auto, 18S, 17S o 19S).", "<b>Pestaña 📍 Puntos (referencias de campo):</b> escribe <b>Nombre, Este, Norte y Zona</b> tal como los indica tu GPS (también puedes elegir coordenadas geográficas en decimales o grados ° ′ ″, y el datum WGS84 o PSAD56). Con <b>📍 Mi ubicación</b> o <b>🎯 Centro del mapa</b> se rellenan solos los campos. Pulsa <b>Agregar</b>.", "Los puntos de referencia quedan guardados en el equipo (sirven sin señal). Desde la misma pestaña puedes bajarlos en <b>Excel</b> o <b>KMZ</b> para procesarlos en gabinete o cuando tengas señal.", "<b>Compartir puntos:</b> en la pestaña 📍 Puntos usa <b>📤</b> en un punto o <b>📤 Compartir</b> para enviarlos todos; <b>📤 Mi ubicación</b> comparte tu posición actual. También las marcas de Dibujar tienen <b>📤 Compartir</b> en su ventana. Quien recibe el mensaje abre el enlace en Google Maps, sin Google Earth.", "<b>Descargas en UTM:</b> al bajar una capa en <b>KMZ</b> o <b>Excel</b>, los puntos (y los centroides) llevan también <b>ESTE_UTM, NORTE_UTM y ZONA_UTM</b>, aunque se hayan ingresado como latitud/longitud o grados. El Excel genera una hoja por carpeta.", "Los polígonos cargados reciben automáticamente los campos <b>AREA_HA</b> (hectáreas) y <b>AREA_M2</b> (metros cuadrados).", "Cada capa agregada se puede descargar en KMZ o quitar desde la lista.", "<b>Imágenes de dron:</b> en la pestaña <b>Dron</b> carga un <b>GeoTIFF</b> georreferenciado o la URL de <b>teselas XYZ</b> de tu ortomosaico. Con <b>Limpiar</b> se quitan del mapa y de la lista (también su casilla marcada)."], "tips": ["Si tu archivo ya trae campos con esos nombres, el cálculo se guarda como AREA_HA_CALC y AREA_M2_CALC para no pisar tus datos.", "«Limpiar» en Add Data quita los puntos de referencia del mapa, pero siguen guardados en el equipo y vuelven a cargarse al abrir de nuevo el geoportal.", "Los GeoTIFF se leen en tu navegador y conviene que no superen ~200 MB; para ortomosaicos más pesados usa teselas XYZ."], "probar": [["Abrir Add Data", "pnl:add"]]}, {"id": "consultas", "icono": "🔎", "titulo": "Consultas: atributos, cruce y distancias", "resumen": "Una sola pestaña con tres herramientas de análisis.", "pasos": ["Abre <b>Procesamiento → Consultas</b>: tiene tres pestañas — <b>Atributos</b>, <b>Cruce</b> y <b>Distancias</b>.", "<b>Atributos:</b> elige la capa, el campo, el criterio (contiene / es igual a) y el valor; pulsa <b>Consultar</b>.", "<b>Cruce:</b> elige la <b>capa de entrada</b> (tu archivo o «Mis dibujos») y la <b>capa de referencia</b> (polígonos del portal o tuyos) y pulsa <b>Ejecutar cruce espacial</b>; revisa la vista previa o la <b>tabla completa</b>.", "<b>Distancias:</b> se explica en la sección siguiente.", "Descarga los resultados en <b>Excel</b>, <b>CSV</b> o <b>KMZ</b> (Google Earth)."], "tips": ["Las marcas, rutas y polígonos que dibujes aparecen como capas «Mis dibujos» en estas listas."], "probar": [["Abrir Consultas", "pnl:query"]]}, {"id": "avanzadas", "icono": "📐", "titulo": "Distancias: distancia más corta", "resumen": "Pestaña «Distancias» de Consultas: calcula la distancia de tus elementos a capas del portal (lagunas, humedales, etc.).", "pasos": ["Abre <b>Procesamiento → Consultas</b> y entra en la pestaña <b>Distancias</b>.", "Elige la <b>capa de entrada</b> (tu archivo o «Mis dibujos») y marca las <b>capas a evaluar</b>.", "Elige la <b>unidad</b>: metros o kilómetros.", "Pulsa <b>Calcular distancias</b>. Puntos, líneas y polígonos se miden desde su <b>borde</b> hasta el borde más cercano; si se tocan, el resultado indica «Dentro» o «Intersecta».", "Descarga en Excel, CSV o KMZ: el KMZ incluye las líneas de distancia más corta."], "tips": ["En el mapa se dibujan líneas punteadas que unen cada elemento con su vecino más cercano."], "probar": [["Abrir Distancias", "adv"]]}, {"id": "dibujar", "icono": "✏️", "titulo": "Dibujar: marca, ruta y polígono", "resumen": "Dibuja sobre el mapa como en Google Earth y exporta lo dibujado.", "pasos": ["Abre <b>Procesamiento → Dibujar</b> y elige una herramienta. <b>Marca</b>: un clic. <b>Ruta</b> y <b>Polígono</b> (mínimo 3 vértices): clic por vértice, doble clic o Enter para finalizar, Retroceso para deshacer y Esc para cancelar.", "Cada elemento tiene color, nombre y descripción editables. Los polígonos muestran su <b>área en ha y m²</b> y su perímetro; las rutas, su longitud.", "Las marcas calculan su <b>altitud</b> (aproximada) y se pueden arrastrar para moverlas.", "Con <b>✎</b> editas los vértices de rutas y polígonos: arrastra un vértice, arrastra un punto medio para agregar uno y haz doble clic en un vértice para eliminarlo.", "Descarga en <b>KMZ</b>, <b>GeoJSON</b> o <b>Excel</b>. Los dibujos se guardan en este navegador."], "tips": ["Tus dibujos pueden usarse como capa de entrada en el cruce, las consultas y las distancias."], "probar": [["Abrir Dibujar", "pnl:draw"]]}, {"id": "satelite", "icono": "🛰", "titulo": "Satélite y DEM (NDVI, imagen, curvas de nivel)", "resumen": "Calcula índices (NDVI y otros), obtén la imagen satelital de Sentinel-2 o Landsat, o un DEM con pendiente y curvas de nivel, sobre tu área de estudio.", "pasos": ["Abre <b>Procesamiento → Satélite o DEM</b> y define el <b>área de estudio</b>: rectángulo (2 clics), polígono (clic por vértice y doble clic) o un polígono ya cargado o dibujado.", "Elige el <b>producto</b>: <b>Índice espectral e imagen satelital</b> o <b>DEM y derivados</b>.", "Con el índice: elige <b>satélite</b> (Sentinel-2 de 10 m o Landsat de 30 m), <b>periodo</b>, <b>nubosidad máxima</b>, cuántas escenas combinar (la <b>mediana</b> reduce nubes) y el <b>parámetro</b> (NDVI, EVI, SAVI, NDWI, MNDWI, NDMI, NBR, NDBI, BSI o LST en Landsat). El panel indica el <b>tipo de satélite y la fecha</b> de las imágenes usadas.", "Descarga el <b>GeoTIFF</b> del índice o de las clases, el <b>shapefile</b> de clases, la <b>imagen satelital</b> en color natural (GeoTIFF o PNG), la <b>multibanda</b> de reflectancia y un <b>CSV</b> con estadísticas y escenas.", "Con el DEM: elige la fuente (<b>Copernicus GLO-30</b>, NASADEM, ALOS o <b>SRTM</b> histórico, todas de 30 m) y descarga la <b>altitud</b>, <b>pendiente</b>, <b>orientación</b> y <b>sombreado</b> en GeoTIFF, y las <b>curvas de nivel</b> en shapefile con la equidistancia que elijas."], "tips": ["Si el catálogo no responde, revisa tu conexión; con Sentinel-2 puedes probar el catálogo AWS.", "Áreas grandes se procesan a menor resolución para no saturar el navegador.", "Las curvas de nivel generadas sirven también como fuente en Procesamiento → Perfil.", "Landsat 5 y 7 sirven para análisis históricos (1984–2012 y 1999–2022)."], "probar": [["Abrir Satélite y DEM", "pnl:sat"]]}, {"id": "perfil", "icono": "⛰", "titulo": "Perfil topográfico", "resumen": "Perfil de ingeniería de una sección con DEM propio, curvas de nivel o relieve web.", "pasos": ["Abre <b>Procesamiento → Perfil</b>, escribe el nombre de la sección (A-A') y, si quieres, el proyecto y quién lo elabora.", "Pulsa <b>Trazar sección en el mapa</b> (clic = vértice, doble clic = terminar) o elige una línea ya cargada o dibujada.", "<b>Desde una ruta de Trekking:</b> en <b>Trekking → Ruta meta</b> pulsa <b>⛰ Perfil topográfico</b>; la ruta cargada (archivo, trazada, calculada o seguida) se usa como sección y se genera el perfil.", "En <b>Fuente de altitud</b> elige: <b>Copernicus GLO-30</b> (análisis principal), <b>NASADEM</b> o <b>ALOS AW3D30</b> (comparación), <b>Terrarium</b> (referencia web rápida), <b>DEM propio</b> (GeoTIFF .tif) o <b>Curvas de nivel</b> (SHP .zip, KMZ, KML, GeoJSON o DXF) y adjunta el archivo cuando corresponda.", "Con curvas de nivel indica el <b>campo de cota</b> (se detecta solo); con un DEM o curvas proyectadas sin sistema indicado, elígelo en <b>Sistema de coordenadas</b>.", "Ajusta la <b>exageración vertical</b>, las <b>estaciones</b> y las bandas, y pulsa <b>Generar perfil</b>.", "Descarga el resultado en <b>PNG</b>, <b>SVG</b>, <b>DXF</b> (AutoCAD) o <b>Excel</b> con el gráfico y las tablas."], "tips": ["Con curvas de nivel la cota se interpola entre cruces consecutivos; no se puede estimar una cima entre dos cruces de la misma curva.", "Cada perfil incluye la ficha de la fuente (proveedor, resolución, tipo de modelo, datum, licencia y parámetros). Los perfiles leen el ráster original, no las teselas visuales."], "probar": [["Abrir Perfil topográfico", "pnl:perfil"]]}, {"id": "tiempo", "icono": "⏱", "titulo": "Tiempo de recorrido", "resumen": "Adjunta una ruta y obtén su distancia y el tiempo de viaje de A a B.", "pasos": ["Abre <b>Procesamiento → Tiempo</b> y adjunta la ruta en <b>KMZ, KML, SHP (.zip o .shp+.dbf+.prj), GeoJSON o GPX</b>; también puedes elegir una capa con líneas ya cargada o una ruta de <b>Mis dibujos</b>.", "<b>Desde Trekking:</b> con una ruta meta cargada pulsa <b>⏱ Tiempo</b> en <b>Trekking → Ruta meta</b>: la ruta ya queda seleccionada como capa («🥾 Ruta de trekking»).", "Elige el <b>modo</b>: a pie y caballo/mula ajustan la velocidad a la pendiente (Tobler); en vehículo, moto o embarcación escribe la <b>velocidad</b> en km/h.", "Con <b>Considerar relieve</b> se lee el DEM para dar desnivel, distancia inclinada y el tiempo de retorno (B→A).", "Opcional: <b>pausas</b> en minutos por hora de viaje.", "Pulsa <b>Calcular tiempo</b>; se dibujan el origen (A) y el destino (B) y puedes bajar el resultado en <b>Excel</b>."], "tips": ["Si el shapefile no trae .prj y sus coordenadas son UTM, indica la zona y el datum antes de adjuntarlo."], "probar": [["Abrir Tiempo de recorrido", "pnl:tiempo"]]}, {"id": "regla", "icono": "📏", "titulo": "Regla: medir distancias", "resumen": "Mide de un punto a otro sin dibujar nada permanente.", "pasos": ["Abre <b>Procesamiento → Regla</b> y haz clic en el mapa para marcar los puntos; cada tramo y el acumulado se muestran en el mapa y en el panel.", "Elige la <b>unidad</b>: metros o kilómetros.", "La distancia es <b>horizontal, en planta</b> (no considera altitud ni desnivel) y la etiqueta de cada tramo se alinea con la línea.", "Activa <b>Referenciar a entidades (snap)</b> para que cada clic se ajuste al <b>vértice</b> (origen / final de líneas, puntos, esquinas de polígonos) o al <b>punto más cercano del borde</b> de las capas visibles y de tus capas agregadas, por ejemplo de una plataforma a un centro poblado o a una laguna. Un círculo verde marca el punto antes de hacer clic y la tabla indica la entidad referenciada.", "<b>Deshacer punto</b> (Retroceso) y <b>Limpiar</b> (Supr). Con <b>Guardar como ruta</b> la medición pasa a Dibujar.", "También funciona sobre la Vista 3D."], "tips": ["La distancia es geodésica, calculada sobre el elipsoide WGS84."], "probar": [["Abrir la Regla", "pnl:regla"]]}, {"id": "vista3d", "icono": "🧊", "titulo": "Vista 3D", "resumen": "El mismo mapa en 3D, con relieve, capas y dibujos sobre el terreno.", "pasos": ["Pulsa <b>Vista 3D</b>: se usa el mismo mapa base que tengas activo. Con <b>Volver al 2D</b> regresas a la misma zona.", "<b>Arrastra</b> para desplazarte y usa la <b>rueda</b> para acercar.", "<b>Globo:</b> aleja el zoom con la rueda y la Tierra se muestra como un globo con atmósfera; el botón <b>🌐 Globo</b> la muestra completa. Desde el 2D, si sigues alejando el zoom más allá del mínimo, se abre sola la Vista 3D.", "<b>Mayús + rueda</b> gira la vista, <b>Alt + rueda</b> la inclina y, con la <b>rueda presionada</b> (o clic derecho), arrastrar gira e inclina.", "Ajusta el <b>relieve</b> (exageración vertical) y la <b>inclinación</b> con los deslizadores; la flecha de <b>Norte</b> gira con la vista y, al pulsarla, orienta al norte.", "Activa o desactiva <b>Mis dibujos</b>, <b>Capas agregadas</b> y <b>Capas del portal</b>.", "Haz clic en el relieve para ver coordenadas, UTM y altitud, y guardar el punto como marca."], "tips": ["Si activas capas del portal estando en 3D, pulsa ↻ Capas para recargarlas."], "probar": [["Activar / desactivar la Vista 3D", "3d"]]}, {"id": "coordenadas", "icono": "🧮", "titulo": "Coordenadas, zonas y cuadrantes UTM", "resumen": "Elige cómo ver las coordenadas y muestra la cuadrícula UTM de todo el planeta.", "pasos": ["La <b>barra inferior</b> muestra las coordenadas del cursor y su altitud aproximada. Con el selector eliges <b>Geográficas (° decimales)</b>, <b>Geográficas (° ′ ″)</b> o <b>UTM (WGS84)</b>.", "También indica la <b>zona</b> y el <b>cuadrante</b> del punto (por ejemplo, Z18 · L).", "La casilla <b>Zonas UTM</b> dibuja los meridianos y rotula las zonas Z1–Z60 (en Perú, Z17, Z18 y Z19).", "La casilla <b>Cuadrantes</b> dibuja las bandas de latitud C–X (en Perú, K, L y M).", "Con ambas activas cada celda se rotula con su designación completa (por ejemplo, 18L)."], "tips": ["Funciona igual en 2D y en 3D."], "probar": [["Activar Zonas UTM", "zonas"], ["Activar Cuadrantes", "cuadr"]]}, {"id": "ubicacion", "icono": "🎯", "titulo": "Mi ubicación", "resumen": "Ubícate en el mapa con el GPS o la red de tu equipo.", "pasos": ["Pulsa el botón con mira, bajo el botón de inicio del mapa 2D.", "El mapa se centra en tu posición con un círculo de precisión. El cuadro muestra latitud/longitud, UTM, altitud (y altitud GPS si el equipo la entrega) y la precisión.", "Usa <b>Guardar como marca</b> para conservar el punto en Dibujar.", "<b>Compartir ubicación o puntos (WhatsApp, redes, Google Maps):</b> pulsa <b>📤 Compartir</b> en el cuadro de tu ubicación. Se envía un enlace que se abre en <b>Google Maps</b> (o el mapa del celular) sin necesitar Google Earth, con las coordenadas UTM como texto. Opciones: <b>💬 WhatsApp</b>, <b>📤 Compartir</b> (Instagram, Messenger, correo…), <b>🔗 Copiar enlace</b>, <b>🗺 Ver en Google Maps</b> y descarga en <b>KML</b> o <b>GPX</b>.", "<b>Compartir cualquier punto del mapa:</b> clic derecho en PC, o mantén pulsado en el celular, y elige <b>📤 Compartir este punto</b>."], "tips": ["Requiere que la página se abra con HTTPS (o localhost) y que permitas la ubicación en el navegador."], "probar": [["Ubicarme ahora", "ubicacion"]]}, {"id": "trekking", "icono": "🥾", "titulo": "Trekking: GPS sin conexión", "resumen": "Graba tu recorrido con el GPS del celular (sin internet), sigue una ruta meta, calcula la mejor ruta según el relieve, obtén el tiempo de viaje a un destino y genera un video 3D de lo caminado.", "pasos": ["<b>Grabar (funciona sin internet):</b> abre <b>Trekking</b> y pulsa <b>Iniciar grabación</b>. Verás distancia, tiempo total y en movimiento, velocidad, ritmo, desnivel positivo y negativo, altitud y el perfil. La ruta se guarda en el teléfono mientras grabas. <b>Marcar punto</b> guarda un punto de interés; <b>Volver por mi ruta</b> te guía de regreso por donde viniste. Mantén la pantalla encendida y la app abierta.", "<b>Ruta meta:</b> carga un GPX/KML/KMZ/GeoJSON, usa una línea ya cargada o trázala tocando el mapa. Al grabar con una ruta meta ves cuánto falta, el rumbo, la hora estimada de llegada y el desvío, con avisos por vibración y sonido si te sales o llegas. La ruta meta también queda como capa («🥾 Ruta de trekking»): usa <b>⛰ Perfil topográfico</b> y <b>⏱ Tiempo</b> para analizarla en esos procesos.", "<b>Perfil flotante:</b> al cargar, trazar o calcular una ruta aparece un gráfico flotante con la distancia, el desnivel (+/−), las altitudes mínima y máxima y el tiempo estimado. Pasa el dedo o el cursor por el gráfico para ver en el mapa el punto, su altitud y su pendiente. Puedes minimizarlo (▾) o cerrarlo (✕).", "<b>Mejor ruta entre A y B (relieve):</b> en <b>Ruta meta</b> marca el punto <b>A</b> (o usa 📍 tu ubicación) y el punto <b>B</b>, elige el criterio (más rápida, menos desnivel o más directa), la <b>pendiente máxima</b> permitida y, si quieres, una capa de caminos que se preferirá. Pulsa <b>Calcular mejor ruta</b>: se busca la ruta de menor esfuerzo sobre el DEM con la velocidad de caminata de Tobler.", "<b>Ir a… (tiempo de recorrido):</b> elige el origen (tu ubicación o un punto del mapa) y el destino (búscalo por nombre o tócalo en el mapa), y el medio (auto, a pie o bicicleta). Obtienes el tiempo, la distancia, la hora de llegada y las indicaciones de giro para los tres medios. <b>Iniciar recorrido</b> activa el seguimiento con GPS (también en vehículo): avisa los giros, muestra lo que falta y recalcula si te sales de la ruta.", "<b>Limpiar marcas:</b> los puntos de origen, destino, A y B se quitan tocándolos o con el botón <b>🧹 Limpiar puntos</b>; <b>Quitar ruta meta</b> también limpia A y B.", "<b>Mis rutas:</b> al <b>Finalizar</b> la ruta se guarda en el teléfono. Desde ahí puedes verla, seguirla de nuevo, descargarla en <b>GPX, KML o GeoJSON</b>, recalcular sus altitudes con el DEM y generar su <b>🎬 Video 3D</b>.", "<b>Sin conexión:</b> con internet, entra en <b>Sin conexión</b> y pulsa <b>Descargar zona</b> (lo que ves o un corredor alrededor de tu ruta; marca «Incluir altitudes (DEM)»). Si la zona es demasiado grande (más de 12 000 teselas) la app te avisa y sugiere un zoom máximo o que acerques el mapa. Hazlo <b>antes</b> de salir."], "tips": ["Sin internet funcionan la grabación, las alertas, el perfil y los mapas descargados. Necesitan internet: <b>Ir a…</b> (sin señal da solo una estimación en línea recta), la mejor ruta fuera de las zonas descargadas, el clima, las capas de Supabase y el video 3D (salvo zonas descargadas).", "El navegador solo registra el GPS con la app abierta y la pantalla encendida: no la bloquees ni cambies de aplicación durante la grabación. Si se cierra por error, al volver te ofrece recuperar la grabación.", "La altitud del GPS del celular tiene error de 10–30 m; el desnivel se suaviza y es aproximado. En Mis rutas puedes recalcular altitudes con el DEM.", "La mejor ruta por relieve usa un DEM de ~30 m y no conoce caminos reales salvo que elijas una capa de caminos: verifícala en campo. «Ir a…» usa servicios de OpenStreetMap y no considera el tráfico.", "Si el trazo sale con tramos rectos es porque el GPS tuvo poca precisión (más de ±30 m) o el celular quedó bloqueado. La app avisa «Señal GPS débil»; busca cielo abierto y no cambies de aplicación. Si el GPS lleva más de 20 s sin un punto bueno, se acepta uno regular para no dejar huecos, y en vehículo ya no se descartan puntos por la velocidad."], "probar": [["Abrir Trekking", "pnl:trek"]]}, {"id": "video3d", "icono": "🎬", "titulo": "Video 3D de tu ruta", "resumen": "Genera un video con un vuelo 3D sobre el relieve siguiendo lo que caminaste (ida y vuelta incluida), con las estadísticas al final, listo para Instagram o Facebook.", "pasos": ["Abre <b>Trekking → Mis rutas</b> y pulsa <b>🎬 Video 3D</b> en la ruta que quieras (o <b>🎬 Video 3D</b> en <b>Ruta meta</b> para la ruta cargada).", "<b>Con rutas anteriores:</b> carga tu KMZ, KML, GPX o GeoJSON en <b>Trekking → Ruta meta</b> y pulsa <b>🎬 Video 3D</b>. Si el GPX (o el KML de Google Earth con trayecto temporal) trae horas, el video muestra también el <b>tiempo real</b> y las estadísticas finales lo incluyen; si no las trae (KMZ de líneas dibujadas), se muestran distancia, altitud y desnivel.", "Espera a que cargue el relieve y las imágenes. Luego pulsa <b>▶</b> para ver el vuelo, mueve la barra de tiempo, o <b>arrastra</b> sobre el video para girar la cámara (doble toque la restablece).", "<b>Cómo se mueve la cámara:</b> mantiene la vista un tramo mientras el <b>punto avanza visiblemente por el mapa</b> dejando el recorrido en color, y luego se desliza al siguiente tramo. En recorridos cortos la cámara queda fija y el punto cruza toda la ruta.", "En <b>⚙ Opciones</b> elige el <b>formato</b> (vertical 9:16 para Reels y Stories, vertical ligero, cuadrado 1:1 u horizontal 16:9), la <b>duración</b> del recorrido (20–60 s), el mapa (satélite o topográfico), la exageración del relieve, el color de la ruta y si se muestra la marca «GeoPortal».", "Durante el vuelo se muestran distancia, altitud, desnivel acumulado y tiempo, con el perfil de altitud. Al final aparece la tarjeta <b>¡Recorrido completado!</b> con distancia, tiempo total y en movimiento, desnivel +/−, altitud máxima y mínima y velocidad media.", "Pulsa <b>🎥 Grabar video</b>: se graba en tiempo real. Al terminar puedes verlo, <b>⬇ Descargar</b> o <b>📤 Compartir</b> directamente.", "<b>Tu nombre al final:</b> en <b>⚙ Opciones</b> escribe «Tu nombre» (por ejemplo, Lenin Rojas); aparece en la tarjeta final <b>¡Recorrido completado!</b>. Se propone según tu sesión y queda recordado en este equipo."], "tips": ["Necesita internet (o la zona descargada). Mientras graba no cambies de aplicación ni bloquees la pantalla.", "Chrome actualizado en Android graba en MP4 (lo que piden Instagram y Facebook). Si tu navegador graba WebM, conviértelo a MP4 con una app o servicio de conversión. El video sale sin audio; puedes añadir música al subirlo.", "Si el celular va lento o se calienta, usa el formato «Vertical ligero 540×960».", "Las altitudes salen del archivo; si no las trae, se estiman con el modelo de elevación del mapa.", "La ruta, el punto que avanza (con su halo), el inicio, el final y tus puntos marcados se dibujan sobre el relieve 3D, así que siempre coinciden con el terreno."], "probar": [["Abrir Trekking", "pnl:trek"]]}, {"id": "atajos", "icono": "⌨️", "titulo": "Atajos y recomendaciones", "resumen": "Teclas útiles y puntos a tener presentes.", "tabla": [["Esc", "Cancela el dibujo o la edición en curso"], ["Enter", "Finaliza la ruta, el polígono o la edición"], ["Retroceso", "Deshace el último vértice o el último punto de la regla"], ["Supr", "Limpia la medición de la regla"], ["Mayús + rueda (3D)", "Gira la vista"], ["Alt + rueda (3D)", "Inclina la vista"], ["Rueda presionada + arrastrar (3D)", "Gira e inclina"], ["Doble clic en un vértice (editar)", "Elimina el vértice"]], "pasos": ["<b>Altitud:</b> proviene de un modelo digital de elevación global (resolución real ~30 m): es aproximada y no reemplaza una cota medida en campo.", "<b>Áreas:</b> se calculan sobre el elipsoide y se muestran en hectáreas y metros cuadrados.", "<b>Datos en el navegador:</b> los dibujos y preferencias se guardan localmente; descarga tus resultados para conservarlos o compartirlos.", "<b>Internet:</b> los mapas base, el relieve 3D, el buscador de lugares, el clima y «Ir a…» requieren conexión; la grabación de Trekking y los mapas descargados funcionan sin ella."], "tips": [], "probar": []}];
+const MANUAL_VERSION = "19 de noviembre de 2026";
+const MANUAL = [{"id": "inicio", "icono": "🧭", "titulo": "Primeros pasos", "resumen": "El geoportal reúne un mapa 2D/3D, las capas del portal, tus propios datos, herramientas de análisis y dibujo, y un módulo de Trekking con GPS que funciona sin conexión.", "pasos": ["<b>Barra lateral:</b> busca un lugar o un límite por nombre y activa las capas del portal con su casilla (límites, catastro minero, ecosistemas frágiles y social). Algunas capas aparecen solo al acercarte («Zoom n+»). Los <b>límites departamentales</b> empiezan desmarcados para no saturar el mapa; actívalos cuando los necesites.", "<b>En PC – barra superior:</b> Leyenda, Add Data, <b>Procesamiento</b> (Consultas, Dibujar, Tiempo, Regla, Buffer, Clip, Dissolve, Perfil, Satélite y DEM, en un menú desplegable), Teledetección, Trekking, Vista 3D y Manual.", "<b>En el celular – barra inferior (tipo app):</b> <b>Capas</b> (abre la barra lateral), <b>Datos</b> (Add Data), <b>Procesos</b> (todas las herramientas de análisis y teledetección), <b>Trekking</b> y <b>Más</b> (Leyenda, Vista 3D, Manual e <b>Instalar app</b>).", "<b>Paneles:</b> todos se abren en la misma posición, bajo la barra superior (en PC) o sobre la barra inferior (en el celular). En PC puedes moverlos con <b>⠿ Arrastrar</b>; al cerrarlos y abrirlos de nuevo vuelven a su lugar.", "<b>Globo de mapas base</b> (arriba a la derecha): imágenes con etiquetas, topográfico o calles. Debajo está la flecha de <b>Norte</b>. El mapa muestra solo el mundo: no se desplaza más allá de sus bordes.", "<b>Clima:</b> el resumen flotante aparece arriba a la izquierda en el celular y se despliega hacia abajo sin tapar los paneles.", "<b>Barra inferior de coordenadas:</b> en PC muestra coordenadas y altitud bajo el cursor, formato, zonas UTM y cuadrantes; en el celular se muestra una versión compacta (coordenadas, zona y elevación).", "<b>Instalar como app:</b> en Android (Chrome) usa <b>Más → 📲 Instalar app</b> o la pestaña <b>Trekking → Sin conexión → Instalar como app</b>; en iPhone abre la página en Safari › Compartir › <b>Añadir a pantalla de inicio</b>. Si abres el enlace desde WhatsApp o Facebook, ábrelo antes en Chrome."], "tips": ["Tus dibujos, el formato de coordenadas, las zonas UTM y tus puntos de referencia se guardan en este navegador.", "Si ves una versión anterior después de una actualización: espera el check verde en GitHub, borra los datos del sitio (o recarga con Ctrl+F5 en PC) y, en el celular, desinstala y vuelve a instalar la app. La versión de este manual aparece en su título."], "probar": [["Abrir la Leyenda", "pnl:leyenda"]]}, {"id": "novedades", "icono": "🆕", "titulo": "Novedades de esta versión (19 de noviembre de 2026)", "resumen": "Resumen de lo último que se agregó o corrigió. Cada sección de este manual ya incluye el detalle.", "pasos": ["<b>Mapa base:</b> carga más rápida y sin fondo gris; las teselas fallidas se reintentan solas y se guardan para usarlas sin señal.", "<b>Teledetección:</b> los <b>índices espectrales</b> inician ocultos y se despliegan como «Procesamiento avanzado».", "<b>Distancias:</b> el resultado trae los campos de <b>ambas capas</b> (tuya y del portal), el KMZ incluye la geometría de ambas y el mapa muestra la <b>distancia como etiqueta</b> a lo largo de cada línea.", "<b>Perfil topográfico:</b> el DXF para AutoCAD sale a <b>escala real</b> (1 unidad = 1 m en horizontal y vertical); se quitó la descarga SVG.", "<b>DEM:</b> se quitó la descarga de mapa base GeoTIFF (está en Teledetección) y se añadió <b>FABDEM</b> (terreno sin vegetación ni edificios, 30 m) para <b>uso investigativo y comparativo</b>: descarga sus teselas y cárgalas como DEM.", "<b>Add Data:</b> para capas de puntos o sondajes aparece <b>⛰ Extraer altitud</b> (Copernicus GLO-30); ya no está en la sección DEM.", "<b>Video del recorrido:</b> se reemplazó el video (que fallaba) por un <b>video 2D</b> sobre el mapa satelital o topográfico: el punto avanza dejando la ruta en color, con estadísticas y tarjeta final con tu nombre. Funciona sin WebGL ni relieve.", "<b>Ventana de información de las capas</b> ordenada: <b>CAMPO: valor</b> en mayúsculas, solo los campos pedidos para cada capa, sin ID/updated_at (salvo Pasivos mineros) ni duplicados; Humedales costeros y Lomas costeras con título más legible; Sitios Ramsar sin repetidos.", "<b>Trekking:</b> la grabación ya no deja tramos rectos por descartar puntos en vehículo o con GPS regular.", "<b>📤 Compartir ubicación y puntos</b> por WhatsApp, redes o correo: el enlace se abre en Google Maps (sin Google Earth); también descarga en KML/GPX.", "<b>Celular tipo app:</b> barra inferior (Capas, Datos, Procesos, Trekking, Más), instalación como app para todos los usuarios y clima arriba a la izquierda.", "<b>Paneles alineados:</b> todos los paneles de procesamiento se abren en la misma posición que Trekking y Leyenda, y siguen siendo movibles.", "<b>Leyenda y capas:</b> nombres sin la fuente repetida; límites departamentales desmarcados al iniciar; mapa limitado al mundo.", "<b>Add Data:</b> Excel de varias hojas en carpetas separadas; pestaña <b>📍 Puntos</b> (Nombre, Este, Norte, Zona, mi ubicación, Excel/KMZ); KMZ y Excel con coordenadas UTM; «Limpiar» de imágenes corregido.", "<b>Trekking:</b> perfil flotante, ruta como insumo del perfil y del tiempo, <b>mejor ruta A→B</b> según el DEM, <b>Ir a…</b> con tiempo de recorrido y seguimiento en vehículo, botones para limpiar marcas, y descarga de mapas sin congelarse.", "<b>🎬 Video</b> de la ruta, con estadísticas y descarga para redes sociales.", "<b>Ícono de la app</b> nuevo, con el contorno del mundo."], "tips": [], "probar": []}, {"id": "capas", "icono": "🗺️", "titulo": "Capas del portal e identificación", "resumen": "Activa capas y consulta la información de cada elemento con un clic.", "pasos": ["Marca la casilla de la capa en la barra lateral. Si aparece «Zoom n+», acércate hasta ese nivel. Debajo del nombre de cada capa, en letra pequeña, se indica su <b>fuente</b>.", "Haz clic sobre un elemento: el cursor cambia a un <b>dedo</b> cuando hay información para mostrar y se abre una ventana con sus atributos.", "Abre <b>Leyenda</b> para ver los colores de las capas activas. La leyenda usa nombres limpios (por ejemplo «Lagos y Lagunas», «Humedales costeros»), sin repetir la fuente.", "Los <b>límites departamentales</b> inician desmarcados; actívalos con su casilla cuando los quieras ver.", "<b>Ventana de información:</b> al hacer clic sobre el mapa se listan las capas activas en ese punto. Cada dato aparece como <b>CAMPO: valor</b> con el nombre en mayúsculas y solo con los campos útiles de cada capa (sin ID ni fecha de actualización, salvo en Pasivos mineros, y sin datos repetidos).", "<b>Campos que se muestran:</b> <b>Concesiones mineras</b>: titular, concesión, departamento, provincia y distrito · <b>Humedales costeros</b> y <b>Lomas costeras</b>: nombre, departamento, distrito y provincia · <b>Glaciares</b>: cuenca, cordillera, vertiente, departamento, provincia y distrito · <b>Sitios Ramsar</b>: nombre y ubicación (sin entidades repetidas) · <b>Unidades hidrográficas</b>: código GDB y nombre UH · <b>Centros poblados</b> y <b>Poblaciones dispersas</b>: CP, tipo, departamento, provincia y distrito · <b>Comunidades campesinas y nativas</b>: nombre, pueblo indígena y tipo."], "tips": ["Las capas se cargan para la zona que estás viendo; si te desplazas mucho, espera un instante a que se actualicen."], "probar": [["Abrir la Leyenda", "pnl:leyenda"]]}, {"id": "adddata", "icono": "📁", "titulo": "Add Data: tus propios datos", "resumen": "Carga archivos o escribe coordenadas para verlos sobre el mapa, usarlos en los análisis y descargarlos en Excel o KMZ.", "pasos": ["Abre <b>Add Data</b> (en el celular: <b>Datos</b>) y, en <b>Cargar archivo</b>, elige Excel (.xlsx/.xls), CSV, KML, KMZ, GeoJSON, GPX o ZIP (shapefile). Puedes seleccionar varios a la vez.", "<b>Excel con varias hojas:</b> se leen <b>todas las hojas llenas</b>. Cada hoja que tenga coordenadas se carga en su <b>propia carpeta</b> dentro de la capa, y el programa informa qué columnas usó en cada una y qué hojas omitió por no tener coordenadas.", "<b>Detección de coordenadas:</b> reconoce ESTE/NORTE, X/Y, LATITUD/LONGITUD y sus derivados (LAT, LON, LNG, COORD_X…), en UTM, grados decimales o grados ° ′ ″ (con letras N/S/E/O). Para tablas ESTE/NORTE elige la <b>zona UTM predeterminada</b> (Auto, 18S, 17S o 19S).", "<b>Pestaña 📍 Puntos (referencias de campo):</b> escribe <b>Nombre, Este, Norte y Zona</b> tal como los indica tu GPS (también puedes elegir coordenadas geográficas en decimales o grados ° ′ ″, y el datum WGS84 o PSAD56). Con <b>📍 Mi ubicación</b> o <b>🎯 Centro del mapa</b> se rellenan solos los campos. Pulsa <b>Agregar</b>.", "Los puntos de referencia quedan guardados en el equipo (sirven sin señal). Desde la misma pestaña puedes bajarlos en <b>Excel</b> o <b>KMZ</b> para procesarlos en gabinete o cuando tengas señal.", "<b>Compartir puntos:</b> en la pestaña 📍 Puntos usa <b>📤</b> en un punto o <b>📤 Compartir</b> para enviarlos todos; <b>📤 Mi ubicación</b> comparte tu posición actual. También las marcas de Dibujar tienen <b>📤 Compartir</b> en su ventana. Quien recibe el mensaje abre el enlace en Google Maps, sin Google Earth.", "<b>Descargas en UTM:</b> al bajar una capa en <b>KMZ</b> o <b>Excel</b>, los puntos (y los centroides) llevan también <b>ESTE_UTM, NORTE_UTM y ZONA_UTM</b>, aunque se hayan ingresado como latitud/longitud o grados. El Excel genera una hoja por carpeta.", "Los polígonos cargados reciben automáticamente los campos <b>AREA_HA</b> (hectáreas) y <b>AREA_M2</b> (metros cuadrados).", "<b>⛰ Extraer altitud:</b> si la capa tiene puntos o sondajes, aparece este bloque en Add Data: elige la capa y pulsa <b>Extraer altitud (Copernicus GLO-30)</b>; descarga CSV, Excel o KMZ con la cota.", "Cada capa agregada se puede descargar en KMZ o quitar desde la lista.", "<b>Imágenes de dron:</b> en la pestaña <b>Dron</b> carga un <b>GeoTIFF</b> georreferenciado o la URL de <b>teselas XYZ</b> de tu ortomosaico. Con <b>Limpiar</b> se quitan del mapa y de la lista (también su casilla marcada)."], "tips": ["Si tu archivo ya trae campos con esos nombres, el cálculo se guarda como AREA_HA_CALC y AREA_M2_CALC para no pisar tus datos.", "«Limpiar» en Add Data quita los puntos de referencia del mapa, pero siguen guardados en el equipo y vuelven a cargarse al abrir de nuevo el geoportal.", "Los GeoTIFF se leen en tu navegador y conviene que no superen ~200 MB; para ortomosaicos más pesados usa teselas XYZ."], "probar": [["Abrir Add Data", "pnl:add"]]}, {"id": "consultas", "icono": "🔎", "titulo": "Consultas: atributos, cruce y distancias", "resumen": "Una sola pestaña con tres herramientas de análisis.", "pasos": ["Abre <b>Procesamiento → Consultas</b>: tiene tres pestañas — <b>Atributos</b>, <b>Cruce</b> y <b>Distancias</b>.", "<b>Atributos:</b> elige la capa, el campo, el criterio (contiene / es igual a) y el valor; pulsa <b>Consultar</b>.", "<b>Cruce:</b> elige la <b>capa de entrada</b> (tu archivo o «Mis dibujos») y la <b>capa de referencia</b> (polígonos del portal o tuyos) y pulsa <b>Ejecutar cruce espacial</b>; revisa la vista previa o la <b>tabla completa</b>.", "<b>Distancias:</b> se explica en la sección siguiente.", "Descarga los resultados en <b>Excel</b>, <b>CSV</b> o <b>KMZ</b> (Google Earth)."], "tips": ["Las marcas, rutas y polígonos que dibujes aparecen como capas «Mis dibujos» en estas listas."], "probar": [["Abrir Consultas", "pnl:query"]]}, {"id": "avanzadas", "icono": "📐", "titulo": "Distancias: distancia más corta", "resumen": "Pestaña «Distancias» de Consultas: calcula la distancia de tus elementos a capas del portal (lagunas, humedales, etc.).", "pasos": ["Abre <b>Procesamiento → Consultas</b> y entra en la pestaña <b>Distancias</b>.", "Elige la <b>capa de entrada</b> (tu archivo o «Mis dibujos») y marca las <b>capas a evaluar</b>.", "Elige la <b>unidad</b>: metros o kilómetros.", "Pulsa <b>Calcular distancias</b>. Puntos, líneas y polígonos se miden desde su <b>borde</b> hasta el borde más cercano; si se tocan, el resultado indica «Dentro» o «Intersecta».", "Descarga en Excel, CSV o KMZ. La tabla y el Excel incluyen los <b>campos de tu capa y de la capa del portal</b> (con el código de la capa como prefijo); el KMZ trae las <b>geometrías de ambas</b> y las líneas de distancia más corta."], "tips": ["En el mapa se dibujan líneas punteadas que unen cada elemento con su vecino más cercano.", "En el mapa cada línea muestra su <b>distancia como etiqueta</b> girada a lo largo del trazo; desactiva «dibujar líneas» si no la necesitas."], "probar": [["Abrir Distancias", "adv"]]}, {"id": "dibujar", "icono": "✏️", "titulo": "Dibujar: marca, ruta y polígono", "resumen": "Dibuja sobre el mapa como en Google Earth y exporta lo dibujado.", "pasos": ["Abre <b>Procesamiento → Dibujar</b> y elige una herramienta. <b>Marca</b>: un clic. <b>Ruta</b> y <b>Polígono</b> (mínimo 3 vértices): clic por vértice, doble clic o Enter para finalizar, Retroceso para deshacer y Esc para cancelar.", "Cada elemento tiene color, nombre y descripción editables. Los polígonos muestran su <b>área en ha y m²</b> y su perímetro; las rutas, su longitud.", "Las marcas calculan su <b>altitud</b> (aproximada) y se pueden arrastrar para moverlas.", "Con <b>✎</b> editas los vértices de rutas y polígonos: arrastra un vértice, arrastra un punto medio para agregar uno y haz doble clic en un vértice para eliminarlo.", "Descarga en <b>KMZ</b>, <b>GeoJSON</b> o <b>Excel</b>. Los dibujos se guardan en este navegador."], "tips": ["Tus dibujos pueden usarse como capa de entrada en el cruce, las consultas y las distancias."], "probar": [["Abrir Dibujar", "pnl:draw"]]}, {"id": "satelite", "icono": "🛰", "titulo": "Satélite y DEM (NDVI, imagen, curvas de nivel)", "resumen": "Calcula índices (NDVI y otros), obtén la imagen satelital de Sentinel-2 o Landsat, o un DEM con pendiente y curvas de nivel, sobre tu área de estudio.", "pasos": ["Abre <b>Procesamiento → Satélite o DEM</b> y define el <b>área de estudio</b>: rectángulo (2 clics), polígono (clic por vértice y doble clic) o un polígono ya cargado o dibujado.", "Elige el <b>producto</b>: <b>Índice espectral e imagen satelital</b> o <b>DEM y derivados</b>.", "Con el índice: elige <b>satélite</b> (Sentinel-2 de 10 m o Landsat de 30 m), <b>periodo</b>, <b>nubosidad máxima</b>, cuántas escenas combinar (la <b>mediana</b> reduce nubes) y el <b>parámetro</b> (NDVI, EVI, SAVI, NDWI, MNDWI, NDMI, NBR, NDBI, BSI o LST en Landsat). El panel indica el <b>tipo de satélite y la fecha</b> de las imágenes usadas.", "Descarga el <b>GeoTIFF</b> del índice o de las clases, el <b>shapefile</b> de clases, la <b>imagen satelital</b> en color natural (GeoTIFF o PNG), la <b>multibanda</b> de reflectancia y un <b>CSV</b> con estadísticas y escenas. Los <b>índices espectrales</b> están plegados por defecto: despliégalos para elegir el índice.", "Con el DEM: elige la fuente (<b>Copernicus GLO-30</b>, NASADEM, ALOS, <b>SRTM</b> histórico o <b>FABDEM</b>, un modelo del terreno sin vegetación ni edificios, <b>solo para uso investigativo y comparativo</b> (licencia CC BY-NC-SA 4.0): descarga sus teselas y cárgalas aquí como GeoTIFF) y descarga la altitud, pendiente, orientación, sombreado o curvas de nivel. La imagen de mapa base en GeoTIFF se descarga desde Teledetección."], "tips": ["Si el catálogo no responde, revisa tu conexión; con Sentinel-2 puedes probar el catálogo AWS.", "Áreas grandes se procesan a menor resolución para no saturar el navegador.", "Las curvas de nivel generadas sirven también como fuente en Procesamiento → Perfil.", "Landsat 5 y 7 sirven para análisis históricos (1984–2012 y 1999–2022)."], "probar": [["Abrir Satélite y DEM", "pnl:sat"]]}, {"id": "perfil", "icono": "⛰", "titulo": "Perfil topográfico", "resumen": "Perfil de ingeniería de una sección con DEM propio, curvas de nivel o relieve web.", "pasos": ["Abre <b>Procesamiento → Perfil</b>, escribe el nombre de la sección (A-A') y, si quieres, el proyecto y quién lo elabora.", "Pulsa <b>Trazar sección en el mapa</b> (clic = vértice, doble clic = terminar) o elige una línea ya cargada o dibujada.", "<b>Desde una ruta de Trekking:</b> en <b>Trekking → Ruta meta</b> pulsa <b>⛰ Perfil topográfico</b>; la ruta cargada (archivo, trazada, calculada o seguida) se usa como sección y se genera el perfil.", "En <b>Fuente de altitud</b> elige: <b>Copernicus GLO-30</b> (análisis principal), <b>NASADEM</b> o <b>ALOS AW3D30</b> (comparación), <b>Terrarium</b> (referencia web rápida), <b>DEM propio</b> (GeoTIFF .tif) o <b>Curvas de nivel</b> (SHP .zip, KMZ, KML, GeoJSON o DXF) y adjunta el archivo cuando corresponda.", "Con curvas de nivel indica el <b>campo de cota</b> (se detecta solo); con un DEM o curvas proyectadas sin sistema indicado, elígelo en <b>Sistema de coordenadas</b>.", "Ajusta la <b>exageración vertical</b>, las <b>estaciones</b> y las bandas, y pulsa <b>Generar perfil</b>.", "Descarga el resultado en <b>PNG</b>, <b>DXF</b> (AutoCAD) o <b>Excel</b> con el gráfico y las tablas."], "tips": ["Con curvas de nivel la cota se interpola entre cruces consecutivos; no se puede estimar una cima entre dos cruces de la misma curva.", "Cada perfil incluye la ficha de la fuente (proveedor, resolución, tipo de modelo, datum, licencia y parámetros). Los perfiles leen el ráster original, no las teselas visuales.", "El <b>DXF</b> se genera a <b>escala real</b>: 1 unidad = 1 m tanto en la progresiva como en la cota, sin exageración vertical (el PNG sí respeta la exageración elegida). Para exagerar en AutoCAD usa ESCALA con factores distintos en X e Y."], "probar": [["Abrir Perfil topográfico", "pnl:perfil"]]}, {"id": "tiempo", "icono": "⏱", "titulo": "Tiempo de recorrido", "resumen": "Adjunta una ruta y obtén su distancia y el tiempo de viaje de A a B.", "pasos": ["Abre <b>Procesamiento → Tiempo</b> y adjunta la ruta en <b>KMZ, KML, SHP (.zip o .shp+.dbf+.prj), GeoJSON o GPX</b>; también puedes elegir una capa con líneas ya cargada o una ruta de <b>Mis dibujos</b>.", "<b>Desde Trekking:</b> con una ruta meta cargada pulsa <b>⏱ Tiempo</b> en <b>Trekking → Ruta meta</b>: la ruta ya queda seleccionada como capa («🥾 Ruta de trekking»).", "Elige el <b>modo</b>: a pie y caballo/mula ajustan la velocidad a la pendiente (Tobler); en vehículo, moto o embarcación escribe la <b>velocidad</b> en km/h.", "Con <b>Considerar relieve</b> se lee el DEM para dar desnivel, distancia inclinada y el tiempo de retorno (B→A).", "Opcional: <b>pausas</b> en minutos por hora de viaje.", "Pulsa <b>Calcular tiempo</b>; se dibujan el origen (A) y el destino (B) y puedes bajar el resultado en <b>Excel</b>."], "tips": ["Si el shapefile no trae .prj y sus coordenadas son UTM, indica la zona y el datum antes de adjuntarlo."], "probar": [["Abrir Tiempo de recorrido", "pnl:tiempo"]]}, {"id": "regla", "icono": "📏", "titulo": "Regla: medir distancias", "resumen": "Mide de un punto a otro sin dibujar nada permanente.", "pasos": ["Abre <b>Procesamiento → Regla</b> y haz clic en el mapa para marcar los puntos; cada tramo y el acumulado se muestran en el mapa y en el panel.", "Elige la <b>unidad</b>: metros o kilómetros.", "La distancia es <b>horizontal, en planta</b> (no considera altitud ni desnivel) y la etiqueta de cada tramo se alinea con la línea.", "Activa <b>Referenciar a entidades (snap)</b> para que cada clic se ajuste al <b>vértice</b> (origen / final de líneas, puntos, esquinas de polígonos) o al <b>punto más cercano del borde</b> de las capas visibles y de tus capas agregadas, por ejemplo de una plataforma a un centro poblado o a una laguna. Un círculo verde marca el punto antes de hacer clic y la tabla indica la entidad referenciada.", "<b>Deshacer punto</b> (Retroceso) y <b>Limpiar</b> (Supr). Con <b>Guardar como ruta</b> la medición pasa a Dibujar.", "También funciona sobre la Vista 3D."], "tips": ["La distancia es geodésica, calculada sobre el elipsoide WGS84."], "probar": [["Abrir la Regla", "pnl:regla"]]}, {"id": "vista3d", "icono": "🧊", "titulo": "Vista 3D", "resumen": "El mismo mapa en 3D, con relieve, capas y dibujos sobre el terreno.", "pasos": ["Pulsa <b>Vista 3D</b>: se usa el mismo mapa base que tengas activo. Con <b>Volver al 2D</b> regresas a la misma zona.", "<b>Arrastra</b> para desplazarte y usa la <b>rueda</b> para acercar.", "<b>Globo:</b> aleja el zoom con la rueda y la Tierra se muestra como un globo con atmósfera; el botón <b>🌐 Globo</b> la muestra completa. Desde el 2D, si sigues alejando el zoom más allá del mínimo, se abre sola la Vista 3D.", "<b>Mayús + rueda</b> gira la vista, <b>Alt + rueda</b> la inclina y, con la <b>rueda presionada</b> (o clic derecho), arrastrar gira e inclina.", "Ajusta el <b>relieve</b> (exageración vertical) y la <b>inclinación</b> con los deslizadores; la flecha de <b>Norte</b> gira con la vista y, al pulsarla, orienta al norte.", "Activa o desactiva <b>Mis dibujos</b>, <b>Capas agregadas</b> y <b>Capas del portal</b>.", "Haz clic en el relieve para ver coordenadas, UTM y altitud, y guardar el punto como marca."], "tips": ["Si activas capas del portal estando en 3D, pulsa ↻ Capas para recargarlas."], "probar": [["Activar / desactivar la Vista 3D", "3d"]]}, {"id": "coordenadas", "icono": "🧮", "titulo": "Coordenadas, zonas y cuadrantes UTM", "resumen": "Elige cómo ver las coordenadas y muestra la cuadrícula UTM de todo el planeta.", "pasos": ["La <b>barra inferior</b> muestra las coordenadas del cursor y su altitud aproximada. Con el selector eliges <b>Geográficas (° decimales)</b>, <b>Geográficas (° ′ ″)</b> o <b>UTM (WGS84)</b>.", "También indica la <b>zona</b> y el <b>cuadrante</b> del punto (por ejemplo, Z18 · L).", "La casilla <b>Zonas UTM</b> dibuja los meridianos y rotula las zonas Z1–Z60 (en Perú, Z17, Z18 y Z19).", "La casilla <b>Cuadrantes</b> dibuja las bandas de latitud C–X (en Perú, K, L y M).", "Con ambas activas cada celda se rotula con su designación completa (por ejemplo, 18L)."], "tips": ["Funciona igual en 2D y en 3D."], "probar": [["Activar Zonas UTM", "zonas"], ["Activar Cuadrantes", "cuadr"]]}, {"id": "ubicacion", "icono": "🎯", "titulo": "Mi ubicación", "resumen": "Ubícate en el mapa con el GPS o la red de tu equipo.", "pasos": ["Pulsa el botón con mira, bajo el botón de inicio del mapa 2D.", "El mapa se centra en tu posición con un círculo de precisión. El cuadro muestra latitud/longitud, UTM, altitud (y altitud GPS si el equipo la entrega) y la precisión.", "Usa <b>Guardar como marca</b> para conservar el punto en Dibujar.", "<b>Compartir ubicación o puntos (WhatsApp, redes, Google Maps):</b> pulsa <b>📤 Compartir</b> en el cuadro de tu ubicación. Se envía un enlace que se abre en <b>Google Maps</b> (o el mapa del celular) sin necesitar Google Earth, con las coordenadas UTM como texto. Opciones: <b>💬 WhatsApp</b>, <b>📤 Compartir</b> (Instagram, Messenger, correo…), <b>🔗 Copiar enlace</b>, <b>🗺 Ver en Google Maps</b> y descarga en <b>KML</b> o <b>GPX</b>.", "<b>Compartir cualquier punto del mapa:</b> clic derecho en PC, o mantén pulsado en el celular, y elige <b>📤 Compartir este punto</b>."], "tips": ["Requiere que la página se abra con HTTPS (o localhost) y que permitas la ubicación en el navegador."], "probar": [["Ubicarme ahora", "ubicacion"]]}, {"id": "trekking", "icono": "🥾", "titulo": "Trekking: GPS sin conexión", "resumen": "Graba tu recorrido con el GPS del celular (sin internet), sigue una ruta meta, calcula la mejor ruta según el relieve, obtén el tiempo de viaje a un destino y genera un video de lo caminado.", "pasos": ["<b>Grabar (funciona sin internet):</b> abre <b>Trekking</b> y pulsa <b>Iniciar grabación</b>. Verás distancia, tiempo total y en movimiento, velocidad, ritmo, desnivel positivo y negativo, altitud y el perfil. La ruta se guarda en el teléfono mientras grabas. <b>Marcar punto</b> guarda un punto de interés; <b>Volver por mi ruta</b> te guía de regreso por donde viniste. Mantén la pantalla encendida y la app abierta.", "<b>Ruta meta:</b> carga un GPX/KML/KMZ/GeoJSON, usa una línea ya cargada o trázala tocando el mapa. Al grabar con una ruta meta ves cuánto falta, el rumbo, la hora estimada de llegada y el desvío, con avisos por vibración y sonido si te sales o llegas. La ruta meta también queda como capa («🥾 Ruta de trekking»): usa <b>⛰ Perfil topográfico</b> y <b>⏱ Tiempo</b> para analizarla en esos procesos.", "<b>Perfil flotante:</b> al cargar, trazar o calcular una ruta aparece un gráfico flotante con la distancia, el desnivel (+/−), las altitudes mínima y máxima y el tiempo estimado. Pasa el dedo o el cursor por el gráfico para ver en el mapa el punto, su altitud y su pendiente. Puedes minimizarlo (▾) o cerrarlo (✕).", "<b>Mejor ruta entre A y B (relieve):</b> en <b>Ruta meta</b> marca el punto <b>A</b> (o usa 📍 tu ubicación) y el punto <b>B</b>, elige el criterio (más rápida, menos desnivel o más directa), la <b>pendiente máxima</b> permitida y, si quieres, una capa de caminos que se preferirá. Pulsa <b>Calcular mejor ruta</b>: se busca la ruta de menor esfuerzo sobre el DEM con la velocidad de caminata de Tobler.", "<b>Ir a… (tiempo de recorrido):</b> elige el origen (tu ubicación o un punto del mapa) y el destino (búscalo por nombre o tócalo en el mapa), y el medio (auto, a pie o bicicleta). Obtienes el tiempo, la distancia, la hora de llegada y las indicaciones de giro para los tres medios. <b>Iniciar recorrido</b> activa el seguimiento con GPS (también en vehículo): avisa los giros, muestra lo que falta y recalcula si te sales de la ruta.", "<b>Limpiar marcas:</b> los puntos de origen, destino, A y B se quitan tocándolos o con el botón <b>🧹 Limpiar puntos</b>; <b>Quitar ruta meta</b> también limpia A y B.", "<b>Mis rutas:</b> al <b>Finalizar</b> la ruta se guarda en el teléfono. Desde ahí puedes verla, seguirla de nuevo, descargarla en <b>GPX, KML o GeoJSON</b>, recalcular sus altitudes con el DEM y generar su <b>🎬 Video</b>.", "<b>Sin conexión:</b> con internet, entra en <b>Sin conexión</b> y pulsa <b>Descargar zona</b> (lo que ves o un corredor alrededor de tu ruta; marca «Incluir altitudes (DEM)»). Si la zona es demasiado grande (más de 12 000 teselas) la app te avisa y sugiere un zoom máximo o que acerques el mapa. Hazlo <b>antes</b> de salir."], "tips": ["Sin internet funcionan la grabación, las alertas, el perfil y los mapas descargados. Necesitan internet: <b>Ir a…</b> (sin señal da solo una estimación en línea recta), la mejor ruta fuera de las zonas descargadas, el clima, las capas de Supabase y el video (salvo zonas descargadas).", "El navegador solo registra el GPS con la app abierta y la pantalla encendida: no la bloquees ni cambies de aplicación durante la grabación. Si se cierra por error, al volver te ofrece recuperar la grabación.", "La altitud del GPS del celular tiene error de 10–30 m; el desnivel se suaviza y es aproximado. En Mis rutas puedes recalcular altitudes con el DEM.", "La mejor ruta por relieve usa un DEM de ~30 m y no conoce caminos reales salvo que elijas una capa de caminos: verifícala en campo. «Ir a…» usa servicios de OpenStreetMap y no considera el tráfico.", "Si el trazo sale con tramos rectos es porque el GPS tuvo poca precisión (más de ±30 m) o el celular quedó bloqueado. La app avisa «Señal GPS débil»; busca cielo abierto y no cambies de aplicación. Si el GPS lleva más de 20 s sin un punto bueno, se acepta uno regular para no dejar huecos, y en vehículo ya no se descartan puntos por la velocidad."], "probar": [["Abrir Trekking", "pnl:trek"]]}, {"id": "video3d", "icono": "🎬", "titulo": "Video de tu ruta", "resumen": "Genera un video del recorrido sobre el mapa (satélite o topográfico) con un punto que avanza dejando la ruta en color, con las estadísticas al final, listo para Instagram o Facebook.", "pasos": ["Abre <b>Trekking → Mis rutas</b> y pulsa <b>🎬 Video</b> en la ruta que quieras (o <b>🎬 Video</b> en <b>Ruta meta</b> para la ruta cargada).", "<b>Con rutas anteriores:</b> carga tu KMZ, KML, GPX o GeoJSON en <b>Trekking → Ruta meta</b> y pulsa <b>🎬 Video</b>. Si el GPX (o el KML de Google Earth con trayecto temporal) trae horas, el video muestra también el <b>tiempo real</b> y las estadísticas finales lo incluyen; si no las trae (KMZ de líneas dibujadas), se muestran distancia, altitud y desnivel.", "Espera a que cargue el mapa. Luego pulsa <b>▶</b> para ver el recorrido o mueve la barra de tiempo.", "<b>Cómo se mueve la cámara:</b> mantiene la vista un tramo mientras el <b>punto avanza visiblemente por el mapa</b> dejando el recorrido en color, y luego se desliza al siguiente tramo. En recorridos cortos la cámara queda fija y el punto cruza toda la ruta.", "En <b>⚙ Opciones</b> elige el <b>formato</b> (vertical 9:16 para Reels y Stories, vertical ligero, cuadrado 1:1 u horizontal 16:9), la <b>duración</b> del recorrido (20–60 s), el mapa (satélite o topográfico), el color de la ruta y si se muestra la marca «GeoPortal».", "Durante el recorrido se muestran distancia, altitud, desnivel acumulado y tiempo, con el perfil de altitud. Al final aparece la tarjeta <b>¡Recorrido completado!</b> con distancia, tiempo total y en movimiento, desnivel +/−, altitud máxima y mínima y velocidad media.", "Pulsa <b>🎥 Grabar video</b>: se graba en tiempo real. Al terminar puedes verlo, <b>⬇ Descargar</b> o <b>📤 Compartir</b> directamente.", "<b>Tu nombre al final:</b> en <b>⚙ Opciones</b> escribe «Tu nombre» (por ejemplo, Lenin Rojas); aparece en la tarjeta final <b>¡Recorrido completado!</b>. Se propone según tu sesión y queda recordado en este equipo."], "tips": ["Necesita internet (o la zona descargada). Mientras graba no cambies de aplicación ni bloquees la pantalla.", "Chrome actualizado en Android graba en MP4 (lo que piden Instagram y Facebook). Si tu navegador graba WebM, conviértelo a MP4 con una app o servicio de conversión. El video sale sin audio; puedes añadir música al subirlo.", "Si el celular va lento o se calienta, usa el formato «Vertical ligero 540×960».", "Las altitudes salen del archivo; si no las trae, se estiman con el modelo de elevación del mapa.", "Es un video en 2D: ya no usa relieve 3D, lo que lo hace más estable y liviano. La ruta, el punto, el inicio, el final y tus puntos marcados se dibujan con la misma proyección del mapa, así que siempre coinciden."], "probar": [["Abrir Trekking", "pnl:trek"]]}, {"id": "atajos", "icono": "⌨️", "titulo": "Atajos y recomendaciones", "resumen": "Teclas útiles y puntos a tener presentes.", "tabla": [["Esc", "Cancela el dibujo o la edición en curso"], ["Enter", "Finaliza la ruta, el polígono o la edición"], ["Retroceso", "Deshace el último vértice o el último punto de la regla"], ["Supr", "Limpia la medición de la regla"], ["Mayús + rueda (3D)", "Gira la vista"], ["Alt + rueda (3D)", "Inclina la vista"], ["Rueda presionada + arrastrar (3D)", "Gira e inclina"], ["Doble clic en un vértice (editar)", "Elimina el vértice"]], "pasos": ["<b>Altitud:</b> proviene de un modelo digital de elevación global (resolución real ~30 m): es aproximada y no reemplaza una cota medida en campo.", "<b>Áreas:</b> se calculan sobre el elipsoide y se muestran en hectáreas y metros cuadrados.", "<b>Datos en el navegador:</b> los dibujos y preferencias se guardan localmente; descarga tus resultados para conservarlos o compartirlos.", "<b>Internet:</b> los mapas base, el relieve 3D, el buscador de lugares, el clima y «Ir a…» requieren conexión; la grabación de Trekking y los mapas descargados funcionan sin ella."], "tips": [], "probar": []}];
 const MANUAL_PDF = 'Manual_Geoportal.pdf';
 let manualSel = 0, manualTodo = false;
 const manualNorm = t => String(t || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
@@ -12571,7 +12622,7 @@ function trkTeselasRuta(ruta, buffer, z, tope) {
       const s = r.stats || {}, id = esc(r.id);
       return '<div class="tk-card" data-id="' + id + '"><div class="tk-card-t"><b>' + esc(r.nombre) + '</b><span>' + new Date(r.creado).toLocaleString('es-PE') + '</span></div>' +
         '<div class="tk-card-s">' + trkFmtD(s.dist || 0) + ' · ' + trkFmtT(r.tTotal || 0) + ' · +' + Math.round(s.sube || 0) + ' / −' + Math.round(s.baja || 0) + ' m · ' + fmtAlt(s.altMax) + ' máx</div>' +
-        '<div class="tk-card-b"><button data-a="ver">👁 Ver</button><button data-a="video">🎬 Video 3D</button><button data-a="seguir">🎯 Seguir</button><button data-a="gpx">GPX</button><button data-a="kml">KML</button><button data-a="geojson">GeoJSON</button>' +
+        '<div class="tk-card-b"><button data-a="ver">👁 Ver</button><button data-a="video">🎬 Video</button><button data-a="seguir">🎯 Seguir</button><button data-a="gpx">GPX</button><button data-a="kml">KML</button><button data-a="geojson">GeoJSON</button>' +
         (navigator.share ? '<button data-a="share">📤</button>' : '') + '<button data-a="dem">⛰ DEM</button><button data-a="ren">✏</button><button data-a="del">🗑</button></div></div>';
     }).join('');
   }
@@ -12580,7 +12631,7 @@ function trkTeselasRuta(ruta, buffer, z, tope) {
     const r = MARC[id]; if (!r) return; const base = nombreArchivo(r.nombre);
     if (a === 'ver') { lnVer.setLatLngs(r.pts.map(ll)); lnVer.addTo(map); TK.vista = id; map.fitBounds(lnVer.getBounds(), { padding: [50, 50] }); }
     else if (a === 'seguir') { if (setPlan(r.pts.map(p => ({ lat: p.lat, lng: p.lng, alt: p.alt })), r.nombre, 'guardada')) { tab('ruta'); } }
-    else if (a === 'video') { if (window.trkVideo3D) window.trkVideo3D(r); else alert('El video 3D no está disponible.'); }
+    else if (a === 'video') { if (window.trkVideo3D) window.trkVideo3D(r); else alert('El video no está disponible.'); }
     else if (a === 'gpx') bajar(base + '.gpx', 'application/gpx+xml', aGPX(r));
     else if (a === 'kml') bajar(base + '.kml', 'application/vnd.google-earth.kml+xml', aKML(r));
     else if (a === 'geojson') bajar(base + '.geojson', 'application/geo+json', aGeoJSON(r));
@@ -13129,7 +13180,7 @@ function trkTeselasRuta(ruta, buffer, z, tope) {
   const COLORES = { naranja: '#ff6a00', amarillo: '#fbbf24', rosa: '#ec4899', cian: '#22d3ee', rojo: '#ef4444' };
   const T_IN = 3, T_OUT = 3.5, T_ST = 7;
   const V = { ui: false, abierto: false, ruta: null, R: null, map: null, comp: null, ctx: null, W: 720, H: 1280, tt: 0, total: 20, D: 30, playing: false, last: 0, raf: 0, gen: 0,
-    rec: null, chunks: [], mime: '', blob: null, url: null, ocupado: false, dirty: true, dB: 0, dP: 0, lastIdx: -1, wl: null, opt: { fmt: 'v916', dur: 30, base: 'sat', exag: 1.4, color: 'naranja', marca: true, nombre: '' } };
+    rec: null, chunks: [], mime: '', blob: null, url: null, ocupado: false, dirty: true, dB: 0, dP: 0, lastIdx: -1, wl: null, opt: { fmt: 'v916', dur: 30, base: 'sat', exag: 1, color: 'naranja', marca: true, nombre: '' } };
   function nombreUsuario() {
     try { const g = localStorage.getItem('geoportal_vid_nombre'); if (g) return g; } catch (e) {}
     try { if (typeof sesion !== 'undefined' && sesion && sesion.user) { const u = sesion.user, md = u.user_metadata || {}, n = md.full_name || md.name; if (n) return n; return String(u.email || '').split('@')[0].split(/[._\-]+/).filter(Boolean).map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' '); } } catch (e) {}
@@ -13208,15 +13259,17 @@ function trkTeselasRuta(ruta, buffer, z, tope) {
   }
   function camSeg(p) {
     const R = V.R, f = clamp(p, 0, 1) * (R.n - 1), i = Math.floor(f), j = Math.min(R.n - 1, i + 1), u = f - i;
-    return { center: [lerp(R.lng[i], R.lng[j], u), lerp(R.lat[i], R.lat[j], u)], zoom: R.zoomF, pitch: 58, bearing: lerpAng(R.brg[i], R.brg[j], u) };
+    return { center: [lerp(R.lng[i], R.lng[j], u), lerp(R.lat[i], R.lat[j], u)], zoom: R.zoomF, pitch: 0, bearing: 0 };
   }
+  const merY = lat => { const s = Math.sin(clamp(lat, -85, 85) * RAD); return 0.5 - Math.log((1 + s) / (1 - s)) / (4 * Math.PI); };
+  const merLat = y => { const n = Math.PI - 2 * Math.PI * y; return Math.atan(Math.sinh(n)) / RAD; };
   function camaras() {
-    const R = V.R, m = V.map, W = V.W, H = V.H, pad = Math.round(Math.min(W, H) * 0.14);
-    let o0 = { center: [(R.bounds[0][0] + R.bounds[1][0]) / 2, (R.bounds[0][1] + R.bounds[1][1]) / 2], zoom: 12, pitch: 0, bearing: 0 };
-    try { const c = m.cameraForBounds(R.bounds, { padding: pad }); if (c) o0 = { center: [c.center.lng, c.center.lat], zoom: Math.min(c.zoom, 15), pitch: 0, bearing: 0 }; } catch (e) {}
+    const R = V.R, W = V.W, H = V.H, pad = Math.round(Math.min(W, H) * 0.14);
+    const fx = Math.max((R.bounds[1][0] - R.bounds[0][0]) / 360, 1e-7), fy = Math.max(Math.abs(merY(R.bounds[0][1]) - merY(R.bounds[1][1])), 1e-7);
+    const zf = Math.log2(Math.min((W - 2 * pad) / (256 * fx), (H - 2 * pad) / (256 * fy)));
+    const o0 = { center: [(R.bounds[0][0] + R.bounds[1][0]) / 2, merLat((merY(R.bounds[0][1]) + merY(R.bounds[1][1])) / 2)], zoom: clamp(zf, 3, 15), pitch: 0, bearing: 0 };
     const mpp = 78271.5 * Math.cos(R.lat[0] * RAD) / Math.pow(2, R.zoomF); R.stepF = clamp(0.5 * H * mpp / Math.max(R.total, 1), 0.02, 1);
-    const f1 = camSeg(1);
-    V.cam = { o0, o1: { center: o0.center, zoom: Math.max(o0.zoom - 0.35, 3), pitch: 50, bearing: norm360(f1.bearing + 35) } };
+    V.cam = { o0, o1: { center: o0.center, zoom: o0.zoom, pitch: 0, bearing: 0 } };
   }
   function camera(tt) {
     const C = V.cam, D = V.D;
@@ -13229,54 +13282,51 @@ function trkTeselasRuta(ruta, buffer, z, tope) {
   // ---------------------------------------------------------------- mapa
   const geoLinea = (R, hasta) => { const c = []; const f = hasta * (R.n - 1), i = Math.floor(f); for (let k = 0; k <= i && k < R.n; k++) c.push([R.lng[k], R.lat[k]]); if (i < R.n - 1) { const u = f - i; c.push([lerp(R.lng[i], R.lng[i + 1], u), lerp(R.lat[i], R.lat[i + 1], u)]); } if (c.length < 2) c.push(c[0] || [0, 0]); return { type: 'Feature', geometry: { type: 'LineString', coordinates: c }, properties: {} }; };
   const geoPunto = (R, p) => { const f = clamp(p, 0, 1) * (R.n - 1), i = Math.floor(f), j = Math.min(R.n - 1, i + 1), u = f - i; return { type: 'Feature', geometry: { type: 'Point', coordinates: [lerp(R.lng[i], R.lng[j], u), lerp(R.lat[i], R.lat[j], u)] }, properties: {} }; };
+  // Motor 2D propio: teselas del mapa base (Esri) dibujadas directamente en el lienzo, sin WebGL ni relieve.
+  const TCACHE = new Map();
+  function tesela(z, x, y) {
+    const k = z + '/' + x + '/' + y; let t = TCACHE.get(k); if (t) return t;
+    const img = new Image(); t = { img, ok: false, err: 0 }; TCACHE.set(k, t); img.crossOrigin = 'anonymous';
+    img.onload = () => { t.ok = true; V.dirty = true; };
+    img.onerror = () => { if (++t.err <= 2) setTimeout(() => { img.src = t.url + (t.err ? '?r=' + t.err : ''); }, 600 * t.err); };
+    t.url = 'https://server.arcgisonline.com/ArcGIS/rest/services/' + V.capa[0] + '/MapServer/tile/' + z + '/' + y + '/' + x; img.src = t.url;
+    return t;
+  }
+  const wpx = (lng, lat, z) => { const s = 256 * Math.pow(2, z); return [(lng + 180) / 360 * s, merY(lat) * s]; };
+  function tilesDe(cam) {   // teselas necesarias para una cámara
+    const z = clamp(Math.floor(cam.zoom + 0.0001), 0, V.capa[1]), k = Math.pow(2, cam.zoom - z), c = wpx(cam.center[0], cam.center[1], z);
+    const hw = V.W / 2 / k, hh = V.H / 2 / k, n = Math.pow(2, z), r = [];
+    for (let ty = Math.floor((c[1] - hh) / 256); ty <= Math.floor((c[1] + hh) / 256); ty++) for (let tx = Math.floor((c[0] - hw) / 256); tx <= Math.floor((c[0] + hw) / 256); tx++) if (ty >= 0 && ty < n) r.push([z, ((tx % n) + n) % n, ty, tx]);
+    return { z, k, c, lista: r };
+  }
   function crearMapa() {
     const o = V.opt, R = V.R, gen = ++V.gen; V.ocupado = true;
     destruirMapa();
     const [W, H] = FMT[o.fmt]; V.W = W; V.H = H; V.D = o.dur; V.total = T_IN + V.D + T_OUT + T_ST;
     V.comp.width = W; V.comp.height = H; V.ctx = V.comp.getContext('2d');
-    const cont = $('v-map'); cont.style.width = W + 'px'; cont.style.height = H + 'px';
-    const color = COLORES[o.color] || COLORES.naranja;
-    const tiles = { sat: ['World_Imagery', 17], topo: ['World_Topo_Map', 16] }[o.base] || ['World_Imagery', 17];
-    let map;
-    try {
-      map = new maplibregl.Map({
-        container: 'v-map', pixelRatio: 1, interactive: false, attributionControl: false, maxPitch: 85,
-        preserveDrawingBuffer: true, canvasContextAttributes: { preserveDrawingBuffer: true, antialias: true }, fadeDuration: 0, maxTileCacheSize: 600,
-        style: { version: 8, sources: { base: { type: 'raster', tiles: ['https://server.arcgisonline.com/ArcGIS/rest/services/' + tiles[0] + '/MapServer/tile/{z}/{y}/{x}'], tileSize: 256, maxzoom: tiles[1] }, dem: { type: 'raster-dem', tiles: [V3D_DEM], tileSize: 256, maxzoom: 15, encoding: 'terrarium' } },
-          layers: [{ id: 'base', type: 'raster', source: 'base', paint: { 'raster-fade-duration': 0 } }], terrain: { source: 'dem', exaggeration: o.exag } },
-        center: R.cLng ? [R.cLng[0], R.cLat[0]] : [0, 0], zoom: 12, pitch: 0, bearing: 0
-      });
-    } catch (e) { console.error(e); estado('Tu navegador o equipo no admite WebGL: no se puede generar el video 3D.', true); V.ocupado = false; return; }
-    V.map = map;
-    setTimeout(() => { if (gen === V.gen && V.ocupado && !V.cam) { estado('El mapa 3D no terminó de cargar. Revisa tu conexión a internet y vuelve a abrir el video.', true); V.ocupado = false; setUI(); } }, 25000);
-    map.on('error', e => { /* tiles que fallan: se ignoran */ });
-    map.on('render', () => {   // el lienzo WebGL solo es copiable en este mismo instante: se guarda una instantánea y se compone
-      try { if (!V.snap) V.snap = document.createElement('canvas'); if (V.snap.width !== V.W || V.snap.height !== V.H) { V.snap.width = V.W; V.snap.height = V.H; } V.snap.getContext('2d').drawImage(map.getCanvas(), 0, 0, V.W, V.H); V.snapOK = true; } catch (e) {}
-      if (V.ctx && V.cam && V.R && V.R.S) { V.pend = false; V.drawn = true; dibujar(); }
-    });
-    map.on('load', async () => {
-      if (gen !== V.gen) return;
-      try { map.setSky({ 'sky-color': '#7ab8ff', 'sky-horizon-blend': .5, 'horizon-color': '#ffffff', 'horizon-fog-blend': .5, 'fog-color': '#dfeaff', 'fog-ground-blend': .4 }); } catch (e) {}
-      V.color = color; try { capasRuta(map); } catch (e) { console.error(e); }
-      camaras(); V.lastIdx = -1;
-      await precargar(gen);
-    });
+    V.color = COLORES[o.color] || COLORES.naranja;
+    V.capa = { sat: ['World_Imagery', 17], topo: ['World_Topo_Map', 16] }[o.base] || ['World_Imagery', 17];
+    V.map = { motor2d: true };
+    camaras(); V.lastIdx = -1; V.pLast = -1;
+    precargar(gen);
   }
-  function destruirMapa() { V.snapOK = false; if (V.map) { try { V.map.remove(); } catch (e) {} V.map = null; } }
-  const esperarIdle = () => new Promise(res => { let ok = false; const f = () => { if (!ok) { ok = true; clearTimeout(to); res(); } }; const to = setTimeout(f, 2500); try { V.map.once('idle', f); } catch (e) { f(); } });
+  function destruirMapa() { V.map = null; }
   async function precargar(gen) {
     V.ocupado = true; setUI();
-    const pasos = clamp(Math.round(V.R.total / 350), 26, 80), plan = [0]; for (let i = 0; i <= pasos; i++) plan.push(T_IN + V.D * i / pasos); plan.push(T_IN + V.D + T_OUT);
-    const t0 = Date.now();
-    for (let i = 0; i < plan.length; i++) {
+    const pasos = clamp(Math.round(V.R.total / 250), 30, 90), plan = [0]; for (let i = 0; i <= pasos; i++) plan.push(T_IN + V.D * i / pasos); plan.push(T_IN + V.D + T_OUT);
+    const pend = new Map();
+    plan.forEach(t => { const cam = camera(t).cam; tilesDe(cam).lista.forEach(q => { const t2 = tesela(q[0], q[1], q[2]); pend.set(q[0] + '/' + q[1] + '/' + q[2], t2); });
+      const pz = Math.max(0, Math.floor(cam.zoom) - 1); const c = tilesDe(Object.assign({}, cam, { zoom: pz })); c.lista.forEach(q => tesela(q[0], q[1], q[2])); });
+    const t0 = Date.now(), total = pend.size;
+    while (Date.now() - t0 < 60000) {
       if (gen !== V.gen) return;
-      if (Date.now() - t0 > 60000) break;   // no esperar más de 1 minuto
-      V.map.jumpTo(camera(plan[i]).cam); estado('Cargando el relieve y las imágenes… ' + Math.round(i / plan.length * 100) + ' %');
-      await esperarIdle();
+      let ok = 0; pend.forEach(t => { if (t.ok || t.err > 2) ok++; });
+      estado('Cargando el mapa… ' + Math.round(ok / Math.max(1, total) * 100) + ' %');
+      if (ok >= total) break; await new Promise(r => setTimeout(r, 250));
     }
     if (gen !== V.gen) return;
     V.tt = 0; V.dirty = true; V.pLast = -1; V.ptIdx = -1; V.ocupado = false; V.dB = 0; V.dP = 0;
-    estado('Listo. Pulsa ▶ para ver el vuelo, arrastra para girar la cámara, o «Grabar video».'); setUI();
+    estado('Listo. Pulsa ▶ para ver el recorrido o «Grabar video».'); setUI();
   }
 
   // ---------------------------------------------------------------- dibujo (mapa + datos)
@@ -13333,54 +13383,42 @@ function trkTeselasRuta(ruta, buffer, z, tope) {
     }
     c.restore();
   }
-  // Recorrido, punto en movimiento, inicio/fin y puntos marcados: son capas NATIVAS del mapa (se pintan sobre el relieve
-  // con el mismo motor 3D, así siempre coinciden con la cámara y el terreno). Solo cambia el «recorte» de la línea y 1 punto por cuadro.
-  function capasRuta(m) {
-    const R = V.R, u = Math.min(V.W, V.H) / 720, color = V.color || '#ff6a00';
-    const linea = { type: 'Feature', geometry: { type: 'LineString', coordinates: R.lng.map((x, i) => [x, R.lat[i]]) }, properties: {} };
-    const lay = { 'line-cap': 'round', 'line-join': 'round' };
-    m.addSource('rt', { type: 'geojson', data: linea, lineMetrics: true });
-    m.addLayer({ id: 'rt-halo', type: 'line', source: 'rt', layout: lay, paint: { 'line-color': '#000000', 'line-opacity': .55, 'line-width': 7 * u } });
-    m.addLayer({ id: 'rt-full', type: 'line', source: 'rt', layout: lay, paint: { 'line-color': '#ffffff', 'line-opacity': .9, 'line-width': 3.5 * u } });
-    V.trim = true;
-    m.addLayer({ id: 'rt-done-h', type: 'line', source: 'rt', layout: lay, paint: { 'line-color': '#000000', 'line-opacity': .5, 'line-width': 11 * u, 'line-trim-offset': [0, 1] } });
-    m.addLayer({ id: 'rt-done', type: 'line', source: 'rt', layout: lay, paint: { 'line-color': color, 'line-width': 7 * u, 'line-trim-offset': [0, 1] } });
-    if (!m.getLayer('rt-done') || !m.getLayer('rt-done-h')) {                  // motor sin «line-trim-offset»: se actualiza una línea parcial
-      V.trim = false; try { if (m.getLayer('rt-done-h')) m.removeLayer('rt-done-h'); if (m.getLayer('rt-done')) m.removeLayer('rt-done'); } catch (e) {}
-      m.addSource('rd', { type: 'geojson', data: geoLinea(R, 0) });
-      m.addLayer({ id: 'rt-done-h', type: 'line', source: 'rd', layout: lay, paint: { 'line-color': '#000000', 'line-opacity': .5, 'line-width': 11 * u } });
-      m.addLayer({ id: 'rt-done', type: 'line', source: 'rd', layout: lay, paint: { 'line-color': color, 'line-width': 7 * u } });
-    }
-    const mk = [{ c: '#16a34a', r: 11 * u, lng: R.lng[0], lat: R.lat[0] }, { c: '#ef4444', r: 11 * u, lng: R.lng[R.n - 1], lat: R.lat[R.n - 1] }];
-    (R.wpts || []).forEach(w => mk.push({ c: '#f59e0b', r: 7 * u, lng: w.lng, lat: w.lat }));
-    m.addSource('mk', { type: 'geojson', data: { type: 'FeatureCollection', features: mk.map(q => ({ type: 'Feature', geometry: { type: 'Point', coordinates: [q.lng, q.lat] }, properties: { c: q.c, r: q.r } })) } });
-    m.addLayer({ id: 'mk', type: 'circle', source: 'mk', paint: { 'circle-color': ['get', 'c'], 'circle-radius': ['get', 'r'], 'circle-stroke-color': '#ffffff', 'circle-stroke-width': 3 * u } });
-    // punto en movimiento: una entidad por cada punto de la ruta y se «enciende» solo la actual (estado de entidad: sin recargar datos)
-    m.addSource('pts', { type: 'geojson', data: { type: 'FeatureCollection', features: R.lng.map((x, i) => ({ type: 'Feature', id: i, geometry: { type: 'Point', coordinates: [x, R.lat[i]] }, properties: {} })) } });
-    const on = (a) => ['case', ['boolean', ['feature-state', 'on'], false], a, 0];
-    m.addLayer({ id: 'pt-halo', type: 'circle', source: 'pts', paint: { 'circle-color': color, 'circle-opacity': on(.4), 'circle-radius': 24 * u } });
-    m.addLayer({ id: 'pt', type: 'circle', source: 'pts', paint: { 'circle-color': '#ffffff', 'circle-opacity': on(1), 'circle-radius': 12 * u, 'circle-stroke-color': color, 'circle-stroke-width': 4 * u, 'circle-stroke-opacity': on(1) } });
-    V.pLast = -1; V.ptIdx = -1;
+  // Recorrido y punto: se dibujan sobre el lienzo con la misma proyección que las teselas (siempre coinciden).
+  function lineaPx(R, hasta, S) {   // puntos de pantalla de la ruta hasta la fracción «hasta»
+    const f = clamp(hasta, 0, 1) * (R.n - 1), i = Math.floor(f), pts = [];
+    for (let k = 0; k <= i && k < R.n; k++) pts.push(S(R.lng[k], R.lat[k]));
+    if (i < R.n - 1) { const u = f - i; pts.push(S(lerp(R.lng[i], R.lng[i + 1], u), lerp(R.lat[i], R.lat[i + 1], u))); }
+    return pts;
   }
-  function actualizarRuta(p) {
-    const m = V.map, R = V.R; if (!m || !R || !m.getLayer('rt-done')) return;
-    p = clamp(p, 0, 1); if (Math.abs(p - V.pLast) < 1e-6) return; V.pLast = p;
-    try {
-      if (V.trim) { m.setPaintProperty('rt-done', 'line-trim-offset', [p, 1]); m.setPaintProperty('rt-done-h', 'line-trim-offset', [p, 1]); }
-      else { const sr = m.getSource('rd'); if (sr) sr.setData(p > 0 ? geoLinea(R, p) : { type: 'FeatureCollection', features: [] }); }
-      const idx = Math.round(p * (R.n - 1)); if (idx !== V.ptIdx) { if (V.ptIdx >= 0) m.setFeatureState({ source: 'pts', id: V.ptIdx }, { on: false }); m.setFeatureState({ source: 'pts', id: idx }, { on: true }); V.ptIdx = idx; }
-    } catch (e) { console.error(e); }
-  }
+  function trazo(c, pts, ancho, estilo) { if (pts.length < 1) return; c.lineCap = 'round'; c.lineJoin = 'round'; c.lineWidth = ancho; c.strokeStyle = estilo; c.beginPath(); pts.forEach((p, i) => i ? c.lineTo(p[0], p[1]) : c.moveTo(p[0], p[1])); if (pts.length === 1) c.lineTo(pts[0][0] + 0.01, pts[0][1]); c.stroke(); }
   function dibujar() {
-    if (!V.map || !V.ctx) return; const c = V.ctx;
-    c.setTransform(1, 0, 0, 1, 0, 0); c.shadowBlur = 0; c.globalAlpha = 1; c.globalCompositeOperation = 'source-over'; c.clearRect(0, 0, V.W, V.H); c.fillStyle = '#0b1220'; c.fillRect(0, 0, V.W, V.H);   // fondo opaco: sin «fantasmas» de cuadros anteriores
-    try { if (V.snap && V.snapOK) c.drawImage(V.snap, 0, 0, V.W, V.H); } catch (e) {}
+    if (!V.map || !V.ctx || !V.R || !V.cam) return; const c = V.ctx, R = V.R, W = V.W, H = V.H, u = Math.min(W, H) / 720, color = V.color || '#ff6a00';
+    const cs = camera(V.tt), cam = cs.cam, p = cs.p;
+    c.setTransform(1, 0, 0, 1, 0, 0); c.shadowBlur = 0; c.globalAlpha = 1; c.globalCompositeOperation = 'source-over'; c.clearRect(0, 0, W, H); c.fillStyle = '#1b2430'; c.fillRect(0, 0, W, H);
+    // teselas (con la de un nivel inferior como respaldo mientras llega la definitiva)
+    const T = tilesDe(cam), s = 256 * T.k;
+    T.lista.forEach(q => {
+      const dx = W / 2 + (q[3] * 256 - T.c[0]) * T.k, dy = H / 2 + (q[2] * 256 - T.c[1]) * T.k, t = tesela(q[0], q[1], q[2]);
+      if (t.ok) { try { c.drawImage(t.img, dx, dy, s + 0.6, s + 0.6); } catch (e) {} }
+      else if (q[0] > 0) { const pt = tesela(q[0] - 1, q[1] >> 1, q[2] >> 1); if (pt.ok) { try { c.drawImage(pt.img, (q[1] & 1) * 128, (q[2] & 1) * 128, 128, 128, dx, dy, s + 0.6, s + 0.6); } catch (e) {} } }
+    });
+    const zz = Math.pow(2, cam.zoom) * 256, cx = (cam.center[0] + 180) / 360 * zz, cy = merY(cam.center[1]) * zz;
+    const S = (lng, lat) => [W / 2 + ((lng + 180) / 360 * zz - cx), H / 2 + (merY(lat) * zz - cy)];
+    const full = lineaPx(R, 1, S), done = lineaPx(R, p, S);
+    trazo(c, full, 7 * u, 'rgba(0,0,0,.55)'); trazo(c, full, 3.5 * u, 'rgba(255,255,255,.9)');
+    trazo(c, done, 11 * u, 'rgba(0,0,0,.5)'); trazo(c, done, 7 * u, color);
+    const marca = (q, col, r) => { c.beginPath(); c.arc(q[0], q[1], r, 0, 6.2832); c.fillStyle = col; c.fill(); c.lineWidth = 3 * u; c.strokeStyle = '#fff'; c.stroke(); };
+    (R.wpts || []).forEach(w => marca(S(w.lng, w.lat), '#f59e0b', 7 * u));
+    marca(S(R.lng[0], R.lat[0]), '#16a34a', 11 * u); marca(S(R.lng[R.n - 1], R.lat[R.n - 1]), '#ef4444', 11 * u);
+    const q = done[done.length - 1] || full[0];
+    c.beginPath(); c.arc(q[0], q[1], 24 * u, 0, 6.2832); c.fillStyle = color + '66'; c.fill();
+    c.beginPath(); c.arc(q[0], q[1], 12 * u, 0, 6.2832); c.fillStyle = '#fff'; c.fill(); c.lineWidth = 4 * u; c.strokeStyle = color; c.stroke();
     hud(V.tt);
   }
 
   // ---------------------------------------------------------------- bucle, UI, grabación
   function aplicarCam() {
-    const m = V.map, R = V.R; if (!m || !R) return; const c = camera(V.tt); m.jumpTo(c.cam); actualizarRuta(c.p); V.pend = true;
+    if (!V.map || !V.R) return; V.pend = true;
   }
   function tick(now) {
     V.raf = requestAnimationFrame(tick); if (!V.abierto) return;
@@ -13421,11 +13459,11 @@ function trkTeselasRuta(ruta, buffer, z, tope) {
     $('v-webm').style.display = mp4 ? 'none' : ''; $('v-share').style.display = (navigator.canShare && navigator.share) ? '' : 'none'; estado('✔ Video listo. Revísalo y descárgalo o compártelo.'); setUI();
   }
   const slug = s => String(s || 'ruta').normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[^A-Za-z0-9_-]+/g, '_').replace(/^_+|_+$/g, '').slice(0, 50) || 'ruta';
-  function descargar() { if (!V.url) return; const a = document.createElement('a'); a.href = V.url; a.download = slug(V.R.nombre) + '_video3d.' + V.ext; document.body.appendChild(a); a.click(); setTimeout(() => a.remove(), 500); }
+  function descargar() { if (!V.url) return; const a = document.createElement('a'); a.href = V.url; a.download = slug(V.R.nombre) + '_video.' + V.ext; document.body.appendChild(a); a.click(); setTimeout(() => a.remove(), 500); }
   async function compartir() {
-    try { const f = new File([V.blob], slug(V.R.nombre) + '_video3d.' + V.ext, { type: V.blob.type }); if (navigator.canShare && navigator.canShare({ files: [f] })) await navigator.share({ files: [f], title: V.R.nombre }); else descargar(); } catch (e) { if (e && e.name !== 'AbortError') descargar(); }
+    try { const f = new File([V.blob], slug(V.R.nombre) + '_video.' + V.ext, { type: V.blob.type }); if (navigator.canShare && navigator.canShare({ files: [f] })) await navigator.share({ files: [f], title: V.R.nombre }); else descargar(); } catch (e) { if (e && e.name !== 'AbortError') descargar(); }
   }
-  function opcionesDeUI() { const o = V.opt; o.fmt = $('v-fmt').value; o.dur = +$('v-dur').value; o.base = $('v-base').value; o.exag = +$('v-exag').value; o.color = $('v-col').value; o.marca = $('v-marca').checked; o.nombre = ($('v-nombre').value || '').trim(); }
+  function opcionesDeUI() { const o = V.opt; o.fmt = $('v-fmt').value; o.dur = +$('v-dur').value; o.base = $('v-base').value; o.color = $('v-col').value; o.marca = $('v-marca').checked; o.nombre = ($('v-nombre').value || '').trim(); }
 
   function construirUI() {
     if (V.ui) return; V.ui = true;
@@ -13446,7 +13484,7 @@ function trkTeselasRuta(ruta, buffer, z, tope) {
 @media (min-width:900px){#vid3d .v-ctl{max-width:760px;width:100%;margin:0 auto}}`;
     document.head.appendChild(st);
     const d = document.createElement('div'); d.id = 'vid3d';
-    d.innerHTML = `<div class="v-cab"><b id="v-tit">🎬 Video 3D de tu ruta</b><button id="v-x" type="button">✕ Cerrar</button></div>
+    d.innerHTML = `<div class="v-cab"><b id="v-tit">🎬 Video de tu ruta</b><button id="v-x" type="button">✕ Cerrar</button></div>
 <div class="v-stage"><canvas id="v-cv"></canvas>
  <div id="v-res"><video id="v-video" controls playsinline loop></video><div id="v-resinfo"></div>
   <div class="v-fila" style="justify-content:center"><button id="v-dl" class="ok" type="button">⬇ Descargar video</button><button id="v-share" type="button">📤 Compartir</button><button id="v-back" type="button">↩ Volver a la vista 3D</button></div>
@@ -13457,11 +13495,10 @@ function trkTeselasRuta(ruta, buffer, z, tope) {
   <label>Formato<select id="v-fmt">${Object.keys(FMT).map(k => `<option value="${k}">${FMT[k][2]}</option>`).join('')}</select></label>
   <label>Duración del recorrido<select id="v-dur"><option value="20">20 s</option><option value="30" selected>30 s</option><option value="45">45 s</option><option value="60">60 s</option></select></label>
   <label>Mapa<select id="v-base"><option value="sat">Satélite</option><option value="topo">Topográfico</option></select></label>
-  <label>Relieve (exageración)<select id="v-exag"><option value="1">Real ×1</option><option value="1.4" selected>×1,4</option><option value="2">×2</option><option value="3">×3</option></select></label>
   <label>Color de la ruta<select id="v-col"><option value="naranja">Naranja</option><option value="amarillo">Amarillo</option><option value="rosa">Rosa</option><option value="cian">Cian</option><option value="rojo">Rojo</option></select></label>
   <label style="grid-column:1/3">Tu nombre (se muestra al final del video)<input id="v-nombre" type="text" maxlength="40" placeholder="Ej. Lenin Rojas" style="background:#1e293b;color:#fff;border:1px solid #334155;border-radius:8px;padding:7px;font-size:14px"></label>
   <label>Marca<span style="display:flex;gap:6px;align-items:center;font-size:13px;color:#e2e8f0"><input type="checkbox" id="v-marca" checked> Mostrar «GeoPortal»</span></label></div></details>
- <div style="font-size:11px;color:#94a3b8">Necesita internet (o la zona descargada). Arrastra sobre el video para girar la cámara; doble toque para restablecerla.</div></div>
+ <div style="font-size:11px;color:#94a3b8">Necesita internet (o la zona descargada). </div></div>
 <div id="v-map"></div>`;
     document.body.appendChild(d);
     V.comp = $('v-cv');
@@ -13470,7 +13507,7 @@ function trkTeselasRuta(ruta, buffer, z, tope) {
     $('v-rec').onclick = grabar; $('v-dl').onclick = descargar; $('v-share').onclick = compartir;
     $('v-back').onclick = () => { $('v-res').style.display = 'none'; $('v-video').pause(); V.tt = 0; V.dirty = true; estado('Listo. Puedes cambiar las opciones y grabar otra versión.'); setUI(); };
     $('v-nombre').oninput = () => { opcionesDeUI(); try { localStorage.setItem('geoportal_vid_nombre', V.opt.nombre); } catch (e) {} V.dirty = true; V.pend = true; };
-    ['v-fmt', 'v-dur', 'v-base', 'v-exag', 'v-col', 'v-marca'].forEach(id => $(id).onchange = () => { opcionesDeUI(); if (V.R && V.R.S) { V.playing = false; crearMapa(); } });
+    ['v-fmt', 'v-dur', 'v-base', 'v-col', 'v-marca'].forEach(id => $(id).onchange = () => { opcionesDeUI(); if (V.R && V.R.S) { V.playing = false; crearMapa(); } });
     // arrastrar = girar/inclinar la cámara (solo en la vista previa)
     let px = null, py = null, ult = 0;
     V.comp.addEventListener('pointerdown', e => { px = e.clientX; py = e.clientY; try { V.comp.setPointerCapture(e.pointerId); } catch (x) {} const n = Date.now(); if (n - ult < 320) { V.dB = 0; V.dP = 0; V.dirty = true; } ult = n; });
@@ -13487,12 +13524,11 @@ function trkTeselasRuta(ruta, buffer, z, tope) {
   async function abrir(ruta) {
     if (!ruta || !ruta.pts || ruta.pts.length < 2) { alert('La ruta necesita al menos 2 puntos.'); return; }
     construirUI(); V.ruta = ruta; V.R = null; V.cam = null; V.abierto = true; V.playing = false; V.tt = 0; V.ocupado = true; V.dB = 0; V.dP = 0;
-    $('vid3d').style.display = 'flex'; document.body.style.overflow = 'hidden'; $('v-res').style.display = 'none'; $('v-tit').textContent = '🎬 ' + (ruta.nombre || 'Video 3D de tu ruta');
+    $('vid3d').style.display = 'flex'; document.body.style.overflow = 'hidden'; $('v-res').style.display = 'none'; $('v-tit').textContent = '🎬 ' + (ruta.nombre || 'Video de tu ruta');
     $('v-nombre').value = nombreUsuario(); opcionesDeUI(); V.comp.width = FMT[V.opt.fmt][0]; V.comp.height = FMT[V.opt.fmt][1]; setUI();
     cancelAnimationFrame(V.raf); V.last = performance.now(); V.raf = requestAnimationFrame(tick);
     try {
-      estado('Cargando el motor 3D…'); await v3dCargarLib();
-      const R = preparar(ruta); estado('Preparando la ruta…'); await rellenarAlt(R, estado); estadisticas(R); V.R = R;
+            const R = preparar(ruta); estado('Preparando la ruta…'); await rellenarAlt(R, estado); estadisticas(R); V.R = R;
       if (!V.abierto) return; crearMapa();
     } catch (e) { console.error(e); estado('No se pudo preparar el video: ' + (e && e.message ? e.message : 'revisa tu conexión a internet.'), true); V.ocupado = false; setUI(); }
   }
@@ -13517,6 +13553,7 @@ function poblarCapasAltitud() {
     }
   });
   if (prev) sel.value = prev;
+  const bl = document.getElementById('add-altitud-bloque'); if (bl) bl.style.display = sel.options.length > 1 ? 'block' : 'none';
 }
 const saAltRun = document.getElementById('sa-alt-run');
 if (saAltRun) saAltRun.onclick = () => {

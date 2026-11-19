@@ -1,6 +1,6 @@
 /* GeoPortal · service worker: permite abrir la app y ver los mapas descargados sin internet.
    No toca Supabase, clima ni servicios satelitales (siempre van directo a la red). */
-const VER = 'v5';
+const VER = 'v6';
 const APP = 'geoportal-app-' + VER;       // código de la aplicación y librerías
 const TILES = 'geoportal-tiles-v1';       // mapas base y DEM (también los llena la propia página)
 const LIBS = [
