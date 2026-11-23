@@ -1064,8 +1064,18 @@
       <button type="button" class="btn sec" id="add-plantilla" style="margin:2px 0 0; width:100%; font-size:11.5px; padding:6px;" title="AVES / ANFIBIOS / MAMIFEROS con estaciones, transectos y parcelas">⬇ Estaciones · transectos · parcelas</button>
       <button type="button" class="btn sec" id="add-plantilla-son" style="margin:4px 0 0; width:100%; font-size:11.5px; padding:6px;" title="Sondajes con inclinación y azimut para generar la proyección">⬇ Sondajes y proyección</button>
       
-      <div style="display:flex; gap:6px; margin-bottom:8px;">
-        <div style="flex:1;">
+      <label style="font-size:11px; color:#334155; font-weight:600; display:block; margin:6px 0 3px;">Sistema de coordenadas del archivo</label>
+      <select id="add-sis" style="width:100%; padding:7px; font-size:12.5px; border:1px solid var(--border-color); border-radius:6px; margin-bottom:8px;">
+        <option value="w18" selected>WGS84 · UTM 18S (Perú central)</option>
+        <option value="w17">WGS84 · UTM 17S (Perú occidental)</option>
+        <option value="w19">WGS84 · UTM 19S (Perú oriental)</option>
+        <option value="p18">PSAD56 · UTM 18S → se convierte a WGS84</option>
+        <option value="p17">PSAD56 · UTM 17S → se convierte a WGS84</option>
+        <option value="p19">PSAD56 · UTM 19S → se convierte a WGS84</option>
+        <option value="auto">Automático (columna del Excel o 18S)</option>
+      </select>
+      <div style="display:none;">      <div style="display:flex; gap:6px; margin-bottom:8px;">
+        <div>
           <label style="font-size:10.5px; color:#64748b; display:block;">Zona UTM predeterminada</label>
           <select id="add-utm-zone" style="width:100%; padding:5px; font-size:11px; border:1px solid var(--border-color); border-radius:4px;">
             <option value="auto">Auto (Columna o 18S)</option>
@@ -1074,7 +1084,7 @@
             <option value="EPSG:32719">19S (Perú Oriental)</option>
           </select>
         </div>
-        <div style="flex:1;">
+        <div>
           <label style="font-size:10.5px; color:#64748b; display:block;">Datum</label>
           <select id="add-utm-datum" style="width:100%; padding:5px; font-size:11px; border:1px solid var(--border-color); border-radius:4px;">
             <option value="WGS84" selected>WGS84</option>
@@ -1082,7 +1092,8 @@
           </select>
         </div>
       </div>
-      <div id="add-psad-bloque" style="margin-bottom:8px;">
+</div>
+      <div id="add-psad-bloque" style="margin-bottom:8px; display:none;">
         <label style="font-size:10.5px; color:#64748b; display:block;">Transformación PSAD56 → WGS84 (solo si el datum es PSAD56)</label>
         <select id="add-psad-trans" style="width:100%; padding:5px; font-size:11px; border:1px solid var(--border-color); border-radius:4px;">
           <option value="8" selected>Perú · #8 · EPSG:1208 (−279, 175, −379)</option>
@@ -3346,9 +3357,10 @@ function psad56UtmAWgs84(este, norte, zona) {
 // Coordenadas con valores grandes se leen como UTM PSAD56 de la zona elegida; las demás, como geográficas PSAD56.
 function psad56GeoJSONaWgs84(fc, zonaEpsg) {
   const zona = ({ 'EPSG:32717': 17, 'EPSG:32718': 18, 'EPSG:32719': 19 })[zonaEpsg] || 18;
-  let n = 0;
+  let n = 0; const vistos = new WeakSet();   // un mismo arreglo de coordenadas (p. ej. el vértice de cierre) no se convierte dos veces
   const conv = c => {
     if (typeof c[0] === 'number') {
+      if (vistos.has(c)) return; vistos.add(c);
       let x = c[0], y = c[1], r;
       try {
         if (Math.abs(x) > 360 || Math.abs(y) > 90) {
@@ -3439,6 +3451,11 @@ const addMsg = $('add-msg');
 const addLista = $('add-lista');
 const addUtmZone = $('add-utm-zone');
 const addUtmDatum = $('add-utm-datum');
+(function () {   // un solo selector: zona + datum (PSAD56 usa la transformación #8 Perú salvo que se cambie)
+  const sis = $('add-sis'), z = $('add-utm-zone'), d = $('add-utm-datum'), bl = $('add-psad-bloque'); if (!sis || !z || !d) return;
+  const aplicar = () => { const v = sis.value, psad = v[0] === 'p'; d.value = psad ? 'PSAD56' : 'WGS84'; z.value = v === 'auto' ? 'auto' : 'EPSG:327' + v.slice(1); if (bl) bl.style.display = psad ? 'block' : 'none'; };
+  sis.onchange = aplicar; aplicar();
+})();
 
 // Navegación de pestañas en Add Data
 if (fileInput && fileBtn) {
@@ -3938,6 +3955,14 @@ window.editarEstiloCapa = (idx, prop, val) => {
   });
   actualizarAddLista();
 };
+window.convertirCapaCAD = idx => {   // 2.º paso de los CAD en PSAD56: aplica la transformación elegida (Perú #8 por defecto) a la capa ya cargada
+  const ul = userLayers[idx]; if (!ul || ul.datumCAD !== 'PSAD56') return;
+  const nv = psad56GeoJSONaWgs84(ul.geojson, ul.zonaUtm);
+  try { ul.layer.clearLayers(); ul.layer.addData(ul.geojson); map.fitBounds(ul.layer.getBounds(), { padding: [40, 40], maxZoom: 16 }); } catch (e) { console.error(e); }
+  ul.datumCAD = 'WGS84'; ul.name = ul.name.replace(/psad[\s_\-]*(19)?56/ig, 'WGS84'); actualizarAddLista();
+  const m = 'Capa convertida de PSAD56 a WGS84 en ' + nv.toLocaleString('es-PE') + ' vértices con ' + psadEtiqueta() + '.';
+  estado(m); if (addMsg) addMsg.innerHTML = '<div style="background:#ecfdf5;border:1px solid #a7f3d0;border-radius:6px;padding:8px 10px;margin-top:8px;font-size:12px;color:#065f46;">✓ ' + esc(m) + '</div>';
+};
 window.menuCapaAdd = (ev, idx) => {
   const ul = userLayers[idx]; if (!ul) return;
   document.querySelectorAll('.menu-capa-add').forEach(m => m.remove());
@@ -3946,7 +3971,7 @@ window.menuCapaAdd = (ev, idx) => {
   const r = ev.currentTarget && ev.currentTarget.getBoundingClientRect ? ev.currentTarget.getBoundingClientRect() : null;
   menu.style.left = Math.max(4, (r ? r.left - 120 : ev.clientX)) + 'px'; menu.style.top = (r ? r.bottom + 2 : ev.clientY) + 'px';
   const it = (t, f, c) => '<div style="padding:6px 12px; cursor:pointer;' + (c ? ' color:' + c + ';' : '') + '" onmouseover="this.style.background=\'#f1f5f9\'" onmouseout="this.style.background=\'\'" onclick="' + f + '">' + t + '</div>';
-  menu.innerHTML = it('🌍 Descargar en KMZ', 'descargarCapaUsuarioKMZ(' + idx + ')') + it('📦 Shapefile · GeoJSON · DXF (UTM y ruta)…', 'exportarCapaProy(' + idx + ')') + it('📊 Descargar en Excel', 'descargarExcelCapa(' + idx + ')') + (_tienePuntos(ul) ? it('⛰ Con altitud (Copernicus GLO-30): <b>' + (altitudActiva(ul) ? 'SÍ' : 'NO') + '</b>', 'alternarAltitudCapa(' + idx + ')') : '') + it('🗑 Eliminar capa', 'eliminarCapaUsuario(' + idx + ')', '#dc2626');
+  menu.innerHTML = (ul.datumCAD === 'PSAD56' ? it('🔁 Convertir capa PSAD56 → WGS84', 'convertirCapaCAD(' + idx + ')', '#b45309') : '') + it('🌍 Descargar en KMZ', 'descargarCapaUsuarioKMZ(' + idx + ')') + it('📦 Shapefile · GeoJSON · DXF (UTM y ruta)…', 'exportarCapaProy(' + idx + ')') + it('📊 Descargar en Excel', 'descargarExcelCapa(' + idx + ')') + (_tienePuntos(ul) ? it('⛰ Con altitud (Copernicus GLO-30): <b>' + (altitudActiva(ul) ? 'SÍ' : 'NO') + '</b>', 'alternarAltitudCapa(' + idx + ')') : '') + it('🗑 Eliminar capa', 'eliminarCapaUsuario(' + idx + ')', '#dc2626');
   document.body.appendChild(menu);
   const cerrar = () => { menu.remove(); document.removeEventListener('click', cerrar); };
   setTimeout(() => document.addEventListener('click', cerrar), 10);
@@ -4616,19 +4641,21 @@ async function procesarArchivoLocal(file) {
           }
           }
           if (!feats.length) { alert('No se encontraron entidades (líneas, polilíneas, círculos, arcos o puntos) en el ' + ext.toUpperCase() + '. Si el dibujo usa bloques (INSERT), explótalos (EXPLODE) y vuelve a guardar.'); return resolve(false); }
-          const zona = (addUtmZone && addUtmZone.value) || 'EPSG:32718';
+          const zona = (addUtmZone && /^EPSG:327/.test(addUtmZone.value)) ? addUtmZone.value : 'EPSG:32718', esPsad = !!(addUtmDatum && addUtmDatum.value === 'PSAD56');
           const esUtm = feats.some(f => Math.abs(f.c[0][0]) > 180 || Math.abs(f.c[0][1]) > 90);
-          const aWgs = (x, y) => esUtm ? proj4(zona, 'EPSG:4326', [x, y]) : [x, y];
+          const aWgs = (x, y) => (esPsad || !esUtm) ? [x, y] : proj4(zona, 'EPSG:4326', [x, y]);   // con PSAD56 la conversión a WGS84 (datum + proyección) se aplica enseguida, en un solo paso
           const features = feats.map(f => {
             const coords = f.c.map(q => aWgs(q[0], q[1]));
             const props = { CAPA_DXF: f.capa || '0' };
             if (coords.length === 1) return { type: 'Feature', geometry: { type: 'Point', coordinates: coords[0] }, properties: props };
             const igual = coords.length > 2 && coords[0][0] === coords[coords.length-1][0] && coords[0][1] === coords[coords.length-1][1];
-            if (coords.length > 2 && (f.cerrado || igual)) { const anillo = igual ? coords : coords.concat([coords[0]]); return { type: 'Feature', geometry: { type: 'Polygon', coordinates: [anillo] }, properties: props }; }
+            if (coords.length > 2 && (f.cerrado || igual)) { const anillo = igual ? coords : coords.concat([coords[0]]); return { type: 'Feature', geometry: { type: 'Polygon', coordinates: [anillo.map(q => q.slice())] }, properties: props }; }
             return { type: 'Feature', geometry: { type: 'LineString', coordinates: coords }, properties: props };
           });
           geojsonFeatureCol = { type: 'FeatureCollection', features };
-          window._ultPSAD56 = esUtm ? ('DXF proyectado desde ' + zona + ' a WGS84.') : 'DXF interpretado como coordenadas geográficas.';
+          window._datumCAD = null;
+          if (esPsad) { const nv = psad56GeoJSONaWgs84(geojsonFeatureCol, zona); window._ultPSAD56 = ext.toUpperCase() + ' en PSAD56 (' + (esUtm ? 'UTM ' + zona.slice(-2) + 'S' : 'geográficas') + ') ya convertido a WGS84 en ' + nv.toLocaleString('es-PE') + ' vértices con ' + psadEtiqueta() + '.'; }
+          else window._ultPSAD56 = esUtm ? (ext.toUpperCase() + ' proyectado desde ' + zona + ' a WGS84.') : ext.toUpperCase() + ' interpretado como coordenadas geográficas.';
         }
 
         if (geojsonFeatureCol && geojsonFeatureCol.features && addUtmDatum && addUtmDatum.value === 'PSAD56' && ['geojson', 'json', 'kml', 'kmz', 'zip'].indexOf(ext) >= 0 && !(ext === 'zip' && window._shpDatumResuelto)) {
@@ -4695,7 +4722,8 @@ async function procesarArchivoLocal(file) {
             geojson: geojsonFeatureCol,
             esSondajes: esSond,
             etqSoloPerf: !['xlsx', 'xls', 'csv', 'txt', 'tsv'].includes(ext), extArchivo: ext,
-            zonaUtm: (addUtmZone && addUtmZone.value) || 'EPSG:32718'
+            zonaUtm: (addUtmZone && addUtmZone.value) || 'EPSG:32718',
+            datumCAD: (ext === 'dxf' || ext === 'dwg') ? (window._datumCAD || null) : null
           });
           window._esSondajes = false;
           { const ulN = userLayers[userLayers.length - 1]; if (!esSond && (ext === 'xlsx' || ext === 'xls' || ext === 'csv' || ext === 'txt' || ext === 'tsv')) { ulN.vertCampo = detectarCampoVertice(ulN.features); if (ulN.vertCampo) { ulN.vertGrupo = detectarCampoGrupo(ulN.features, ulN.vertCampo); etiquetarPuntosCampo(ulN, ulN.vertCampo); } ulN.monit = detectarMonitoreo(ulN.features); if (ulN.monit) { ulN.vertCampo = null; ulN.vertGrupo = null; if (ulN.monit.pto) etiquetarPuntosCampo(ulN, ulN.monit.pto); } ulN.transCampo = ulN.monit ? null : detectarCampoTransecto(ulN.features); if (ulN.transCampo) { ulN.ordenCampo = detectarCampoOrden(ulN.features, ulN.transCampo); if (ulN.ordenCampo) { if (_esExtremo((ulN.features.find(f => f.geometry && f.geometry.type === 'Point') || { properties: {} }).properties[ulN.ordenCampo])) { ulN.vertCampo = null; ulN.vertGrupo = null; etiquetarPuntosCampo(ulN, ulN.transCampo, ulN.ordenCampo); } else if (!ulN.vertCampo) etiquetarPuntosCampo(ulN, ulN.ordenCampo); } } } }
@@ -4715,6 +4743,7 @@ async function procesarArchivoLocal(file) {
                 </div>
                 ${window._ultColsCoord ? '<div style="font-size:11px; color:#047857; margin-bottom:6px;">Coordenadas tomadas de: ' + esc(window._ultColsCoord) + '</div>' : ''}
                 ${window._ultPSAD56 ? '<details style="font-size:11px; color:#047857; margin-bottom:6px;"><summary style="cursor:pointer; font-weight:600;">' + esc(window._ultPSAD56) + '</summary><div style="margin-top:4px; line-height:1.4; color:#065f46;"><b>Método:</b> Molodensky de 3 parámetros (DS 025-2016-EM, art. 3.5).<br><b>Parámetros:</b> DMA/NIMA TR8350.2 (1987), Perú: ΔX −279 m, ΔY +175 m, ΔZ −379 m (EPSG:1208). Elipsoide Internacional 1924 → WGS84. Precisión ±6/±8/±12 m.<br><b>Datum oficial:</b> WGS84/SIRGAS (RJ 079-2006-IGN, RJ 086-2011-IGN).<br><b>Aviso:</b> conversión referencial; para fines legales prevalece la transformación oficial del INGEMMET (SIDEMCAT).</div></details>' : ''}
+                ${(userLayers[userLayers.length - 1] || {}).datumCAD === 'PSAD56' ? '<button type="button" class="btn" style="background:#f59e0b; border-color:#d97706; color:#fff; font-size:12px; padding:7px 10px; width:100%; margin-bottom:6px; font-weight:700;" onclick="convertirCapaCAD(' + (userLayers.length - 1) + ')">🔁 Convertir esta capa de PSAD56 a WGS84</button>' : ''}
                 <button type="button" class="btn" style="background:#10b981; border-color:#059669; color:#fff; font-size:11.5px; padding:6px 10px; width:100%; display:inline-flex; align-items:center; justify-content:center; gap:5px; font-weight:600;" onclick="descargarCapaUsuarioKMZ(${userLayers.length - 1})">
                   🌍 Descargar "${esc(cleanName)}" en KMZ
                 </button>
@@ -12027,8 +12056,8 @@ async function construirXlsxPerfil(JSZipRef, spec) {
 })();
 
 const MANUAL_VERSION = "22 de noviembre de 2026 · v9";
-const MANUAL = [{"id": "inicio", "icono": "🧭", "titulo": "Primeros pasos", "resumen": "Mapa 2D/3D con capas del portal, tus propios datos, herramientas de análisis y trekking.", "pasos": ["<b>Barra lateral:</b> busca un lugar y activa capas con su casilla.", "<b>Barra superior:</b> Leyenda, Add Data, Procesamiento, Trekking, Vista 3D y Manual.", "<b>Mapa base:</b> globo arriba a la derecha.", "<b>Coordenadas:</b> la barra inferior muestra coordenadas y altitud bajo el cursor."], "probar": [["Abrir la Leyenda", "pnl:leyenda"]]}, {"id": "capas", "icono": "🗂️", "titulo": "Capas e identificación", "resumen": "Activa capas y consulta cada elemento con un clic.", "pasos": ["Marca la casilla de la capa. Si dice «Zoom n+», acércate.", "Haz clic sobre un elemento para ver sus atributos.", "En Leyenda ves los colores de las capas activas."], "probar": [["Abrir la Leyenda", "pnl:leyenda"]]}, {"id": "adddata", "icono": "📂", "titulo": "Add Data", "resumen": "Carga tus archivos o escribe coordenadas.", "pasos": ["Elige Excel, CSV, KML/KMZ, GeoJSON, GPX, ZIP (shapefile), DXF o DWG.", "Pestaña <b>Puntos</b>: escribe nombre, este, norte y zona.", "Cada capa se descarga en KMZ o Excel desde su menú ⋮ (también en shapefile, GeoJSON o DXF con proyección UTM).", "Los polígonos reciben AREA_HA y AREA_M2 automáticamente."], "probar": [["Abrir Add Data", "pnl:add"]]}, {"id": "consultas", "icono": "🔎", "titulo": "Consultas", "resumen": "Atributos, cruce espacial y distancias en un solo panel.", "pasos": ["<b>Atributos:</b> capa, campo, criterio y valor.", "<b>Cruce:</b> capa de entrada y capa de referencia.", "<b>Distancias:</b> distancia más corta a lagunas, humedales, etc.", "Descarga en Excel, CSV o KMZ."], "probar": [["Abrir Consultas", "pnl:query"]]}, {"id": "dibujar", "icono": "✏️", "titulo": "Dibujar", "resumen": "Marcas, rutas y polígonos como en Google Earth.", "pasos": ["Elige Marca, Ruta o Polígono y haz clic en el mapa (doble clic para terminar).", "Edita color, nombre y vértices con ✎.", "Descarga en KMZ, GeoJSON o Excel."], "probar": [["Abrir Dibujar", "pnl:draw"]]}, {"id": "satelite", "icono": "🛰️", "titulo": "Satélite y DEM", "resumen": "Índices (NDVI y otros), imagen satelital y DEM con curvas de nivel.", "pasos": ["Define el <b>área de estudio</b> (rectángulo, polígono o capa cargada): el panel se oculta mientras eliges y vuelve al terminar.", "Elige producto, satélite y fechas. Puedes rellenar vacíos con radar Sentinel-1.", "Pulsa Procesar y descarga GeoTIFF, imagen o curvas.", "Con <b>🧹 Quitar área y resultados</b> empiezas de cero."], "probar": [["Abrir Satélite y DEM", "pnl:sat"]]}, {"id": "perfil", "icono": "⛰️", "titulo": "Perfil topográfico", "resumen": "Perfil de una sección con DEM, curvas o relieve web.", "pasos": ["Pulsa <b>Trazar sección en el mapa</b> (clic = vértice, doble clic = terminar) o elige una línea cargada.", "Elige la fuente de altitud y pulsa Generar perfil.", "Descarga en PNG, DXF o Excel."], "probar": [["Abrir Perfil", "pnl:perfil"]]}, {"id": "tiempo", "icono": "⏱️", "titulo": "Tiempo de recorrido", "resumen": "Distancia y tiempo de A a B de una ruta.", "pasos": ["Adjunta la ruta o elige una capa de líneas.", "Elige el modo (a pie, mula, vehículo…) y pulsa Calcular tiempo."], "probar": [["Abrir Tiempo", "pnl:tiempo"]]}, {"id": "regla", "icono": "📏", "titulo": "Regla", "resumen": "Mide distancias sobre el mapa.", "pasos": ["Haz clic para marcar puntos; se muestran tramos y total.", "Retroceso deshace, Supr limpia."], "probar": [["Abrir la Regla", "pnl:regla"]]}, {"id": "vista3d", "icono": "🌐", "titulo": "Vista 3D", "resumen": "El mapa en 3D con relieve.", "pasos": ["Pulsa Vista 3D. Arrastra para moverte, rueda para acercar.", "Mayús + rueda gira; Alt + rueda inclina."], "probar": [["Activar / desactivar 3D", "3d"]]}, {"id": "coordenadas", "icono": "📍", "titulo": "Coordenadas y UTM", "resumen": "Formato de coordenadas y cuadrícula UTM.", "pasos": ["Elige el formato en la barra inferior.", "Activa Zonas UTM y Cuadrantes para ver la cuadrícula."], "probar": [["Activar Zonas UTM", "zonas"], ["Activar Cuadrantes", "cuadr"]]}, {"id": "ubicacion", "icono": "🎯", "titulo": "Mi ubicación", "resumen": "Ubícate con el GPS o la red.", "pasos": ["Pulsa 📍 en el buscador. Si no es exacta, arrastra el punto azul.", "Guarda como marca o comparte con 📤."], "probar": [["Ubicarme ahora", "ubicacion"]]}, {"id": "trekking", "icono": "🥾", "titulo": "Trekking y video", "resumen": "Graba rutas, sigue una ruta meta y genera un video del recorrido.", "pasos": ["<b>Iniciar grabación</b> registra tu recorrido con GPS.", "<b>Ruta meta:</b> carga un GPX/KML o trázala; muestra lo que falta para llegar.", "<b>🎬 Video:</b> elige formato y música, marca paradas y pulsa Generar."], "probar": [["Abrir Trekking", "pnl:trek"]]}];
-const MANUAL_NOV = {"id": "novedades", "icono": "🛠️", "titulo": "Novedades (solo administrador)", "resumen": "Cambios de esta versión.", "pasos": ["<b>Área de estudio / trazo:</b> al elegir en el mapa se ocultan los paneles y reaparecen; corregido en Satélite/DEM y Perfil.", "<b>Perfil:</b> ya se puede trazar la sección en el mapa.", "<b>Manual:</b> solo en línea, versión PC, sin PDF ni impresión para usuarios.", "<b>Video:</b> compatible con Instagram, paradas en la ruta y música de fondo.", "<b>Procesos:</b> textos más cortos y menos letra pequeña."]};
+const MANUAL = [{"id": "inicio", "icono": "🧭", "titulo": "Primeros pasos", "resumen": "Mapa 2D/3D con capas del portal, tus propios datos, herramientas de análisis y trekking.", "pasos": ["<b>Barra lateral:</b> busca un lugar y activa capas con su casilla.", "<b>Barra superior:</b> Leyenda, Add Data, Procesamiento, Trekking, Vista 3D y Manual.", "<b>Mapa base:</b> globo arriba a la derecha.", "<b>Coordenadas:</b> la barra inferior muestra coordenadas y altitud bajo el cursor."], "probar": [["Abrir la Leyenda", "pnl:leyenda"]]}, {"id": "capas", "icono": "🗂️", "titulo": "Capas e identificación", "resumen": "Activa capas y consulta cada elemento con un clic.", "pasos": ["Marca la casilla de la capa. Si dice «Zoom n+», acércate.", "Haz clic sobre un elemento para ver sus atributos.", "En Leyenda ves los colores de las capas activas."], "probar": [["Abrir la Leyenda", "pnl:leyenda"]]}, {"id": "adddata", "icono": "📂", "titulo": "Add Data", "resumen": "Carga tus archivos o escribe coordenadas.", "pasos": ["Elige Excel, CSV, KML/KMZ, GeoJSON, GPX, ZIP (shapefile), DXF o DWG.", "Pestaña <b>Puntos</b>: escribe nombre, este, norte y zona.", "<b>CAD en PSAD56:</b> elige Datum PSAD56, carga el archivo y pulsa <b>🔁 Convertir esta capa a WGS84</b>.", "Cada capa se descarga en KMZ o Excel desde su menú ⋮ (también en shapefile, GeoJSON o DXF con proyección UTM).", "Los polígonos reciben AREA_HA y AREA_M2 automáticamente."], "probar": [["Abrir Add Data", "pnl:add"]]}, {"id": "consultas", "icono": "🔎", "titulo": "Consultas", "resumen": "Atributos, cruce espacial y distancias en un solo panel.", "pasos": ["<b>Atributos:</b> capa, campo, criterio y valor.", "<b>Cruce:</b> capa de entrada y capa de referencia.", "<b>Distancias:</b> distancia más corta a lagunas, humedales, etc.", "Descarga en Excel, CSV o KMZ."], "probar": [["Abrir Consultas", "pnl:query"]]}, {"id": "dibujar", "icono": "✏️", "titulo": "Dibujar", "resumen": "Marcas, rutas y polígonos como en Google Earth.", "pasos": ["Elige Marca, Ruta o Polígono y haz clic en el mapa (doble clic para terminar).", "Edita color, nombre y vértices con ✎.", "Descarga en KMZ, GeoJSON o Excel."], "probar": [["Abrir Dibujar", "pnl:draw"]]}, {"id": "satelite", "icono": "🛰️", "titulo": "Satélite y DEM", "resumen": "Índices (NDVI y otros), imagen satelital y DEM con curvas de nivel.", "pasos": ["Define el <b>área de estudio</b> (rectángulo, polígono o capa cargada): el panel se oculta mientras eliges y vuelve al terminar.", "Elige producto, satélite y fechas. Puedes rellenar vacíos con radar Sentinel-1.", "Pulsa Procesar y descarga GeoTIFF, imagen o curvas.", "Con <b>🧹 Quitar área y resultados</b> empiezas de cero."], "probar": [["Abrir Satélite y DEM", "pnl:sat"]]}, {"id": "perfil", "icono": "⛰️", "titulo": "Perfil topográfico", "resumen": "Perfil de una sección con DEM, curvas o relieve web.", "pasos": ["Pulsa <b>Trazar sección en el mapa</b> (clic = vértice, doble clic = terminar) o elige una línea cargada.", "Elige la fuente de altitud y pulsa Generar perfil.", "Descarga en PNG, DXF o Excel."], "probar": [["Abrir Perfil", "pnl:perfil"]]}, {"id": "tiempo", "icono": "⏱️", "titulo": "Tiempo de recorrido", "resumen": "Distancia y tiempo de A a B de una ruta.", "pasos": ["Adjunta la ruta o elige una capa de líneas.", "Elige el modo (a pie, mula, vehículo…) y pulsa Calcular tiempo."], "probar": [["Abrir Tiempo", "pnl:tiempo"]]}, {"id": "regla", "icono": "📏", "titulo": "Regla", "resumen": "Mide distancias sobre el mapa.", "pasos": ["Haz clic para marcar puntos; se muestran tramos y total.", "Retroceso deshace, Supr limpia."], "probar": [["Abrir la Regla", "pnl:regla"]]}, {"id": "vista3d", "icono": "🌐", "titulo": "Vista 3D", "resumen": "El mapa en 3D con relieve.", "pasos": ["Pulsa Vista 3D. Arrastra para moverte, rueda para acercar.", "Mayús + rueda gira; Alt + rueda inclina."], "probar": [["Activar / desactivar 3D", "3d"]]}, {"id": "coordenadas", "icono": "📍", "titulo": "Coordenadas y UTM", "resumen": "Formato de coordenadas y cuadrícula UTM.", "pasos": ["Elige el formato en la barra inferior.", "Activa Zonas UTM y Cuadrantes para ver la cuadrícula."], "probar": [["Activar Zonas UTM", "zonas"], ["Activar Cuadrantes", "cuadr"]]}, {"id": "ubicacion", "icono": "🎯", "titulo": "Mi ubicación", "resumen": "Ubícate con el GPS o la red.", "pasos": ["Pulsa 📍 en el buscador. Si no es exacta, arrastra el punto azul.", "Guarda como marca o comparte con 📤."], "probar": [["Ubicarme ahora", "ubicacion"]]}, {"id": "trekking", "icono": "🥾", "titulo": "Trekking y video", "resumen": "Graba rutas, sigue una ruta meta y genera un video del recorrido.", "pasos": ["<b>Iniciar grabación</b> registra tu recorrido con GPS.", "<b>Ruta meta:</b> carga un GPX/KML o trázala; muestra lo que falta para llegar.", "<b>🎬 Video:</b> elige formato y música, marca paradas y pulsa Generar."], "probar": [["Abrir Trekking", "pnl:trek"]]}];
+const MANUAL_NOV = {"id": "novedades", "icono": "🛠️", "titulo": "Novedades (solo administrador)", "resumen": "Cambios de esta versión.", "pasos": ["<b>Área de estudio / trazo:</b> al elegir en el mapa se ocultan los paneles y reaparecen; corregido en Satélite/DEM y Perfil.", "<b>Perfil:</b> ya se puede trazar la sección en el mapa.", "<b>Manual:</b> solo en línea, versión PC, sin PDF ni impresión para usuarios.", "<b>Video:</b> compatible con Instagram, paradas en la ruta y música de fondo.", "<b>Procesos:</b> textos más cortos y menos letra pequeña.", "<b>CAD PSAD56:</b> corregida la deformación (vértice de cierre convertido dos veces) y conversión en dos pasos: cargar en PSAD56 y luego convertir la capa a WGS84."]};
 let manualSel = 0, manualTodo = false;
 const manualNorm = t => String(t || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
 const manualTexto = s => manualNorm([s.titulo, s.resumen].concat(s.pasos || [], s.tips || [], (s.tabla || []).map(r => r.join(' '))).join(' ').replace(/<[^>]+>/g, ' '));
