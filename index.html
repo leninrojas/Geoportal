@@ -11900,7 +11900,7 @@ async function construirXlsxPerfil(JSZipRef, spec) {
     const mx = (c - a) * (margen || 0) + 0.0004, my = (d - b) * (margen || 0) + 0.0004, bb = [a - mx, b - my, c + mx, d + my], cy = (bb[1] + bb[3]) / 2;
     const kmx = (bb[2] - bb[0]) * 111.32 * Math.cos(cy * Math.PI / 180), kmy = (bb[3] - bb[1]) * 110.57;
     if (kmx * kmy > 20000) throw new Error('El área es demasiado grande (más de ~20 000 km² de recuadro). Reduce el área de estudio.');
-    let res = res0; const px0 = (kmx * 1000 / res) * (kmy * 1000 / res); if (px0 > capPx) res = res0 * Math.ceil(Math.sqrt(px0 / capPx));
+    let res = res0; const px0 = (kmx * 1000 / res) * (kmy * 1000 / res); if (px0 > capPx) { res = res0 * Math.ceil(Math.sqrt(px0 / capPx)); try { avMsg('Área grande: se procesa a ' + res + ' m por píxel para no bloquear el navegador.'); } catch (e) {} }
     const G = crearMalla([[[bb[0], bb[1]], [bb[2], bb[1]], [bb[2], bb[3]], [bb[0], bb[3]], [bb[0], bb[1]]]], res), n = G.w * G.h, dentro = new Uint8Array(n);
     gxRellenarPoli(anillos.map(r => r.map(p => gxPx(G, p))), G.w, G.h, 1, dentro); let nIn = 0; for (let p = 0; p < n; p++) nIn += dentro[p];
     return { G: G, n: n, dentro: dentro, nIn: nIn, bbLL: bb, anillosLL: anillos };
@@ -12005,7 +12005,7 @@ async function construirXlsxPerfil(JSZipRef, spec) {
   async function hCuenca() {
     if (!aoi) throw new Error('Primero define el área de estudio (panel Satélite, paso 1).');
     const sub = T('hc-sub').value, umb = Math.max(0.01, gxNum('hc-umb', 1)), snapM = Math.max(0, gxNum('hc-snap', 300)), t1 = gxNum('hc-t1', 50), t2 = gxNum('hc-t2', 500), cod = (T('hc-cod').value || '').replace(/\D/g, ''), obj = Math.max(0.05, gxNum('hc-obj', 20));
-    const ctx = gxCtx(aoi.anillos, 30, PXMAX(2.5e6), 0.04), G = ctx.G, n = ctx.n, w = G.w, h = G.h, c2 = G.res * G.res;
+    const ctx = gxCtx(aoi.anillos, 30, PXMAX(9e5), 0.04), G = ctx.G, n = ctx.n, w = G.w, h = G.h, c2 = G.res * G.res;
     const D = await gxDEM(ctx); avMsg('Rellenando depresiones y calculando el sentido del flujo…'); await avCede();
     const F = gxRelleno(D.z, w, h), acc = gxAcum(F.fd, F.ord, F.no); let out = -1, snapTxt = '';
     if (GX.pt) { const q = gxPx(G, GX.pt), i0 = Math.round(q[0] - 0.5), j0 = Math.round(q[1] - 0.5); if (i0 < 0 || j0 < 0 || i0 >= w || j0 >= h) throw new Error('El punto de salida queda fuera del área de estudio.'); out = gxSnap(acc, w, h, i0, j0, Math.max(1, Math.round(snapM / G.res))); const d = Math.hypot(out % w - i0, ((out / w) | 0) - j0) * G.res; snapTxt = 'El punto se ajustó ' + fmtN(d, 0) + ' m hacia el cauce más cercano.'; }
@@ -12013,7 +12013,7 @@ async function construirXlsxPerfil(JSZipRef, spec) {
     if (out < 0) throw new Error('No se encontró una salida de cuenca en el área.');
     const lab = gxCuencaDesde(F.fd, F.ord, F.no, out); let nb = 0; for (let p = 0; p < n; p++) nb += lab[p];
     if (nb < 30) throw new Error('La cuenca resultó muy pequeña (' + nb + ' celdas). Marca el punto sobre un cauce o aumenta el área de estudio.');
-    const toca = gxTocaBorde(lab, D.z, w, h), Akm = nb * c2 / 1e6; avMsg('Delimitando unidades y red de drenaje…'); await avCede();
+    avMsg('Delimitando la cuenca…'); await avCede(); const toca = gxTocaBorde(lab, D.z, w, h), Akm = nb * c2 / 1e6; avMsg('Delimitando unidades y red de drenaje…'); await avCede();
     const umbC = Math.max(2, Math.round(umb * 1e6 / c2)), so = gxStrahler(F.fd, F.ord, F.no, acc, umbC), cauces = gxCauces(F.fd, so);
     let lbl = new Int32Array(n), units = [], nombreU = 'Cuenca delineada';
     if (sub === 'no') { for (let p = 0; p < n; p++) if (lab[p]) lbl[p] = 1; units = [{ id: 1, code: cod, outlet: out }]; }
@@ -12021,7 +12021,7 @@ async function construirXlsxPerfil(JSZipRef, spec) {
     else { const nv = parseInt(sub.slice(2), 10), r = gxPfafNiveles(F.fd, acc, w, h, lab, out, nv, Math.max(30, Math.round(0.5 * 1e6 / c2)), cod); lbl = r.lab; units = r.units; nombreU = 'Unidades Pfafstetter · nivel ' + nv; }
     const sum = {}, cnt = {}, mn = {}, mx = {}; for (let p = 0; p < n; p++) { const L = lbl[p]; if (!L) continue; cnt[L] = (cnt[L] || 0) + 1; const z = D.z[p]; if (z === z) { sum[L] = (sum[L] || 0) + z; mn[L] = Math.min(mn[L] === undefined ? 1e9 : mn[L], z); mx[L] = Math.max(mx[L] === undefined ? -1e9 : mx[L], z); } }
     const info = {}; units.forEach(u => { const k = (cnt[u.id] || 0) * c2 / 1e6; info[u.id] = { code: u.code, km2: k, clase: gxClaseArea(k, t1, t2), tipo: sub.startsWith('pf') && u.code ? (parseInt(u.code.slice(-1), 10) % 2 === 0 ? 'Cuenca' : 'Intercuenca') : '', zmin: mn[u.id], zmax: mx[u.id], zmed: sum[u.id] / (cnt[u.id] || 1) }; });
-    const fU = gxPolisAUnidades(lbl, G, L => { const i = info[L]; if (!i) return null; return { COD_PFAF: i.code || String(L), TIPO_PFAF: i.tipo, AREA_KM2: Number(i.km2.toFixed(3)), AREA_HA: Number((i.km2 * 100).toFixed(1)), CLASE_AREA: i.clase, ALT_MIN: Math.round(i.zmin), ALT_MAX: Math.round(i.zmax), ALT_MEDIA: Math.round(i.zmed) }; });
+    avMsg('Convirtiendo a polígonos…'); await avCede(); const fU = gxPolisAUnidades(lbl, G, L => { const i = info[L]; if (!i) return null; return { COD_PFAF: i.code || String(L), TIPO_PFAF: i.tipo, AREA_KM2: Number(i.km2.toFixed(3)), AREA_HA: Number((i.km2 * 100).toFixed(1)), CLASE_AREA: i.clase, ALT_MIN: Math.round(i.zmin), ALT_MAX: Math.round(i.zmax), ALT_MEDIA: Math.round(i.zmed) }; });
     const bas = new Int32Array(n); for (let p = 0; p < n; p++) if (lab[p]) bas[p] = 1; const PB = gxPoligonizar(bas, w, h, 0.7).get(1) || [], ringB = PB.length ? PB[0][0].map(q => gxLL(G, q[0], q[1])) : null;
     const fR = gxRedGeo(cauces, so, G, lab); gxQuitarCapas();
     const uCuenca = gxCapa(nombreU, { type: 'FeatureCollection', features: fU }, { color: '#0369a1', relleno: sub === 'no' ? 0.15 : 0.08, estilo: ft => ({ weight: 2.4, fillOpacity: 0.06, fillColor: ['#bae6fd', '#fde68a', '#bbf7d0', '#fecaca', '#ddd6fe'][(ft.properties.COD_PFAF || '').length ? (parseInt(String(ft.properties.COD_PFAF).slice(-1), 10) || 0) % 5 : 0] }), etiqueta: ft => sub.startsWith('pf') || sub === 'area' ? ft.properties.COD_PFAF + ' · ' + fmtN(ft.properties.AREA_KM2, 1) + ' km²' : '', permanente: true });
@@ -12040,7 +12040,7 @@ async function construirXlsxPerfil(JSZipRef, spec) {
     if (sub !== 'no') sec.push({ h: 'Unidades hidrográficas', tabla: { cab: ['Código', 'Tipo', 'Clase', 'Área (km²)', 'Alt. media (m)'], anchos: [1800, 1800, 2000, 2000, 2038], filas: filas.map(f => [f.code || '—', f.tipo || '—', f.clase, fmtN(f.km2, 2), fmtN(f.zmed, 0)]) } });
     const r = { titulo: 'Cuenca y red de drenaje', subtitulo: 'Delimitación automática con DEM Copernicus GLO-30', nombre: 'CUENCA_' + new Date().toISOString().slice(0, 10).replace(/-/g, ''), secciones: sec, limites: avLimitesHid(toca),
       resumenDoc: 'La cuenca delimitada tiene ' + fmtN(Akm, 2) + ' km² y se clasifica como ' + cl.toLowerCase() + '. Se obtuvo a partir del modelo de elevación Copernicus GLO-30 (' + G.res + ' m): se rellenaron las depresiones, se calculó el sentido y la acumulación del flujo (D8) y se tomó como cuenca toda el área que drena al punto de salida. ' + (sub.startsWith('pf') ? 'Se subdividió con el método de Pfafstetter, que el ANA adopta para codificar las unidades hidrográficas del Perú.' : '') };
-    r.canvas = gxLienzoRelieve(ctx, D.z, (p, g) => { const c = so[p] ? gxCol(GX_COL_ORD[Math.min(6, so[p] - 1)]) : null; if (c && lab[p]) return [c[0], c[1], c[2], 255]; if (lab[p]) { const u = lbl[p]; const cc = u ? gxCol(['#bae6fd', '#fde68a', '#bbf7d0', '#fecaca', '#ddd6fe'][u % 5]) : [g, g, g]; return [Math.round(g * 0.4 + cc[0] * 0.6), Math.round(g * 0.4 + cc[1] * 0.6), Math.round(g * 0.4 + cc[2] * 0.6), 255]; } return [g, g, g, 150]; });
+    avMsg('Dibujando el mapa…'); await avCede(); r.canvas = gxLienzoRelieve(ctx, D.z, (p, g) => { const c = so[p] ? gxCol(GX_COL_ORD[Math.min(6, so[p] - 1)]) : null; if (c && lab[p]) return [c[0], c[1], c[2], 255]; if (lab[p]) { const u = lbl[p]; const cc = u ? gxCol(['#bae6fd', '#fde68a', '#bbf7d0', '#fecaca', '#ddd6fe'][u % 5]) : [g, g, g]; return [Math.round(g * 0.4 + cc[0] * 0.6), Math.round(g * 0.4 + cc[1] * 0.6), Math.round(g * 0.4 + cc[2] * 0.6), 255]; } return [g, g, g, 150]; });
     ponerOverlay(r.canvas, ctx.bbLL); ponerLeyenda('<div style="font-weight:700;color:#1e3a8a;">Cuenca y red de drenaje</div><div style="margin-top:3px;font-size:11px;">Orden de Strahler: ' + GX_COL_ORD.slice(0, Math.min(ordMax, 7)).map((c, i) => '<span style="display:inline-block;width:14px;height:6px;background:' + c + ';margin-left:3px;vertical-align:middle;"></span>' + (i + 1)).join('') + '</div>');
     T('hc-doc').onclick = () => gxWord(r);
     T('hc-csv').onclick = () => gxBajar(r.nombre + '_unidades.csv', gxCsv([['COD_PFAF', 'TIPO', 'CLASE', 'AREA_KM2', 'ALT_MIN', 'ALT_MAX', 'ALT_MEDIA']].concat(filas.map(f => [f.code, f.tipo, f.clase, f.km2.toFixed(3), Math.round(f.zmin), Math.round(f.zmax), Math.round(f.zmed)]))));
@@ -12099,7 +12099,7 @@ async function construirXlsxPerfil(JSZipRef, spec) {
     const src = T('hm-src').value, anillos = (src === 'ult' && GX.cuenca) ? GX.cuenca.rings : (aoi && aoi.anillos);
     if (!anillos) throw new Error('Define el área de estudio (la cuenca) o delimita una cuenca primero.');
     const umb = Math.max(0.01, gxNum('hm-umb', 1)), mostrar = T('hm-capa').value === 'si', tcSel = T('hm-tc').value;
-    const ctx = gxCtx(anillos, 30, PXMAX(2.5e6), 0.06), G = ctx.G, w = G.w, h = G.h, n = ctx.n, c2 = G.res * G.res;
+    const ctx = gxCtx(anillos, 30, PXMAX(9e5), 0.06), G = ctx.G, w = G.w, h = G.h, n = ctx.n, c2 = G.res * G.res;
     const D = await gxDEM(ctx); avMsg('Calculando flujo, red de drenaje y parámetros…'); await avCede();
     const F = gxRelleno(D.z, w, h), acc = gxAcum(F.fd, F.ord, F.no), mask = ctx.dentro; let out = -1, bv = -1; for (let p = 0; p < n; p++) if (mask[p] && acc[p] > bv) { bv = acc[p]; out = p; }
     if (out < 0 || ctx.nIn < 30) throw new Error('El polígono es demasiado pequeño o no tiene datos del DEM.');
@@ -12118,7 +12118,7 @@ async function construirXlsxPerfil(JSZipRef, spec) {
     const hipCv = gxChart({ titulo: 'Curva hipsométrica', xl: '% del área por encima de la cota', yl: 'Altitud (m s. n. m.)', series: [{ pts: M.hipso.map(q => [q[0], q[1]]), color: '#2563eb', relleno: true }], x: { min: 0, max: 100 }, w: 900, h: 400 });
     const frecCv = gxChart({ titulo: 'Polígono de frecuencia de altitudes', xl: 'Altitud (m s. n. m.)', yl: '% del área', series: [{ tipo: 'barras', pts: M.hip.map(r => [(r.de + r.a) / 2, r.pct]), color: '#0ea5e9', bw: M.pasoHip * 0.9 }], y: { min: 0 }, x: { min: M.hip[0].de, max: M.hip[M.hip.length - 1].a }, w: 900, h: 380 });
     const perCv = gxChart({ titulo: 'Perfil longitudinal del cauce principal', xl: 'Distancia desde la cabecera (km)', yl: 'Altitud (m s. n. m.)', series: [{ pts: M.perfil.map(q => [q[0] / 1000, q[1]]), color: '#0369a1', relleno: true }], x: { dec: 1 }, w: 900, h: 380 });
-    const mapa = gxLienzoRelieve(ctx, D.z, (p, g) => { const c = so[p] && mask[p] ? gxCol(GX_COL_ORD[Math.min(6, so[p] - 1)]) : null; if (c) return [c[0], c[1], c[2], 255]; return mask[p] ? [g, g, g, 255] : [g, g, g, 80]; }, null);
+    avMsg('Dibujando el mapa…'); await avCede(); const mapa = gxLienzoRelieve(ctx, D.z, (p, g) => { const c = so[p] && mask[p] ? gxCol(GX_COL_ORD[Math.min(6, so[p] - 1)]) : null; if (c) return [c[0], c[1], c[2], 255]; return mask[p] ? [g, g, g, 255] : [g, g, g, 80]; }, null);
     if (mostrar) {
       gxQuitarCapas(); const fR = gxRedGeo(cauces, so, G, mask), cam = M.cam.map(p => gxLL(G, p % w + 0.5, ((p / w) | 0) + 0.5)), pr = { AREA_KM2: Number(Ak.toFixed(3)), PERIM_KM: Number(M.Pkm.toFixed(3)), KC: Number(M.Kc.toFixed(3)), KF: Number(M.Kf.toFixed(3)), DD_KMKM2: Number(M.Dd.toFixed(3)), H_MEDIA: Math.round(M.Hm), PEND_MEDIA: Number(M.pMed.toFixed(2)), ORDEN_MAX: M.maxO, LC_KM: Number((M.Lc / 1000).toFixed(3)), TC_MEDIO_H: Number((M.tcMed || 0).toFixed(2)) };
       const u1 = gxCapa('Cuenca (parámetros morfométricos)', { type: 'FeatureCollection', features: [{ type: 'Feature', geometry: { type: 'Polygon', coordinates: anillos }, properties: pr }] }, { color: '#0369a1', relleno: 0.05 });
@@ -12242,7 +12242,7 @@ async function construirXlsxPerfil(JSZipRef, spec) {
   }
   async function tSusc() {
     if (!aoi) throw new Error('Primero define el área de estudio (panel Satélite, paso 1).');
-    const ctx = gxCtx(aoi.anillos, 30, PXMAX(2.5e6), 0), G = ctx.G, w = G.w, h = G.h, n = ctx.n, res = G.res, D = await gxDEM(ctx); avMsg('Calculando factores del terreno…'); await avCede();
+    const ctx = gxCtx(aoi.anillos, 30, PXMAX(9e5), 0), G = ctx.G, w = G.w, h = G.h, n = ctx.n, res = G.res, D = await gxDEM(ctx); avMsg('Calculando factores del terreno…'); await avCede();
     const capas = [], filas = [], pen = Float32Array.from(D.pend);
     const F0 = [['ts-pen', 'Pendiente', '°', () => pen, false], ['ts-rel', 'Relieve local (150 m)', 'm', () => gxRelieve(D.z, w, h, Math.max(1, Math.round(75 / res))), false],
       ['ts-cau', 'Cercanía a cauces', 'm', () => { const F = gxRelleno(D.z, w, h), acc = gxAcum(F.fd, F.ord, F.no), so = gxStrahler(F.fd, F.ord, F.no, acc, Math.max(2, Math.round(1e6 / (res * res)))), mk = new Uint8Array(n); for (let p = 0; p < n; p++) if (so[p]) mk[p] = 1; return gxDistancia(mk, w, h, res); }, true]];
@@ -12283,7 +12283,7 @@ async function construirXlsxPerfil(JSZipRef, spec) {
     if (!O.length) throw new Error('Marca al menos un punto de observación en el mapa o elige una capa de puntos.'); if (O.length > 40) { O = O.slice(0, 40); }
     const hO = Math.max(0, gxNum('tv-ho', 1.7)), hB = Math.max(0, gxNum('tv-hb', 0)), R = Math.max(0.1, Math.min(15, gxNum('tv-r', 3))), curv = T('tv-curv').value === '1';
     let a = 1e9, b = 1e9, c = -1e9, d = -1e9; O.forEach(q => { a = Math.min(a, q[0]); c = Math.max(c, q[0]); b = Math.min(b, q[1]); d = Math.max(d, q[1]); }); const cy = (b + d) / 2, dy = R / 110.57, dx = R / (111.32 * Math.cos(cy * Math.PI / 180));
-    const ring = [[[a - dx, b - dy], [c + dx, b - dy], [c + dx, d + dy], [a - dx, d + dy], [a - dx, b - dy]]], ctx = gxCtx(ring, 30, PXMAX(2.5e6), 0), G = ctx.G, w = G.w, h = G.h, n = ctx.n, D = await gxDEM(ctx), rPx = Math.round(R * 1000 / G.res);
+    const ring = [[[a - dx, b - dy], [c + dx, b - dy], [c + dx, d + dy], [a - dx, d + dy], [a - dx, b - dy]]], ctx = gxCtx(ring, 30, PXMAX(9e5), 0), G = ctx.G, w = G.w, h = G.h, n = ctx.n, D = await gxDEM(ctx), rPx = Math.round(R * 1000 / G.res);
     const cnt = new Uint8Array(n), win = new Uint8Array(n), por = []; let k = 0;
     for (const q of O) { const p = gxPx(G, q), i = Math.floor(p[0]), j = Math.floor(p[1]); if (i < 0 || j < 0 || i >= w || j >= h) { por.push(null); continue; }
       avMsg('Calculando visibilidad ' + (++k) + '/' + O.length + '…'); await avCede(); if (AV.cancel) throw new Error('Proceso cancelado.'); const vis = new Uint8Array(n); gxVisibilidad(D.z, w, h, G.res, i, j, hO, hB, rPx, vis, curv); let nv = 0; for (let t = 0; t < n; t++) { if (vis[t] && cnt[t] < 255) { cnt[t]++; nv++; } }
@@ -12306,7 +12306,7 @@ async function construirXlsxPerfil(JSZipRef, spec) {
   async function tVol() {
     if (!aoi) throw new Error('Dibuja o elige el polígono del desmonte o de la excavación como área de estudio.');
     const modo = T('tx-base').value, cota = gxNum('tx-cota', 0), sig = Math.max(0, gxNum('tx-sig', 4)), loc = T('tx-dem').value === 'loc', res0 = Math.max(0.2, gxNum('tx-res', 30));
-    const ctx = gxCtx(aoi.anillos, res0, PXMAX(6e6), 0), G = ctx.G, w = G.w, h = G.h, n = ctx.n; let z, fuente, resDem;
+    const ctx = gxCtx(aoi.anillos, res0, PXMAX(2e6), 0), G = ctx.G, w = G.w, h = G.h, n = ctx.n; let z, fuente, resDem;
     if (loc) { const fl = T('tx-file').files[0]; if (!fl) throw new Error('Elige el archivo GeoTIFF del DEM.'); await asegurarGeoTIFFS(); const L0 = await leerDEMLocal(fl, G, avMsg); z = L0.z; resDem = L0.res; fuente = 'DEM propio «' + fl.name + '» (celda original ' + fmtN(resDem, 2) + ' m)'; }
     else { const D = await gxDEM(ctx); z = D.z; fuente = 'Copernicus DEM GLO-30 (ESA), ' + G.res + ' m'; }
     avMsg('Calculando la superficie base y el volumen…'); await avCede(); const base = gxBaseVolumen(z, w, h, ctx.dentro, modo, cota), V = gxVolumen(z, base, ctx.dentro, G.res);
@@ -12634,6 +12634,7 @@ async function construirXlsxPerfil(JSZipRef, spec) {
   // botones de los paneles «Hidrología» y «Gestión territorial» y del menú Procesamiento
   document.querySelectorAll('#pnl-hid button[data-av], #pnl-gest button[data-av], #menu-proc button[data-av]').forEach(b => b.addEventListener('click', () => { const mn = document.getElementById('menu-proc'); if (mn) mn.classList.remove('abierto'); const bp = document.getElementById('btn-proc'); if (bp) bp.setAttribute('aria-expanded', 'false'); window.avAbrir(b.dataset.av); }));
   /*GX-UI6-END*/
+
 
 
 
