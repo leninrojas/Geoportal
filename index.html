@@ -52,7 +52,7 @@
 
   #mapwrap { flex:1; position:relative; min-width:0; height:100%; }
   body.sa-modo-dem #sa-dl-basemap-wrap { display:none !important; }
-  #map { position:absolute; top:0; right:0; bottom:0; left:0; background:#2b3036; }
+  #map { position:absolute; top:0; right:0; bottom:0; left:0; background:#3b3a35; }
   .adv-etq span{position:absolute;left:0;top:0;white-space:nowrap;transform-origin:center;background:rgba(15,23,42,.82);border:1px solid #fff;border-radius:4px;padding:1px 5px;font:700 11px Arial,sans-serif;text-shadow:none;pointer-events:none}
 
   h1 { font-size:21px; letter-spacing: -0.35px; margin:0 0 14px; color:var(--primary-dark); font-weight:800; display:flex; align-items:center; gap:8px; }
@@ -2163,8 +2163,13 @@ L.control.zoom({ position: 'topright' }).addTo(map);
   map.createPane(p[0]).style.zIndex = p[1];
 });
 
-const tile = (path, opt) => L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/' + path + '/MapServer/tile/{z}/{y}/{x}', Object.assign({ maxZoom: 22, attribution: 'Esri', noWrap: true, updateWhenIdle: false, updateWhenZooming: false, updateInterval: 120, keepBuffer: 2 }, opt || {}));
-const imgSat = tile('World_Imagery', { maxNativeZoom: 19, maxZoom: 22, className: 'capa-sat', keepBuffer: 2 });
+// mapa base: se precargan teselas alrededor de lo visible (2 en PC, 1 en celular) para que al mover el mouse no aparezcan bordes grises
+const TESELAS_EXTRA = (window.matchMedia && window.matchMedia('(max-width: 768px)').matches) ? 1 : 2;
+const tile = (path, opt) => { const t = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/' + path + '/MapServer/tile/{z}/{y}/{x}', Object.assign({ maxZoom: 22, attribution: 'Esri', noWrap: true, updateWhenIdle: false, updateWhenZooming: false, updateInterval: 60, keepBuffer: 4 }, opt || {}));
+  const base = L.GridLayer.prototype._getTiledPixelBounds;
+  t._getTiledPixelBounds = function (c) { const b = base.call(this, c), s = this.getTileSize(), mx = s.x * TESELAS_EXTRA, my = s.y * TESELAS_EXTRA; return L.bounds(b.min.subtract([mx, my]), b.max.add([mx, my])); };
+  return t; };
+const imgSat = tile('World_Imagery', { maxNativeZoom: 19, maxZoom: 22, className: 'capa-sat', keepBuffer: 4 });
 const imgLab = tile('Reference/World_Boundaries_and_Places', { maxNativeZoom: 17, maxZoom: 22, opacity: 0.9 });
 const imagenesEtiquetas = L.layerGroup([imgSat, imgLab]);
 const topografico = tile('World_Topo_Map', { maxNativeZoom: 19, maxZoom: 22 });
