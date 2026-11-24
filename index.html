@@ -2163,11 +2163,14 @@ L.control.zoom({ position: 'topright' }).addTo(map);
   map.createPane(p[0]).style.zIndex = p[1];
 });
 
-// mapa base: se precargan teselas alrededor de lo visible (2 en PC, 1 en celular) para que al mover el mouse no aparezcan bordes grises
-const TESELAS_EXTRA = (window.matchMedia && window.matchMedia('(max-width: 768px)').matches) ? 1 : 2;
-const tile = (path, opt) => { const t = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/' + path + '/MapServer/tile/{z}/{y}/{x}', Object.assign({ maxZoom: 22, attribution: 'Esri', noWrap: true, updateWhenIdle: false, updateWhenZooming: false, updateInterval: 60, keepBuffer: 4 }, opt || {}));
+// mapa base: se precargan teselas alrededor de lo visible (1 fila) para que al mover el mouse no aparezcan bordes grises
+const TESELAS_EXTRA = (window.matchMedia && window.matchMedia('(max-width: 768px)').matches) ? 1 : 1;
+const tile = (path, opt) => { const t = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/' + path + '/MapServer/tile/{z}/{y}/{x}', Object.assign({ maxZoom: 22, attribution: 'Esri', noWrap: true, updateWhenIdle: false, updateWhenZooming: false, updateInterval: 100, keepBuffer: 3 }, opt || {}));
   const base = L.GridLayer.prototype._getTiledPixelBounds;
-  t._getTiledPixelBounds = function (c) { const b = base.call(this, c), s = this.getTileSize(), mx = s.x * TESELAS_EXTRA, my = s.y * TESELAS_EXTRA; return L.bounds(b.min.subtract([mx, my]), b.max.add([mx, my])); };
+  t._pre = false;   // la precarga del contorno solo se pide cuando ya cargó todo lo visible (así no retrasa el centro)
+  t._getTiledPixelBounds = function (c) { const b = base.call(this, c); if (!this._pre) return b; const s = this.getTileSize(), mx = s.x * TESELAS_EXTRA, my = s.y * TESELAS_EXTRA; return L.bounds(b.min.subtract([mx, my]), b.max.add([mx, my])); };
+  t.on('loading', () => { t._pre = false; });
+  t.on('load', () => { if (t._map && !t._pre) { t._pre = true; try { t._update(); } catch (e) {} } });
   return t; };
 const imgSat = tile('World_Imagery', { maxNativeZoom: 19, maxZoom: 22, className: 'capa-sat', keepBuffer: 4 });
 const imgLab = tile('Reference/World_Boundaries_and_Places', { maxNativeZoom: 17, maxZoom: 22, opacity: 0.9 });
