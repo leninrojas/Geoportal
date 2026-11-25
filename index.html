@@ -631,6 +631,7 @@
   .tk-ajustes select { padding:2px 4px; font-size:12px; }
   .tk-lbl { display:block; font-size:11.5px; font-weight:600; color:#334155; margin:8px 0 3px; }
   .tk-sec { margin-top:14px; padding-top:10px; border-top:1px solid #e2e8f0; font-size:12px; font-weight:700; text-transform:uppercase; color:#29466f; letter-spacing:.2px; }
+  .tk-filtro { display:flex; gap:4px; margin:8px 0; flex-wrap:wrap; } .tk-filtro button { font-size:11.5px; padding:4px 9px; border:1px solid var(--border-color); border-radius:14px; background:#fff; cursor:pointer; color:#334155; } .tk-filtro button.on { background:#1e3a8a; color:#fff; border-color:#1e3a8a; }
   .tk-vacio { color:#64748b; font-size:12.5px; padding:14px 4px; text-align:center; }
   .tk-card { border:1px solid #e2e8f0; border-radius:8px; padding:8px 10px; margin-bottom:8px; background:#fff; }
   .tk-card-t { display:flex; flex-direction:column; } .tk-card-t b { font-size:13px; color:#0f172a; } .tk-card-t span { font-size:11px; color:#64748b; }
@@ -884,13 +885,14 @@
       <div class="tk-aviso" style="margin-top:10px; background:#fffbeb; border-color:#fde68a; color:#78350f; font-size:11.5px;">
         <b>Importante:</b> el navegador solo registra el GPS con la app abierta y la pantalla encendida; si la bloqueas o cambias de aplicación, la grabación se detiene. La altitud del GPS del celular tiene un error de 10–30 m: el desnivel es aproximado (se suaviza y se ignoran variaciones menores al umbral).
       </div>
-      <div id="tk-msg" style="font-size:12px; font-weight:600; min-height:16px; margin-top:6px;"></div>
+      <div id="tk-msg" class="tk-msgbox" style="font-size:12px; font-weight:600; min-height:16px; margin-top:6px;"></div>
     </div>
 
     <div id="tk-t-ruta" style="display:none;">
       <div id="tk-plan-info" class="tk-aviso" style="background:#f8fafc; border-color:#e2e8f0; color:#334155;"></div>
       <label class="tk-lbl">Cargar ruta desde archivo (GPX, KML, KMZ, GeoJSON)</label>
-      <input type="file" id="tk-arch" accept=".gpx,.kml,.kmz,.geojson,.json" style="width:100%; font-size:12px;">
+      <input type="file" id="tk-arch" accept=".gpx,.kml,.kmz,.geojson,.json,application/gpx+xml,application/vnd.google-earth.kml+xml,application/vnd.google-earth.kmz,application/geo+json,application/json,text/xml,application/xml,application/octet-stream" style="width:100%; font-size:12px;">
+      <div class="tk-msgbox" style="font-size:12px; font-weight:600; min-height:16px; margin-top:6px;"></div>
       <label class="tk-lbl">O usar una línea ya cargada en el geoportal</label>
       <div style="display:flex; gap:6px;"><select id="tk-capa" style="flex:1; min-width:0; padding:5px; font-size:12px;"></select><button class="btn sec" id="tk-capa-usar" type="button" style="margin:0; width:auto; padding:5px 10px;">Usar</button></div>
       <button class="btn sec" id="tk-trazar" type="button">✏️ Trazar ruta en el mapa</button>
@@ -898,6 +900,7 @@
       <canvas id="tk-perfil2" style="width:100%; height:100px; display:none; margin-top:8px;"></canvas>
       <button class="btn sec" id="tk-plan-dem" type="button" style="display:none;">⛰ Calcular altitudes con el DEM</button>
       <button class="btn sec" id="tk-plan-corr" type="button" style="display:none;">📥 Descargar mapas a lo largo de esta ruta</button>
+      <button class="btn sec" id="tk-plan-guardar" type="button" style="display:none;">💾 Guardar esta ruta en «Mis rutas»</button>
       <button class="btn sec" id="tk-quitar-plan" type="button" style="display:none; color:#dc2626; border-color:#dc2626;">🗑 Quitar ruta meta</button>
       <div id="tk-plan-acc" style="display:none; gap:6px; margin-top:6px;">
         <button class="btn sec" id="tk-plan-perfil" type="button" style="margin:0; flex:1; padding:6px; font-size:11.5px;">⛰ Perfil topográfico</button>
@@ -945,6 +948,11 @@
     </div>
 
     <div id="tk-t-mis" style="display:none;">
+      <div class="tk-aviso" style="background:#f8fafc; border-color:#e2e8f0; color:#334155;">📂 <b>Mis rutas</b>: aquí quedan guardadas tus grabaciones y las rutas que cargues (GPX, KML, KMZ, GeoJSON). Úsalas cuando quieras: verlas, seguirlas, hacer su video o descargarlas. Se guardan en este equipo y navegador.</div>
+      <label class="tk-lbl">Agregar rutas a mi repositorio</label>
+      <input type="file" id="tk-mis-arch" multiple accept=".gpx,.kml,.kmz,.geojson,.json,application/gpx+xml,application/vnd.google-earth.kml+xml,application/vnd.google-earth.kmz,application/geo+json,application/json,text/xml,application/xml,application/octet-stream" style="width:100%; font-size:12px;">
+      <div class="tk-msgbox" style="font-size:12px; font-weight:600; min-height:16px; margin-top:6px;"></div>
+      <div id="tk-filtro" class="tk-filtro"><button type="button" data-f="todas" class="on">Todas</button><button type="button" data-f="grab">🥾 Grabadas</button><button type="button" data-f="carg">📂 Cargadas</button></div>
       <div id="tk-lista"></div>
     </div>
 
@@ -1625,6 +1633,7 @@
 
     <button class="btn" id="sa-run" type="button">🛰 Procesar</button>
     <button class="btn sec" id="sa-cancel" type="button" style="display:none;">⏹ Cancelar</button>
+    <button class="btn sec" id="sa-limpiar-todo" type="button" style="margin-top:6px; font-size:11.5px; padding:6px;">🧹 Limpiar resultados del mapa</button>
     <div id="sa-msg" style="font-size:12px; font-weight:600; min-height:16px; margin-top:6px;"></div>
 
     <div id="sa-bloque-res" style="display:none;">
@@ -1797,6 +1806,7 @@
       <input type="number" id="eco-minha" value="0.3" min="0" step="0.1" style="width:100%; box-sizing:border-box; padding:5px; font-size:12px; border:1px solid var(--border-color); border-radius:4px;">
       <button class="btn" id="eco-run" type="button" style="margin-top:10px;">▶ Procesar</button>
       <button class="btn sec" id="eco-cancel" type="button" style="display:none; margin-top:6px; font-size:11.5px; padding:6px;">✕ Cancelar</button>
+      <button class="btn sec" id="eco-limpiar-todo" type="button" style="margin-top:6px; font-size:11.5px; padding:6px;">🧹 Limpiar resultados del mapa</button>
       <div id="eco-msg" style="font-size:12px; margin-top:8px;"></div>
     </div>
     <div id="eco-res"></div>
@@ -1823,6 +1833,7 @@
       <div id="av-modo" style="margin-top:6px;"></div>
       <button class="btn" id="av-run" type="button" style="margin-top:10px;">▶ Procesar</button>
       <button class="btn sec" id="av-cancel" type="button" style="display:none; margin-top:6px; font-size:11.5px; padding:6px;">✕ Cancelar</button>
+      <button class="btn sec" id="av-limpiar-todo" type="button" style="margin-top:6px; font-size:11.5px; padding:6px;">🧹 Limpiar resultados del mapa</button>
       <div id="av-msg" style="font-size:12px; margin-top:8px;"></div>
     </div>
     <div id="av-res"></div>
@@ -10776,8 +10787,8 @@ async function construirXlsxPerfil(JSZipRef, spec) {
     try { const h = GX_HIST[GX_HIST.length - 1]; if (h) { h.ley = html; const t = gxLeyTitulo(html); for (let i = GX_HIST.length - 2; i >= 0; i--) if (GX_HIST[i].bb.join() === h.bb.join() && gxLeyTitulo(GX_HIST[i].ley) === t) GX_HIST.splice(i, 1); } } catch (e) {}
     leyendaCtl = L.control({ position: 'bottomright' });
     leyendaCtl.onAdd = () => { const d = L.DomUtil.create('div', 'sa-ley');
-      d.innerHTML = '<div class="sa-ley-cont">' + html + '<div style="margin-top:4px;text-align:right;"><a href="#" class="sa-ley-x" style="color:#64748b;font-size:11px;">minimizar</a></div></div><a href="#" class="sa-ley-cab" style="color:#1e3a8a;font-weight:700;text-decoration:none;">🎨 Leyenda ▸</a>'; L.DomEvent.disableClickPropagation(d);
-      d.querySelector('.sa-ley-x').onclick = ev => { ev.preventDefault(); d.classList.add('min'); }; d.querySelector('.sa-ley-cab').onclick = ev => { ev.preventDefault(); d.classList.remove('min'); };
+      d.innerHTML = '<div class="sa-ley-cont">' + html + '<div style="margin-top:4px;display:flex;justify-content:space-between;gap:10px;"><a href="#" class="sa-ley-q" style="color:#b91c1c;font-size:11px;">🧹 quitar resultado</a><a href="#" class="sa-ley-x" style="color:#64748b;font-size:11px;">minimizar</a></div></div><a href="#" class="sa-ley-cab" style="color:#1e3a8a;font-weight:700;text-decoration:none;">🎨 Leyenda ▸</a>'; L.DomEvent.disableClickPropagation(d);
+      d.querySelector('.sa-ley-x').onclick = ev => { ev.preventDefault(); d.classList.add('min'); }; d.querySelector('.sa-ley-q').onclick = ev => { ev.preventDefault(); if (window.gxLimpiarTodo) window.gxLimpiarTodo(); else quitarResultado(); }; d.querySelector('.sa-ley-cab').onclick = ev => { ev.preventDefault(); d.classList.remove('min'); };
       if (window.innerWidth <= 768) d.classList.add('min'); return d; };
     leyendaCtl.addTo(map);
   }
@@ -12851,7 +12862,22 @@ async function construirXlsxPerfil(JSZipRef, spec) {
   // Terreno: Perfil topográfico y DEM abren sus paneles ya existentes
   document.querySelectorAll('#pnl-terr button[data-abrir]').forEach(b => b.addEventListener('click', () => { const id = 'pnl-' + b.dataset.abrir; document.querySelectorAll('.pnl').forEach(x => { const on = x.id === id; x.classList.toggle('on', on); if (on && window.pnlAnclar) window.pnlAnclar(x); }); }));
   { const pr = T('sa-producto'); if (pr) { const f = () => gxAtras('pnl-sat', pr.value === 'dem' ? 'terr' : 'tele'); pr.addEventListener('change', f); } }
+  // «Limpiar» de todos los procesos: quita del mapa la imagen del resultado, su leyenda, las capas que creó y los textos del panel
+  function gxLimpiarTodo() {
+    try { quitarResultado(); } catch (e) {}
+    try { AV.res = null; } catch (e) {}
+    try { if (typeof ECO !== 'undefined') { ECO.R = null; ECO.cache = null; } } catch (e) {}
+    ['av-res', 'eco-res', 'sa-resultado', 'sa-dem-resultado'].forEach(id => { const e = T(id); if (e) e.innerHTML = ''; });
+    try { gxQuitarCapas(); } catch (e) {}
+    try { GX.obsMk.forEach(m => map.removeLayer(m)); GX.obsMk = []; GX.obs = []; } catch (e) {}
+    const ok = (id, f) => { const e = T(id); if (e) { e.style.color = '#16a34a'; e.textContent = '🧹 Resultados quitados del mapa.'; } };
+    ok('av-msg'); ok('eco-msg'); ok('sa-msg');
+  }
+  window.gxLimpiarTodo = gxLimpiarTodo;
+  ['av-limpiar-todo', 'sa-limpiar-todo', 'eco-limpiar-todo'].forEach(id => { const b = T(id); if (b) b.onclick = gxLimpiarTodo; });
   /*GX-UI6-END*/
+
+
 
 
 
@@ -13627,9 +13653,9 @@ async function construirXlsxPerfil(JSZipRef, spec) {
   });
 })();
 
-const MANUAL_VERSION = "24 de noviembre de 2026 · v12";
-const MANUAL = [{"id": "inicio", "icono": "🧭", "titulo": "Primeros pasos", "resumen": "Mapa 2D/3D con capas del portal, tus propios datos, herramientas de análisis y trekking.", "pasos": ["<b>Barra lateral:</b> busca un lugar y activa capas con su casilla.", "<b>Barra superior:</b> Leyenda, Add Data, Procesamiento, Teledetección, Terreno, Hidrología, Gestión territorial, Trekking, Vista 3D y Manual.", "<b>Mapa base:</b> globo arriba a la derecha.", "<b>Coordenadas:</b> la barra inferior muestra coordenadas y altitud bajo el cursor."], "probar": [["Abrir la Leyenda", "pnl:leyenda"]]}, {"id": "capas", "icono": "🗂️", "titulo": "Capas e identificación", "resumen": "Activa capas y consulta cada elemento con un clic.", "pasos": ["Marca la casilla de la capa. Si dice «Zoom n+», acércate.", "Haz clic sobre un elemento para ver sus atributos.", "En Leyenda ves los colores de las capas activas."], "probar": [["Abrir la Leyenda", "pnl:leyenda"]]}, {"id": "adddata", "icono": "📂", "titulo": "Add Data", "resumen": "Carga tus archivos o escribe coordenadas.", "pasos": ["Elige Excel, CSV, KML/KMZ, GeoJSON, GPX, ZIP (shapefile), DXF o DWG.", "Pestaña <b>Puntos</b>: escribe nombre, este, norte y zona.", "<b>CAD en PSAD56:</b> elige Datum PSAD56, carga el archivo y pulsa <b>🔁 Convertir esta capa a WGS84</b>.", "Cada capa se descarga en KMZ o Excel desde su menú ⋮ (también en shapefile, GeoJSON o DXF con proyección UTM).", "Los polígonos reciben AREA_HA y AREA_M2 automáticamente.", "<b>Monitoreo biológico:</b> descarga la plantilla, llena AVES, ANFIBIOS y MAMIFEROS y pulsa <b>🧬 Generar</b>: queda en 3 carpetas, cada una de un color.", "<b>Editar puntos:</b> en la lista de capas, pulsa «✏️ Editar puntos». Cambia atributos o coordenadas en la tabla (Este, Norte, Zona o Longitud, Latitud: las demás se recalculan), ubica el punto con un clic en el mapa (📍) o elimínalo. Los transectos, parcelas, polígonos y proyecciones de sondajes se actualizan solos, y luego descargas en KMZ, Shapefile o Excel.", "<b>Excel con varias pestañas:</b> cada pestaña es una carpeta con su propio color en el mapa, en la lista y en el KMZ. Las plantillas de monitoreo y de sondajes se descargan desde este mismo panel."], "probar": [["Abrir Add Data", "pnl:add"]]}, {"id": "consultas", "icono": "🔎", "titulo": "Consultas", "resumen": "Atributos, cruce espacial y distancias en un solo panel.", "pasos": ["<b>Atributos:</b> capa, campo, criterio y valor.", "<b>Cruce:</b> capa de entrada y capa de referencia.", "<b>Distancias:</b> distancia más corta a lagunas, humedales, etc.", "Descarga en Excel, CSV o KMZ."], "probar": [["Abrir Consultas", "pnl:query"]]}, {"id": "dibujar", "icono": "✏️", "titulo": "Dibujar", "resumen": "Marcas, rutas y polígonos como en Google Earth.", "pasos": ["Elige Marca, Ruta o Polígono y haz clic en el mapa (doble clic para terminar).", "Edita color, nombre y vértices con ✎.", "Descarga en KMZ, GeoJSON o Excel."], "probar": [["Abrir Dibujar", "pnl:draw"]]}, {"id": "satelite", "icono": "🛰️", "titulo": "Satélite y DEM", "resumen": "Índices (NDVI y otros), imagen satelital y DEM con curvas de nivel.", "pasos": ["Define el <b>área de estudio</b> (rectángulo, polígono o capa cargada): el panel se oculta mientras eliges y vuelve al terminar.", "Elige producto, satélite y fechas. Puedes rellenar vacíos con radar Sentinel-1.", "Pulsa Procesar y descarga GeoTIFF, imagen o curvas.", "Con <b>🧹 Quitar área y resultados</b> empiezas de cero."], "probar": [["Abrir Satélite y DEM", "pnl:sat"]]}, {"id": "perfil", "icono": "⛰️", "titulo": "Perfil topográfico", "resumen": "Perfil de una sección con DEM, curvas o relieve web.", "pasos": ["Pulsa <b>Trazar sección en el mapa</b> (clic = vértice, doble clic = terminar) o elige una línea cargada.", "Elige la fuente de altitud y pulsa Generar perfil.", "Descarga en PNG, DXF o Excel."], "probar": [["Abrir Perfil", "pnl:perfil"]]}, {"id": "hidrologia", "icono": "💧", "titulo": "Hidrología", "resumen": "Delimita cuencas, calcula sus parámetros y traza hidroisohipsas.", "pasos": ["<b>Cuenca y red de drenaje:</b> define el área de estudio, marca el punto de salida (opcional) y elige si subdividir: <b>Pfafstetter</b> (código oficial de la ANA) o por <b>área objetivo</b>. Cada unidad se clasifica en microcuenca, subcuenca o cuenca según su área.", "<b>Parámetros morfométricos:</b> forma, relieve, pendiente, orden de los ríos (Strahler), densidad de drenaje y tiempo de concentración, con curva hipsométrica y perfil del cauce.", "<b>Hidroisohipsas:</b> carga los pozos (descarga antes la plantilla), elige el campo del nivel y el método (kriging o IDW). Opcional: manantiales y lagunas como puntos de control. La plantilla Excel trae las hojas Pozos y Manantiales; las lagunas se cargan como polígonos (Shapefile .zip, KMZ o GeoJSON). Se generan las curvas, la dirección del flujo y el error de validación.", "Los resultados quedan en Add Data y el informe se descarga en Word."], "probar": [["Abrir Hidrología", "pnl:hid"]]}, {"id": "terreno", "icono": "🏔️", "titulo": "Terreno: susceptibilidad, cuenca visual y volumen", "resumen": "Perfil, DEM y tres análisis del relieve, en el menú Terreno.", "pasos": ["<b>Susceptibilidad (movimientos en masa):</b> combina pendiente, cercanía a cauces y relieve con tus capas (geología, cobertura) y pesos propios. Si cargas un inventario, valida con el AUC.", "<b>Cuenca visual:</b> marca uno o varios puntos de observación y obtén qué terreno se ve y desde cuántos puntos.", "<b>Volumen de desmonte:</b> dibuja el polígono, elige la superficie base y calcula el volumen sobre y bajo ella. Con Copernicus es referencial; usa un DEM de dron para cubicar."]}, {"id": "gestion", "icono": "🧭", "titulo": "Gestión territorial", "resumen": "Ficha de ubicación, matriz de exactitud, muestreo y láminas.", "pasos": ["<b>Ficha de ubicación:</b> coordenadas UTM de los vértices, distrito, área, altitud y cruce con las capas del portal, en Word.", "<b>Matriz de exactitud:</b> compara puntos de campo con el último mapa clasificado o con una capa y calcula exactitud global, kappa y exactitud por clase.", "<b>Diseño de muestreo:</b> aleatorio, sistemático o estratificado; descarga CSV o GPX para el GPS.", "<b>Lámina cartográfica:</b> elige uno o varios resultados de los procesos que ejecutaste (NDVI, pendiente, cuenca, etc.): la lámina los dibuja con su leyenda. Con «Fuera del área de estudio: Atenuar» (u «Ocultar») el área de estudio queda como borde y el resultado se ve completo; también puedes agregar tus capas, cuadrícula UTM o geográfica, norte y escala, y descargar en PNG o PDF."], "probar": [["Abrir Gestión territorial", "pnl:gest"]]}, {"id": "tiempo", "icono": "⏱️", "titulo": "Tiempo de recorrido", "resumen": "Distancia y tiempo de A a B de una ruta.", "pasos": ["Adjunta la ruta o elige una capa de líneas.", "Elige el modo (a pie, mula, vehículo…) y pulsa Calcular tiempo."], "probar": [["Abrir Tiempo", "pnl:tiempo"]]}, {"id": "regla", "icono": "📏", "titulo": "Regla", "resumen": "Mide distancias sobre el mapa.", "pasos": ["Haz clic para marcar puntos; se muestran tramos y total.", "Retroceso deshace, Supr limpia."], "probar": [["Abrir la Regla", "pnl:regla"]]}, {"id": "vista3d", "icono": "🌐", "titulo": "Vista 3D", "resumen": "El mapa en 3D con relieve.", "pasos": ["Pulsa Vista 3D. Arrastra para moverte, rueda para acercar.", "Mayús + rueda gira; Alt + rueda inclina."], "probar": [["Activar / desactivar 3D", "3d"]]}, {"id": "coordenadas", "icono": "📍", "titulo": "Coordenadas y UTM", "resumen": "Formato de coordenadas y cuadrícula UTM.", "pasos": ["Elige el formato en la barra inferior.", "Activa Zonas UTM y Cuadrantes para ver la cuadrícula."], "probar": [["Activar Zonas UTM", "zonas"], ["Activar Cuadrantes", "cuadr"]]}, {"id": "ubicacion", "icono": "🎯", "titulo": "Mi ubicación", "resumen": "Ubícate con el GPS o la red.", "pasos": ["Pulsa 📍 en el buscador. Si no es exacta, arrastra el punto azul.", "Guarda como marca o comparte con 📤."], "probar": [["Ubicarme ahora", "ubicacion"]]}, {"id": "trekking", "icono": "🥾", "titulo": "Trekking y video", "resumen": "Graba rutas, sigue una ruta meta y genera un video del recorrido.", "pasos": ["<b>Iniciar grabación</b> registra tu recorrido con GPS.", "<b>Ruta meta:</b> carga un GPX/KML o trázala; muestra lo que falta para llegar.", "<b>🎬 Video:</b> elige formato y música, marca paradas y pulsa Generar."], "probar": [["Abrir Trekking", "pnl:trek"]]}];
-const MANUAL_NOV = {"id": "novedades", "icono": "🛠️", "titulo": "Novedades (solo administrador)", "resumen": "Cambios de esta versión.", "pasos": ["<b>Editor de puntos (Add Data):</b> tabla para editar atributos y coordenadas; al cambiar Este/Norte/Zona o Longitud/Latitud se recalculan las demás, se mueve el punto y se regeneran monitoreo, transectos, polígonos y proyección de sondajes. Descarga directa en KMZ, Shapefile o Excel.", "<b>Excel con varias hojas:</b> color y carpeta por hoja, también en los polígonos generados.", "<b>Sondajes:</b> al cargar la plantilla se genera la proyección y el desglosable muestra Sondajes › plataforma › código y Proyección de sondajes.", "<b>Plantillas:</b> se actualizaron las de monitoreo (estaciones, transectos, parcelas) y sondajes.", "<b>Mapa base y procesos:</b> precarga de teselas, sección Terreno y procesos más livianos para áreas grandes.", "<b>Lámina cartográfica:</b> acepta el resultado de cualquier proceso con su leyenda y usa el área de estudio como borde (atenuar u ocultar lo de afuera)."]};
+const MANUAL_VERSION = "24 de noviembre de 2026 · v13";
+const MANUAL = [{"id": "inicio", "icono": "🧭", "titulo": "Primeros pasos", "resumen": "Mapa 2D/3D con capas del portal, tus propios datos, herramientas de análisis y trekking.", "pasos": ["<b>Barra lateral:</b> busca un lugar y activa capas con su casilla.", "<b>Barra superior:</b> Leyenda, Add Data, Procesamiento, Teledetección, Terreno, Hidrología, Gestión territorial, Trekking, Vista 3D y Manual.", "<b>Mapa base:</b> globo arriba a la derecha.", "<b>Coordenadas:</b> la barra inferior muestra coordenadas y altitud bajo el cursor."], "probar": [["Abrir la Leyenda", "pnl:leyenda"]]}, {"id": "capas", "icono": "🗂️", "titulo": "Capas e identificación", "resumen": "Activa capas y consulta cada elemento con un clic.", "pasos": ["Marca la casilla de la capa. Si dice «Zoom n+», acércate.", "Haz clic sobre un elemento para ver sus atributos.", "En Leyenda ves los colores de las capas activas."], "probar": [["Abrir la Leyenda", "pnl:leyenda"]]}, {"id": "adddata", "icono": "📂", "titulo": "Add Data", "resumen": "Carga tus archivos o escribe coordenadas.", "pasos": ["Elige Excel, CSV, KML/KMZ, GeoJSON, GPX, ZIP (shapefile), DXF o DWG.", "Pestaña <b>Puntos</b>: escribe nombre, este, norte y zona.", "<b>CAD en PSAD56:</b> elige Datum PSAD56, carga el archivo y pulsa <b>🔁 Convertir esta capa a WGS84</b>.", "Cada capa se descarga en KMZ o Excel desde su menú ⋮ (también en shapefile, GeoJSON o DXF con proyección UTM).", "Los polígonos reciben AREA_HA y AREA_M2 automáticamente.", "<b>Monitoreo biológico:</b> descarga la plantilla, llena AVES, ANFIBIOS y MAMIFEROS y pulsa <b>🧬 Generar</b>: queda en 3 carpetas, cada una de un color.", "<b>Editar puntos:</b> en la lista de capas, pulsa «✏️ Editar puntos». Cambia atributos o coordenadas en la tabla (Este, Norte, Zona o Longitud, Latitud: las demás se recalculan), ubica el punto con un clic en el mapa (📍) o elimínalo. Los transectos, parcelas, polígonos y proyecciones de sondajes se actualizan solos, y luego descargas en KMZ, Shapefile o Excel.", "<b>Excel con varias pestañas:</b> cada pestaña es una carpeta con su propio color en el mapa, en la lista y en el KMZ. Las plantillas de monitoreo y de sondajes se descargan desde este mismo panel."], "probar": [["Abrir Add Data", "pnl:add"]]}, {"id": "consultas", "icono": "🔎", "titulo": "Consultas", "resumen": "Atributos, cruce espacial y distancias en un solo panel.", "pasos": ["<b>Atributos:</b> capa, campo, criterio y valor.", "<b>Cruce:</b> capa de entrada y capa de referencia.", "<b>Distancias:</b> distancia más corta a lagunas, humedales, etc.", "Descarga en Excel, CSV o KMZ."], "probar": [["Abrir Consultas", "pnl:query"]]}, {"id": "dibujar", "icono": "✏️", "titulo": "Dibujar", "resumen": "Marcas, rutas y polígonos como en Google Earth.", "pasos": ["Elige Marca, Ruta o Polígono y haz clic en el mapa (doble clic para terminar).", "Edita color, nombre y vértices con ✎.", "Descarga en KMZ, GeoJSON o Excel."], "probar": [["Abrir Dibujar", "pnl:draw"]]}, {"id": "satelite", "icono": "🛰️", "titulo": "Satélite y DEM", "resumen": "Índices (NDVI y otros), imagen satelital y DEM con curvas de nivel.", "pasos": ["Define el <b>área de estudio</b> (rectángulo, polígono o capa cargada): el panel se oculta mientras eliges y vuelve al terminar.", "Elige producto, satélite y fechas. Puedes rellenar vacíos con radar Sentinel-1.", "Pulsa Procesar y descarga GeoTIFF, imagen o curvas.", "Con <b>🧹 Quitar área y resultados</b> empiezas de cero."], "probar": [["Abrir Satélite y DEM", "pnl:sat"]]}, {"id": "perfil", "icono": "⛰️", "titulo": "Perfil topográfico", "resumen": "Perfil de una sección con DEM, curvas o relieve web.", "pasos": ["Pulsa <b>Trazar sección en el mapa</b> (clic = vértice, doble clic = terminar) o elige una línea cargada.", "Elige la fuente de altitud y pulsa Generar perfil.", "Descarga en PNG, DXF o Excel."], "probar": [["Abrir Perfil", "pnl:perfil"]]}, {"id": "hidrologia", "icono": "💧", "titulo": "Hidrología", "resumen": "Delimita cuencas, calcula sus parámetros y traza hidroisohipsas.", "pasos": ["<b>Cuenca y red de drenaje:</b> define el área de estudio, marca el punto de salida (opcional) y elige si subdividir: <b>Pfafstetter</b> (código oficial de la ANA) o por <b>área objetivo</b>. Cada unidad se clasifica en microcuenca, subcuenca o cuenca según su área.", "<b>Parámetros morfométricos:</b> forma, relieve, pendiente, orden de los ríos (Strahler), densidad de drenaje y tiempo de concentración, con curva hipsométrica y perfil del cauce.", "<b>Hidroisohipsas:</b> carga los pozos (descarga antes la plantilla), elige el campo del nivel y el método (kriging o IDW). Opcional: manantiales y lagunas como puntos de control. La plantilla Excel trae las hojas Pozos y Manantiales; las lagunas se cargan como polígonos (Shapefile .zip, KMZ o GeoJSON). Se generan las curvas, la dirección del flujo y el error de validación.", "Los resultados quedan en Add Data y el informe se descarga en Word."], "probar": [["Abrir Hidrología", "pnl:hid"]]}, {"id": "terreno", "icono": "🏔️", "titulo": "Terreno: susceptibilidad, cuenca visual y volumen", "resumen": "Perfil, DEM y tres análisis del relieve, en el menú Terreno.", "pasos": ["<b>Susceptibilidad (movimientos en masa):</b> combina pendiente, cercanía a cauces y relieve con tus capas (geología, cobertura) y pesos propios. Si cargas un inventario, valida con el AUC.", "<b>Cuenca visual:</b> marca uno o varios puntos de observación y obtén qué terreno se ve y desde cuántos puntos.", "<b>Volumen de desmonte:</b> dibuja el polígono, elige la superficie base y calcula el volumen sobre y bajo ella. Con Copernicus es referencial; usa un DEM de dron para cubicar."]}, {"id": "gestion", "icono": "🧭", "titulo": "Gestión territorial", "resumen": "Ficha de ubicación, matriz de exactitud, muestreo y láminas.", "pasos": ["<b>Ficha de ubicación:</b> coordenadas UTM de los vértices, distrito, área, altitud y cruce con las capas del portal, en Word.", "<b>Matriz de exactitud:</b> compara puntos de campo con el último mapa clasificado o con una capa y calcula exactitud global, kappa y exactitud por clase.", "<b>Diseño de muestreo:</b> aleatorio, sistemático o estratificado; descarga CSV o GPX para el GPS.", "<b>Lámina cartográfica:</b> elige uno o varios resultados de los procesos que ejecutaste (NDVI, pendiente, cuenca, etc.): la lámina los dibuja con su leyenda. Con «Fuera del área de estudio: Atenuar» (u «Ocultar») el área de estudio queda como borde y el resultado se ve completo; también puedes agregar tus capas, cuadrícula UTM o geográfica, norte y escala, y descargar en PNG o PDF."], "probar": [["Abrir Gestión territorial", "pnl:gest"]]}, {"id": "tiempo", "icono": "⏱️", "titulo": "Tiempo de recorrido", "resumen": "Distancia y tiempo de A a B de una ruta.", "pasos": ["Adjunta la ruta o elige una capa de líneas.", "Elige el modo (a pie, mula, vehículo…) y pulsa Calcular tiempo."], "probar": [["Abrir Tiempo", "pnl:tiempo"]]}, {"id": "regla", "icono": "📏", "titulo": "Regla", "resumen": "Mide distancias sobre el mapa.", "pasos": ["Haz clic para marcar puntos; se muestran tramos y total.", "Retroceso deshace, Supr limpia."], "probar": [["Abrir la Regla", "pnl:regla"]]}, {"id": "vista3d", "icono": "🌐", "titulo": "Vista 3D", "resumen": "El mapa en 3D con relieve.", "pasos": ["Pulsa Vista 3D. Arrastra para moverte, rueda para acercar.", "Mayús + rueda gira; Alt + rueda inclina."], "probar": [["Activar / desactivar 3D", "3d"]]}, {"id": "coordenadas", "icono": "📍", "titulo": "Coordenadas y UTM", "resumen": "Formato de coordenadas y cuadrícula UTM.", "pasos": ["Elige el formato en la barra inferior.", "Activa Zonas UTM y Cuadrantes para ver la cuadrícula."], "probar": [["Activar Zonas UTM", "zonas"], ["Activar Cuadrantes", "cuadr"]]}, {"id": "ubicacion", "icono": "🎯", "titulo": "Mi ubicación", "resumen": "Ubícate con el GPS o la red.", "pasos": ["Pulsa 📍 en el buscador. Si no es exacta, arrastra el punto azul.", "Guarda como marca o comparte con 📤."], "probar": [["Ubicarme ahora", "ubicacion"]]}, {"id": "trekking", "icono": "🥾", "titulo": "Trekking y video", "resumen": "Graba rutas, sigue una ruta meta y genera un video del recorrido.", "pasos": ["<b>Iniciar grabación</b> registra tu recorrido con GPS. Si <b>⏸ pausas</b> para un descanso o campamento (horas o días), la parada queda anotada con su duración.", "<b>Ruta meta:</b> carga un GPX, KML, KMZ o GeoJSON, trázala o usa una línea del mapa; muestra lo que falta para llegar. El resultado de la carga se ve debajo del botón.", "<b>Mis rutas:</b> repositorio de tus grabaciones y de las rutas que cargues. Filtra por Grabadas o Cargadas, agrega archivos, y úsalas cuando quieras (Ver, Seguir, Video, descargar). Se guardan en este equipo y navegador; descarga el GPX como respaldo.", "<b>Perfil de desnivel:</b> la ventana flotante se coloca al costado del panel de trekking para no taparlo.", "<b>🎬 Video:</b> elige formato, relieve del terreno (suave, marcado o muy marcado) y música; marca paradas e indica cuánto duraron (de 30 min a 3 días): se suman al tiempo total que aparece al final. Pulsa Generar."], "probar": [["Abrir Trekking", "pnl:trek"]], "tips": ["Si un GPX no carga, el mensaje indica el motivo (por ejemplo, que solo trae puntos sueltos)."]}];
+const MANUAL_NOV = {"id": "novedades", "icono": "🛠️", "titulo": "Novedades (solo administrador)", "resumen": "Cambios de esta versión.", "pasos": ["<b>Limpiar en todos los procesos:</b> botón «Limpiar resultados del mapa» en Satélite, Procesos y Ecosistemas, y enlace «quitar resultado» en la leyenda.", "<b>Video de trekking:</b> relieve sombreado a partir del DEM (3 niveles), cámara más inclinada, línea más fina y estadísticas finales más grandes.", "<b>Paradas de horas o días:</b> en el video cada parada tiene su duración real y se suma al tiempo total (formato «2 d 05 h»); las pausas de la grabación se anotan solas.", "<b>GPX:</b> lectura más tolerante (con prefijos, caracteres sueltos, archivos cortados o solo waypoints) y mensajes visibles en la pestaña Ruta meta.", "<b>Mis rutas:</b> repositorio de rutas grabadas y cargadas, con filtros y carga de varios archivos.", "<b>Perfil flotante:</b> se coloca al costado del panel de trekking."]};
 let manualSel = 0, manualTodo = false;
 const manualNorm = t => String(t || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
 const manualTexto = s => manualNorm([s.titulo, s.resumen].concat(s.pasos || [], s.tips || [], (s.tabla || []).map(r => r.join(' '))).join(' ').replace(/<[^>]+>/g, ' '));
@@ -14537,7 +14563,7 @@ function trkTeselasRuta(ruta, buffer, z, tope) {
   const fmtRitmo = v => !isFinite(v) || v < 0.2 ? '—' : (function (s) { return Math.floor(s / 60) + ':' + String(Math.round(s % 60)).padStart(2, '0') + ' min/km'; })(1000 / v);
   const icono = (e, ax, ay) => L.divIcon({ className: 'trk-ico', html: '<span>' + e + '</span>', iconSize: [28, 28], iconAnchor: [ax == null ? 14 : ax, ay == null ? 26 : ay] });
   const nombreDef = () => { const d = new Date(), z = n => String(n).padStart(2, '0'); return 'Ruta ' + z(d.getDate()) + '-' + z(d.getMonth() + 1) + '-' + d.getFullYear() + ' ' + z(d.getHours()) + ':' + z(d.getMinutes()); };
-  const msg = (t, ok) => { const m = q('tk-msg'); if (!m) return; m.textContent = t || ''; m.style.color = ok === false ? '#dc2626' : '#16a34a'; };
+  const msg = (t, ok) => { document.querySelectorAll('#pnl-trek .tk-msgbox').forEach(m => { m.textContent = t || ''; m.style.color = ok === false ? '#dc2626' : '#16a34a'; }); };
 
   // ---------- Almacenamiento local (IndexedDB) ----------
   const DB = (function () {
@@ -14793,6 +14819,7 @@ function trkTeselasRuta(ruta, buffer, z, tope) {
     if (TK.plan && q('trk-flot').style.display !== 'none') flotPos();
     if (h.style.display === 'none') return;
     const s = TK.pts.length > 1 ? stats() : null, t = tTotalVivo(), cur = TK.cur;
+    if (TK.estado === 'pause' && TK.parIni) set('tk-estado', '⏸ En pausa · parada de ' + fDur(Date.now() - TK.parIni.t));
     const alt = cur && cur.alt != null ? cur.alt : (s && s.altFin);
     set('th-t', trkFmtT(t)); set('th-d', trkFmtD(TK.dist)); set('th-s', s ? '+' + Math.round(s.sube) + ' m' : '+0 m'); set('th-a', fmtAlt(alt));
     const nv = q('th-nav'), n = TK.nav;
@@ -14818,24 +14845,26 @@ function trkTeselasRuta(ruta, buffer, z, tope) {
   // ---------- Control de grabación ----------
   function iniciarRec() {
     if (!iniciarGPS()) return;
-    TK.pts = []; TK.wpts = []; TK.dist = 0; TK.acumMs = 0; TK.segIni = Date.now(); TK.estado = 'rec'; TK.id = 't' + Date.now(); TK.nombre = nombreDef(); TK.nuevoTramo = false; TK.rechazos = 0; TK.st = null;
+    TK.pts = []; TK.wpts = []; TK.dist = 0; TK.acumMs = 0; TK.segIni = Date.now(); TK.estado = 'rec'; TK.id = 't' + Date.now(); TK.nombre = nombreDef(); TK.nuevoTramo = false; TK.rechazos = 0; TK.st = null; TK.paradas = []; TK.parIni = null;
     lnTrk.setLatLngs([[]]); lnCas.setLatLngs([[]]); grpW.clearLayers(); if (mkIni) { map.removeLayer(mkIni); mkIni = null; } quitarVista();
     TK.pausaSeguir = false; const b = q('tk-centrar'); if (b) b.style.display = 'none';
     pitar(1); estadoUI(); msg('Grabando. Mantén la app abierta y la pantalla encendida.', true);
     if (navigator.storage && navigator.storage.persist) navigator.storage.persist().catch(() => {});
     if (TK.cur && Date.now() - TK.cur.t < 10000) grabar(Object.assign({}, TK.cur));
   }
+  // Una pausa es una parada real (descanso, campamento…): se anota su duración, aunque dure horas o días, y se usa luego en el video
+  function cerrarParada() { const p = TK.parIni; TK.parIni = null; if (!p) return; const dur = Date.now() - p.t; if (dur >= 60000) (TK.paradas = TK.paradas || []).push({ t: p.t, dur, lat: p.lat, lng: p.lng, nombre: 'Parada ' + ((TK.paradas || []).length + 1) }); }
   function pausarRec() {
-    if (TK.estado === 'rec') { TK.acumMs += Date.now() - TK.segIni; TK.estado = 'pause'; stats(true); guardarLive(true); }
-    else if (TK.estado === 'pause') { TK.segIni = Date.now(); TK.estado = 'rec'; TK.nuevoTramo = true; }
+    if (TK.estado === 'rec') { TK.acumMs += Date.now() - TK.segIni; TK.estado = 'pause'; const c = TK.cur || TK.pts[TK.pts.length - 1]; TK.parIni = c ? { t: Date.now(), lat: c.lat, lng: c.lng } : null; stats(true); guardarLive(true); }
+    else if (TK.estado === 'pause') { cerrarParada(); TK.segIni = Date.now(); TK.estado = 'rec'; TK.nuevoTramo = true; guardarLive(true); }
     estadoUI(); perfil();
   }
   async function finalizarRec() {
     if (TK.estado === 'idle') return;
     if (!confirm('¿Finalizar y guardar la ruta?')) return;
     if (TK.estado === 'rec') TK.acumMs += Date.now() - TK.segIni;
-    TK.estado = 'idle'; const st = stats(true);
-    const rec = { id: TK.id, nombre: TK.nombre, creado: TK.pts.length ? TK.pts[0].t : Date.now(), pts: TK.pts.slice(), wpts: TK.wpts.slice(), tTotal: TK.acumMs / 1000, stats: st };
+    cerrarParada(); TK.estado = 'idle'; const st = stats(true);
+    const rec = { id: TK.id, nombre: TK.nombre, creado: TK.pts.length ? TK.pts[0].t : Date.now(), pts: TK.pts.slice(), wpts: TK.wpts.slice(), tTotal: TK.acumMs / 1000, stats: st, paradas: (TK.paradas || []).slice() };
     if (rec.pts.length > 1) { try { await DB.put(rec); } catch (e) { msg('No se pudo guardar en el teléfono (' + (e && e.message) + '). Descarga el GPX ahora.', false); } }
     DB.borrar('live').catch(() => {});
     pitar(2); aviso('fin', '✔ Ruta guardada: ' + trkFmtD(st.dist) + ' · ' + trkFmtT(rec.tTotal) + ' · +' + Math.round(st.sube) + ' m', 'ok', 0, [300]);
@@ -14852,7 +14881,7 @@ function trkTeselasRuta(ruta, buffer, z, tope) {
     if (!TK.id || (TK.estado === 'idle')) return;
     if (!forzar && (TK.pendLive < 8 && Date.now() - TK.ultLive < 20000)) return;
     TK.ultLive = Date.now(); TK.pendLive = 0;
-    DB.set('live', { id: TK.id, nombre: TK.nombre, pts: TK.pts, wpts: TK.wpts, acumMs: TK.acumMs + (TK.estado === 'rec' ? Date.now() - TK.segIni : 0), dist: TK.dist, guardado: Date.now() }).catch(() => {});
+    DB.set('live', { id: TK.id, nombre: TK.nombre, pts: TK.pts, wpts: TK.wpts, paradas: TK.paradas || [], parIni: TK.parIni || null, acumMs: TK.acumMs + (TK.estado === 'rec' ? Date.now() - TK.segIni : 0), dist: TK.dist, guardado: Date.now() }).catch(() => {});
   }
   async function recuperar() {
     let r = null; try { r = await DB.get('live'); } catch (e) {}
@@ -14860,7 +14889,7 @@ function trkTeselasRuta(ruta, buffer, z, tope) {
     if (!r || !r.pts || r.pts.length < 2) { box.style.display = 'none'; return; }
     box.style.display = ''; q('tk-recup-t').textContent = 'Hay una grabación sin terminar (' + trkFmtD(r.dist) + ', ' + r.pts.length + ' puntos, ' + new Date(r.guardado).toLocaleString('es-PE') + ').';
     q('tk-recup-si').onclick = () => {
-      TK.id = r.id; TK.nombre = r.nombre; TK.pts = r.pts; TK.wpts = r.wpts || []; TK.dist = r.dist || 0; TK.acumMs = r.acumMs || 0; TK.estado = 'pause'; TK.nuevoTramo = true; TK.st = null;
+      TK.id = r.id; TK.nombre = r.nombre; TK.pts = r.pts; TK.wpts = r.wpts || []; TK.paradas = r.paradas || []; TK.parIni = r.parIni || null; TK.dist = r.dist || 0; TK.acumMs = r.acumMs || 0; TK.estado = 'pause'; TK.nuevoTramo = true; TK.st = null;
       const seg = [[]]; TK.pts.forEach(p => { if (p.nt) seg.push([]); seg[seg.length - 1].push(L.latLng(p.lat, p.lng)); }); lnTrk.setLatLngs(seg); lnCas.setLatLngs(seg);
       grpW.clearLayers(); TK.wpts.forEach(pintarW); if (mkIni) map.removeLayer(mkIni); mkIni = L.marker(ll(TK.pts[0]), { pane: 'p_trek', icon: icono('🟢', 14, 14), interactive: false }).addTo(map);
       iniciarGPS(); box.style.display = 'none'; map.fitBounds(lnTrk.getBounds(), { padding: [40, 40] }); estadoUI(); perfil(); msg('Grabación recuperada. Pulsa «Reanudar» para continuar.', true);
@@ -14915,34 +14944,72 @@ function trkTeselasRuta(ruta, buffer, z, tope) {
     };
     rec(gj); return { lineas: L1, puntos: W };
   }
+  // ---------- Lectura de GPX (tolerante: con o sin espacios de nombres, con caracteres sueltos, solo puntos…) ----------
+  const numGPS = v => { const n = parseFloat(String(v == null ? '' : v).replace(',', '.')); return isFinite(n) ? n : NaN; };
+  function gpxTexto(txt) {   // plan B: lectura por texto cuando el XML viene dañado
+    const L1 = [], W = [], atr = (s, k) => { const m = new RegExp('\\b' + k + '\\s*=\\s*["\']([^"\']+)["\']', 'i').exec(s); return m ? m[1] : null; }, tag = (s, k) => { const m = new RegExp('<(?:\\w+:)?' + k + '\\b[^>]*>([\\s\\S]*?)</(?:\\w+:)?' + k + '>', 'i').exec(s); return m ? m[1].replace(/<!\\[CDATA\\[|\\]\\]>/g, '').trim() : null; };
+    const pts = s => { const r = [], re = /<(?:\w+:)?(?:trkpt|rtept)\b([^>]*?)(?:\/>|>([\s\S]*?)<\/(?:\w+:)?(?:trkpt|rtept)>)/gi; let m; while ((m = re.exec(s))) { const lat = numGPS(atr(m[1], 'lat')), lng = numGPS(atr(m[1], 'lon')), e = m[2] ? tag(m[2], 'ele') : null, tm = m[2] ? tag(m[2], 'time') : null, tt = tm ? Date.parse(tm) : NaN; if (isFinite(lat) && isFinite(lng)) r.push({ lat, lng, alt: e != null && isFinite(numGPS(e)) ? numGPS(e) : null, t: isFinite(tt) ? tt : null }); } return r; };
+    (txt.match(/<(?:\w+:)?(?:trk|rte)\b[\s\S]*?<\/(?:\w+:)?(?:trk|rte)>/gi) || []).forEach(b => L1.push({ n: tag(b.replace(/<(?:\w+:)?(?:trkseg|trkpt|rtept)\b[\s\S]*/i, ''), 'name'), pts: pts(b) }));
+    if (!L1.some(l => l.pts.length > 1)) { const p = pts(txt); if (p.length > 1) L1.push({ n: tag(txt.replace(/<(?:\w+:)?(?:trkseg|trkpt|rtept)\b[\s\S]*/i, ''), 'name'), pts: p }); }   // archivo cortado: se rescatan los puntos que sí están
+    const re2 = /<(?:\w+:)?wpt\b([^>]*?)(?:\/>|>([\s\S]*?)<\/(?:\w+:)?wpt>)/gi; let m; while ((m = re2.exec(txt))) { const lat = numGPS(atr(m[1], 'lat')), lng = numGPS(atr(m[1], 'lon')); if (isFinite(lat) && isFinite(lng)) { const e = m[2] ? tag(m[2], 'ele') : null; W.push({ nombre: (m[2] && tag(m[2], 'name')) || 'Punto', lat, lng, alt: e != null && isFinite(numGPS(e)) ? numGPS(e) : null, t: null }); } }
+    return { L1, W };
+  }
+  function gpxLeer(txt) {
+    txt = String(txt || '').replace(/^\uFEFF/, '').replace(/^[^<]+/, '');
+    let L1 = [], W = [], x = new DOMParser().parseFromString(txt, 'text/xml');
+    if (x.getElementsByTagName('parsererror').length) { x = new DOMParser().parseFromString(txt.replace(/&(?!(?:amp|lt|gt|quot|apos|#\d+|#x[0-9a-fA-F]+);)/g, '&amp;').replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F]/g, ''), 'text/xml'); }
+    if (!x.getElementsByTagName('parsererror').length) {
+      const sel = (n, s) => Array.from(n.querySelectorAll(s)), nm = n => { const e = Array.from(n.children).find(c => c.localName === 'name'); return e ? e.textContent.trim() : null; };
+      const pts = list => list.map(n => { const el = n.querySelector('ele'), tm = n.querySelector('time'), tt = tm ? Date.parse(tm.textContent.trim()) : NaN, a = el ? numGPS(el.textContent) : NaN; return { lat: numGPS(n.getAttribute('lat')), lng: numGPS(n.getAttribute('lon')), alt: isFinite(a) ? a : null, t: isFinite(tt) ? tt : null }; }).filter(p => isFinite(p.lat) && isFinite(p.lng));
+      sel(x, 'trk').forEach(t => L1.push({ n: nm(t), pts: pts(sel(t, 'trkpt')) }));
+      sel(x, 'rte').forEach(t => L1.push({ n: nm(t), pts: pts(sel(t, 'rtept')) }));
+      sel(x, 'wpt').forEach(w => { const p = pts([w])[0]; if (p) W.push(Object.assign({ nombre: nm(w) || 'Punto' }, p)); });
+    }
+    if (!L1.some(l => l.pts.length > 1)) { const r = gpxTexto(txt); if (r.L1.some(l => l.pts.length > 1) || (!W.length && r.W.length)) { L1 = r.L1; if (!W.length) W = r.W; } }
+    return { L1, W };
+  }
   async function leerArchivo(file) {
-    const nom = file.name || 'ruta', ext = nom.split('.').pop().toLowerCase(); let L1 = [], W = [];
-    if (ext === 'gpx') {
-      const x = new DOMParser().parseFromString(await file.text(), 'text/xml'), pts = e => Array.from(e).map(n => { const el = n.getElementsByTagName('ele')[0], tm = n.getElementsByTagName('time')[0], tt = tm ? Date.parse(tm.textContent) : NaN; return { lat: parseFloat(n.getAttribute('lat')), lng: parseFloat(n.getAttribute('lon')), alt: el ? parseFloat(el.textContent) : null, t: isFinite(tt) ? tt : null }; }).filter(p => isFinite(p.lat) && isFinite(p.lng));
-      Array.from(x.getElementsByTagName('trk')).forEach(t => { const nm = t.getElementsByTagName('name')[0]; L1.push({ n: nm && nm.textContent, pts: pts(t.getElementsByTagName('trkpt')) }); });
-      Array.from(x.getElementsByTagName('rte')).forEach(t => { const nm = t.getElementsByTagName('name')[0]; L1.push({ n: nm && nm.textContent, pts: pts(t.getElementsByTagName('rtept')) }); });
-      Array.from(x.getElementsByTagName('wpt')).forEach(w => { const nm = w.getElementsByTagName('name')[0], p = pts([w])[0]; if (p) W.push(Object.assign({ nombre: nm ? nm.textContent : 'Punto' }, p)); });
+    const nom = file.name || 'ruta', ext = nom.split('.').pop().toLowerCase(); let L1 = [], W = [], aviso = '';
+    if (ext === 'gpx' || ext === 'xml') {
+      const r = gpxLeer(await file.text()); L1 = r.L1; W = r.W;
+      if (!L1.some(l => l.pts.length > 1) && W.length > 1) { L1 = [{ n: 'Puntos de ' + nom.replace(/\.[^.]+$/, ''), pts: W.map(w => ({ lat: w.lat, lng: w.lng, alt: w.alt, t: null })) }]; aviso = 'El archivo solo traía puntos (waypoints): se unieron en el orden del archivo.'; }
     } else if (ext === 'kml' || ext === 'kmz') {
       if (!window.toGeoJSON) throw new Error('El lector de KML no está cargado (se necesita internet la primera vez).');
       let txt; if (ext === 'kmz') { if (!window.JSZip) throw new Error('El lector de KMZ no está cargado.'); const z = await JSZip.loadAsync(file), k = Object.keys(z.files).find(n => /\.kml$/i.test(n)); if (!k) throw new Error('El KMZ no contiene un KML.'); txt = await z.files[k].async('string'); } else txt = await file.text();
       const r = lineasDeGeoJSON(toGeoJSON.kml(new DOMParser().parseFromString(txt, 'text/xml'))); L1 = r.lineas; W = r.puntos;
     } else { const r = lineasDeGeoJSON(JSON.parse(await file.text())); L1 = r.lineas; W = r.puntos; }
-    L1 = L1.filter(l => l.pts.length > 1); if (!L1.length) throw new Error('El archivo no contiene ninguna línea (ruta).');
-    L1.sort((a, b) => largo(b.pts) - largo(a.pts)); return { nombre: (L1[0].n || nom.replace(/\.[^.]+$/, '')), pts: L1[0].pts, wpts: W, n: L1.length };
+    L1 = L1.filter(l => l.pts.length > 1); if (!L1.length) throw new Error('«' + nom + '» no contiene ninguna ruta (línea). Revisa que sea un track o ruta y no solo puntos sueltos.');
+    L1.sort((a, b) => largo(b.pts) - largo(a.pts)); return { nombre: (L1[0].n || nom.replace(/\.[^.]+$/, '')), pts: L1[0].pts, wpts: W, n: L1.length, aviso, archivo: nom };
   }
 
   // ---------- Mis rutas ----------
   const MARC = {};
+  let FILTRO = 'todas';
+  const fDur = ms => { const s = Math.max(0, Math.round(ms / 1000)), d = Math.floor(s / 86400), h = Math.floor(s % 86400 / 3600), m = Math.floor(s % 3600 / 60); return d ? d + ' d ' + String(h).padStart(2, '0') + ' h' : h ? h + ' h ' + String(m).padStart(2, '0') + ' min' : m + ' min'; };
+  // Guarda una ruta cargada (GPX, KML, KMZ, GeoJSON, capa o trazo) en el repositorio «Mis rutas» de este equipo
+  async function guardarCargada(r, archivo, origen) {
+    const pts = r.pts.map(p => ({ lat: p.lat, lng: p.lng, alt: p.alt != null && isFinite(p.alt) ? p.alt : null, t: p.t != null && isFinite(p.t) ? p.t : null }));
+    const ac = trkAcum(pts), dist = ac[ac.length - 1], alts = pts.map(p => p.alt), hayAlt = alts.filter(a => a != null && a !== 0).length / pts.length >= 0.8, des = hayAlt ? trkDesnivel(alts, CFG.umbral) : null;
+    const hayT = pts.every(p => p.t != null), tTot = hayT && pts[pts.length - 1].t > pts[0].t ? (pts[pts.length - 1].t - pts[0].t) / 1000 : null;
+    const st = { n: pts.length, dist, tTotal: tTot || 0, tMov: 0, vProm: 0, vMov: 0, vMax: 0, sube: des ? des.sube : 0, baja: des ? des.baja : 0, altMax: des ? des.max : null, altMin: des ? des.min : null, altIni: des ? des.lisa[0] : null, altFin: des ? des.lisa[pts.length - 1] : null };
+    if (!hayAlt) pts.forEach(p => { if (!p.alt) p.alt = null; });
+    const todos = await DB.all(), dup = todos.find(x => x.cargada && x.nombre === r.nombre && Math.abs(((x.stats && x.stats.dist) || 0) - dist) < 2);
+    const rec = { id: dup ? dup.id : 'a' + Date.now().toString(36) + Math.random().toString(36).slice(2, 5), nombre: r.nombre, creado: hayT ? pts[0].t : (dup ? dup.creado : Date.now()), guardado: Date.now(), pts, wpts: r.wpts || [], tTotal: tTot, stats: st, cargada: true, archivo: archivo || '', origen: origen || 'archivo' };
+    await DB.put(rec); await listar(); return !dup;
+  }
   async function listar() {
     const box = q('tk-lista'); if (!box) return; let arr = [];
-    try { arr = await DB.all(); } catch (e) { box.innerHTML = '<div class="tk-vacio">No se puede leer el almacenamiento del teléfono.</div>'; return; }
-    arr.sort((a, b) => b.creado - a.creado); arr.forEach(r => { MARC[r.id] = r; });
-    if (!arr.length) { box.innerHTML = '<div class="tk-vacio">Aún no hay rutas guardadas. Graba una desde la pestaña «Grabar».</div>'; return; }
-    box.innerHTML = arr.map(r => {
-      const s = r.stats || {}, id = esc(r.id);
-      return '<div class="tk-card" data-id="' + id + '"><div class="tk-card-t"><b>' + esc(r.nombre) + '</b><span>' + new Date(r.creado).toLocaleString('es-PE') + '</span></div>' +
-        '<div class="tk-card-s">' + trkFmtD(s.dist || 0) + ' · ' + trkFmtT(r.tTotal || 0) + ' · +' + Math.round(s.sube || 0) + ' / −' + Math.round(s.baja || 0) + ' m · ' + fmtAlt(s.altMax) + ' máx</div>' +
-        '<div class="tk-card-b"><button data-a="ver">👁 Ver</button><button data-a="video">🎬 Video</button><button data-a="seguir">🎯 Seguir</button><button data-a="gpx">GPX</button><button data-a="kml">KML</button><button data-a="geojson">GeoJSON</button>' +
+    try { arr = await DB.all(); } catch (e) { box.innerHTML = '<div class="tk-vacio">No se puede leer el almacenamiento de este equipo.</div>'; return; }
+    arr.sort((a, b) => (b.guardado || b.creado) - (a.guardado || a.creado)); arr.forEach(r => { MARC[r.id] = r; });
+    const nC = arr.filter(r => r.cargada).length, nG = arr.length - nC;
+    document.querySelectorAll('#tk-filtro [data-f]').forEach(b => { const f = b.dataset.f; b.classList.toggle('on', f === FILTRO); b.textContent = (f === 'todas' ? 'Todas (' + arr.length + ')' : f === 'grab' ? '🥾 Grabadas (' + nG + ')' : '📂 Cargadas (' + nC + ')'); });
+    const vis = arr.filter(r => FILTRO === 'todas' || (FILTRO === 'carg') === !!r.cargada);
+    if (!vis.length) { box.innerHTML = '<div class="tk-vacio">' + (arr.length ? 'No hay rutas en este grupo.' : 'Aún no hay rutas. Graba una desde «Grabar» o agrega un archivo con el botón de arriba (GPX, KML, KMZ o GeoJSON).') + '</div>'; return; }
+    box.innerHTML = vis.map(r => {
+      const s = r.stats || {}, id = esc(r.id), sinT = r.cargada && !(r.tTotal > 0), pd = (r.paradas || []).reduce((a, p) => a + (p.dur || 0), 0);
+      return '<div class="tk-card" data-id="' + id + '"><div class="tk-card-t"><b>' + (r.cargada ? '📂 ' : '🥾 ') + esc(r.nombre) + '</b><span>' + new Date(r.creado).toLocaleString('es-PE') + (r.cargada && r.archivo ? ' · ' + esc(r.archivo) : '') + '</span></div>' +
+        '<div class="tk-card-s">' + trkFmtD(s.dist || 0) + ' · ' + (sinT ? 'sin hora' : trkFmtT(r.tTotal || 0)) + ' · +' + Math.round(s.sube || 0) + ' / −' + Math.round(s.baja || 0) + ' m · ' + fmtAlt(s.altMax) + ' máx' + (r.paradas && r.paradas.length ? ' · ⛺ ' + r.paradas.length + ' parada(s) (' + fDur(pd) + ')' : '') + '</div>' +
+        '<div class="tk-card-b"><button data-a="ver">👁 Ver</button><button data-a="video">🎬 Video</button><button data-a="seguir">' + (r.cargada ? '🎯 Usar como ruta meta' : '🎯 Seguir') + '</button><button data-a="gpx">GPX</button><button data-a="kml">KML</button><button data-a="geojson">GeoJSON</button>' +
         (navigator.share ? '<button data-a="share">📤</button>' : '') + '<button data-a="dem">⛰ DEM</button><button data-a="ren">✏</button><button data-a="del">🗑</button></div></div>';
     }).join('');
   }
@@ -14950,14 +15017,14 @@ function trkTeselasRuta(ruta, buffer, z, tope) {
   async function accionRuta(a, id) {
     const r = MARC[id]; if (!r) return; const base = nombreArchivo(r.nombre);
     if (a === 'ver') { lnVer.setLatLngs(r.pts.map(ll)); lnVer.addTo(map); TK.vista = id; map.fitBounds(lnVer.getBounds(), { padding: [50, 50] }); }
-    else if (a === 'seguir') { if (setPlan(r.pts.map(p => ({ lat: p.lat, lng: p.lng, alt: p.alt })), r.nombre, 'guardada')) { tab('ruta'); } }
+    else if (a === 'seguir') { if (setPlan(r.pts.map(p => ({ lat: p.lat, lng: p.lng, alt: p.alt })), r.nombre, 'guardada')) { if (TK.plan) TK.plan.guardada = true; planUI(); tab('ruta'); } }
     else if (a === 'video') { if (window.trkVideo3D) window.trkVideo3D(r); else alert('El video no está disponible.'); }
     else if (a === 'gpx') bajar(base + '.gpx', 'application/gpx+xml', aGPX(r));
     else if (a === 'kml') bajar(base + '.kml', 'application/vnd.google-earth.kml+xml', aKML(r));
     else if (a === 'geojson') bajar(base + '.geojson', 'application/geo+json', aGeoJSON(r));
     else if (a === 'share') { try { const f = new File([aGPX(r)], base + '.gpx', { type: 'application/gpx+xml' }); if (navigator.canShare && navigator.canShare({ files: [f] })) await navigator.share({ files: [f], title: r.nombre }); else await navigator.share({ title: r.nombre, text: resumenTxt(r) }); } catch (e) {} }
     else if (a === 'ren') { const n = (prompt('Nombre de la ruta', r.nombre) || '').trim(); if (n) { r.nombre = n; await DB.put(r); listar(); } }
-    else if (a === 'del') { if (confirm('¿Eliminar «' + r.nombre + '» de este teléfono? Descarga antes el GPX si quieres conservarla.')) { await DB.del(id); delete MARC[id]; if (TK.vista === id) quitarVista(); listar(); } }
+    else if (a === 'del') { if (confirm('¿Eliminar «' + r.nombre + '» de Mis rutas? Descarga antes el GPX si quieres conservarla.')) { await DB.del(id); delete MARC[id]; if (TK.vista === id) quitarVista(); listar(); } }
     else if (a === 'dem') {
       if (!confirm('Se reemplazará la altitud del GPS por la del modelo digital (DEM). Requiere internet o tener descargada la zona. ¿Continuar?')) return;
       const card = document.querySelector('.tk-card[data-id="' + id + '"] .tk-card-s'); let ok = 0;
@@ -14984,7 +15051,7 @@ function trkTeselasRuta(ruta, buffer, z, tope) {
   function trazoIniciar() { TK.trazando = true; window.trkPlanActivo = true; map.getContainer().style.cursor = 'crosshair'; trazo.lin.addTo(map); trazo.mks.addTo(map); map.on('click', trazoClick); trazoUI(); }
   function planUI() {
     const pl = TK.plan, r = resumenPlan(pl), box = q('tk-plan-info');
-    q('tk-quitar-plan').style.display = pl ? '' : 'none'; q('tk-plan-dem').style.display = pl && !pl.des ? '' : 'none'; q('tk-plan-corr').style.display = pl ? '' : 'none'; q('tk-plan-acc').style.display = pl ? 'flex' : 'none'; q('tk-perfil2').style.display = pl && pl.des ? '' : 'none';
+    q('tk-quitar-plan').style.display = pl ? '' : 'none'; q('tk-plan-guardar').style.display = pl && !pl.guardada ? '' : 'none'; q('tk-plan-dem').style.display = pl && !pl.des ? '' : 'none'; q('tk-plan-corr').style.display = pl ? '' : 'none'; q('tk-plan-acc').style.display = pl ? 'flex' : 'none'; q('tk-perfil2').style.display = pl && pl.des ? '' : 'none';
     if (!pl) { box.innerHTML = '<span style="color:#64748b;">Sin ruta meta. Carga un GPX/KML, trázala en el mapa o elige una ruta guardada («Seguir»).</span>'; poblarCapas(); return; }
     box.innerHTML = '<b>' + esc(pl.nombre) + '</b><br>Longitud <b>' + trkFmtD(r.total) + '</b>' + (r.sube != null ? ' · Desnivel <b>+' + Math.round(r.sube) + ' / −' + Math.round(r.baja) + ' m</b>' : ' · <i>sin altitudes</i>') + '<br>' + ({ ruta: 'Tiempo de recorrido (servicio de rutas, sin tráfico)', tobler: 'Tiempo estimado a pie (según pendiente, Tobler)', naismith: 'Tiempo estimado a pie (Naismith)' }[r.tipo]) + ': <b>' + trkFmtT(r.tEst) + '</b>';
     poblarCapas();
@@ -15113,9 +15180,17 @@ function trkTeselasRuta(ruta, buffer, z, tope) {
     q('tk-quitar-plan').onclick = () => { if (TK.trazando) trazoParar(false); quitarPlan(); ['a', 'b'].forEach(quitarMarca); };
     q('tk-arch').onchange = async ev => {
       const f = ev.target.files && ev.target.files[0]; if (!f) return;
-      try { const r = await leerArchivo(f); if (setPlan(r.pts, r.nombre, 'archivo')) msg('Ruta cargada: ' + trkFmtD(TK.plan.acum[TK.plan.acum.length - 1]) + (r.n > 1 ? ' (se usó la línea más larga de ' + r.n + ')' : ''), true); } catch (e) { msg(e.message || 'No se pudo leer el archivo', false); }
+      msg('Leyendo «' + f.name + '»…', true);
+      try { const r = await leerArchivo(f); if (setPlan(r.pts, r.nombre, 'archivo')) { let g = ''; try { await guardarCargada(r, r.archivo, 'archivo'); TK.plan.guardada = true; planUI(); g = ' · guardada en «Mis rutas»'; } catch (e) { console.warn(e); } msg('✔ Ruta cargada: ' + trkFmtD(TK.plan.acum[TK.plan.acum.length - 1]) + (r.n > 1 ? ' (se usó la línea más larga de ' + r.n + ')' : '') + g + (r.aviso ? '. ' + r.aviso : ''), true); } } catch (e) { console.error(e); msg('✖ ' + (e.message || 'No se pudo leer el archivo'), false); }
       ev.target.value = '';
     };
+    q('tk-mis-arch').onchange = async ev => {
+      const fs = Array.from(ev.target.files || []); let ok = 0; const mal = [];
+      for (const f of fs) { try { msg('Leyendo «' + f.name + '»…', true); const r = await leerArchivo(f); await guardarCargada(r, r.archivo, 'archivo'); ok++; } catch (e) { console.error(e); mal.push(f.name + ': ' + (e.message || 'no se pudo leer')); } }
+      msg((ok ? '✔ ' + ok + ' ruta(s) agregada(s) a Mis rutas.' : '') + (mal.length ? (ok ? ' ' : '') + '✖ ' + mal.join(' · ') : ''), !mal.length); ev.target.value = '';
+    };
+    q('tk-plan-guardar').onclick = async () => { const pl = TK.plan; if (!pl) return; try { await guardarCargada({ nombre: pl.nombre, pts: pl.pts, wpts: [] }, '', pl.origen || 'mapa'); pl.guardada = true; planUI(); msg('✔ Ruta guardada en «Mis rutas».', true); } catch (e) { msg('✖ No se pudo guardar: ' + (e.message || e), false); } };
+    document.querySelectorAll('#tk-filtro [data-f]').forEach(b => b.onclick = () => { FILTRO = b.dataset.f; listar(); });
     q('tk-capa-usar').onclick = () => {
       const i = parseInt(q('tk-capa').value, 10); if (isNaN(i)) { msg('Elige una capa.', false); return; }
       const ul = userLayers[i], fs = (ul.features || []).filter(f => f.geometry && /LineString/.test(f.geometry.type));
@@ -15137,7 +15212,8 @@ function trkTeselasRuta(ruta, buffer, z, tope) {
     q('off-borrar').onclick = async () => { if (window.caches && confirm('¿Borrar todos los mapas descargados de este teléfono?')) { await caches.delete(TILES); offUI(); } };
     q('off-inst').onclick = instalarApp;
     q('off-actualizar').onclick = async () => { try { const rg = await navigator.serviceWorker.getRegistration(); if (rg) { await rg.update(); } if (window.caches) { const ks = await caches.keys(); await Promise.all(ks.filter(k => k.indexOf('geoportal-app') === 0).map(k => caches.delete(k))); } alert('Listo. Recarga la página con internet para guardar la versión más reciente.'); } catch (e) { alert('No se pudo actualizar: ' + (e && e.message)); } };
-    new MutationObserver(() => { if (q('pnl-trek').classList.contains('on')) { poblarCapas(); setTimeout(() => { hud(); perfil(); }, 30); } }).observe(q('pnl-trek'), { attributes: true, attributeFilter: ['class'] });
+    new MutationObserver(() => { if (q('pnl-trek').classList.contains('on')) { poblarCapas(); setTimeout(() => { hud(); perfil(); }, 30); } else flotPos(); }).observe(q('pnl-trek'), { attributes: true, attributeFilter: ['class'] });
+    try { new ResizeObserver(() => flotPos()).observe(q('pnl-trek')); } catch (e) {} window.addEventListener('resize', flotPos);
     bindExtra(); redUI(); estadoUI(); planUI(); tab('rec');
     DB.get('plan').then(pl => { if (pl && pl.pts && pl.pts.length > 1) setPlan(pl.pts, pl.nombre, pl.origen, true, true, pl.extra); }).catch(() => {});
     recuperar();
@@ -15235,6 +15311,10 @@ function trkTeselasRuta(ruta, buffer, z, tope) {
     if (mov) { const tb = q('toolbar'); if (tb && tb.offsetHeight) base = tb.offsetHeight + 40; }
     if (h && h.style.display !== 'none') base += h.offsetHeight + 10;
     f.style.bottom = base + 'px';
+    // en PC, con el panel de trekking abierto, el perfil se coloca a su costado (sin taparlo)
+    const pn = q('pnl-trek'), mw = q('mapwrap');
+    if (!mov && pn && pn.classList.contains('on')) { const izq = pn.offsetLeft + pn.offsetWidth + 12, libre = (mw ? mw.clientWidth : window.innerWidth) - izq - 110; f.style.left = izq + 'px'; f.style.width = Math.max(300, Math.min(520, libre)) + 'px'; }
+    else { f.style.left = ''; f.style.width = ''; }
   }
   function flotSeries(pl) {
     const S = [{ xs: pl.acum, ys: pl.des.lisa, color: '#db2777', relleno: 'rgba(219,39,119,.12)', ancho: 2 }];
@@ -15500,7 +15580,7 @@ function trkTeselasRuta(ruta, buffer, z, tope) {
 (function () {
   const $ = id => document.getElementById(id);
   const RAD = Math.PI / 180;
-  const fT = t => { t = Math.max(0, Math.round(t)); const h = Math.floor(t / 3600), m = Math.floor(t % 3600 / 60); return h ? h + ' h ' + String(m).padStart(2, '0') + ' min' : m + ' min'; };
+  const fT = t => { t = Math.max(0, Math.round(t)); const d = Math.floor(t / 86400), h = Math.floor(t % 86400 / 3600), m = Math.floor(t % 3600 / 60); return d ? d + ' d ' + String(h).padStart(2, '0') + ' h' : h ? h + ' h ' + String(m).padStart(2, '0') + ' min' : m + ' min'; };
   const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
   const lerp = (a, b, t) => a + (b - a) * t;
   const ease = t => t < .5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
@@ -15511,7 +15591,7 @@ function trkTeselasRuta(ruta, buffer, z, tope) {
   const COLORES = { naranja: '#ff6a00', amarillo: '#fbbf24', rosa: '#ec4899', cian: '#22d3ee', rojo: '#ef4444' };
   const T_IN = 3, T_OUT = 3.5, T_ST = 7;
   const V = { ui: false, abierto: false, ruta: null, R: null, map: null, comp: null, ctx: null, W: 720, H: 1280, tt: 0, total: 20, D: 30, playing: false, last: 0, raf: 0, gen: 0,
-    rec: null, chunks: [], mime: '', blob: null, url: null, ocupado: false, dirty: true, dB: 0, dP: 0, lastIdx: -1, wl: null, opt: { fmt: 'v916', dur: 30, base: 'sat', vista: '3d', exag: 1, color: 'naranja', marca: true, nombre: '' } };
+    rec: null, chunks: [], mime: '', blob: null, url: null, ocupado: false, dirty: true, dB: 0, dP: 0, lastIdx: -1, wl: null, opt: { fmt: 'v916', dur: 30, base: 'sat', vista: '3d', exag: 1, color: 'naranja', marca: true, nombre: '', relieve: 'marcado' } };
   function nombreUsuario() {
     try { const g = localStorage.getItem('geoportal_vid_nombre'); if (g) return g; } catch (e) {}
     try { if (typeof sesion !== 'undefined' && sesion && sesion.user) { const u = sesion.user, md = u.user_metadata || {}, n = md.full_name || md.name; if (n) return n; return String(u.email || '').split('@')[0].split(/[._\-]+/).filter(Boolean).map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' '); } } catch (e) {}
@@ -15596,7 +15676,7 @@ function trkTeselasRuta(ruta, buffer, z, tope) {
     const b = d3 ? lerpAng(R.brg[i], R.brg[j], u) : 0, zoom = Math.min(R.zoomF + (d3 ? 0.2 : 0), V.capa[1] + 0.9);
     let c = [lng, lat];
     if (d3) { const zz = 256 * Math.pow(2, zoom), ah = 0.2 * V.H, x = (lng + 180) / 360 * zz + Math.sin(b * RAD) * ah, y = merY(lat) * zz - Math.cos(b * RAD) * ah; c = [x / zz * 360 - 180, merLat(y / zz)]; }
-    return { center: c, zoom, pitch: d3 ? 50 : 0, bearing: b };
+    return { center: c, zoom, pitch: d3 ? 57 : 0, bearing: b };
   }
   const merY = lat => { const s = Math.sin(clamp(lat, -85, 85) * RAD); return 0.5 - Math.log((1 + s) / (1 - s)) / (4 * Math.PI); };
   const merLat = y => { const n = Math.PI - 2 * Math.PI * y; return Math.atan(Math.sinh(n)) / RAD; };
@@ -15630,6 +15710,41 @@ function trkTeselasRuta(ruta, buffer, z, tope) {
     t.url = 'https://server.arcgisonline.com/ArcGIS/rest/services/' + V.capa[0] + '/MapServer/tile/' + z + '/' + y + '/' + x; img.src = t.url;
     return t;
   }
+
+  // ---------- Relieve sombreado: se calcula en el equipo con los mismos mosaicos de altitud (Terrarium) que usa el geoportal ----------
+  const REL = { suave: [1.2, .55], marcado: [1.8, .7], fuerte: [3, .85] };   // [exageración vertical, opacidad]
+  const DEMC = new Map();
+  function demTile(z, x, y) {
+    const k = z + '/' + x + '/' + y; let d = DEMC.get(k); if (d) return d;
+    const img = new Image(); d = { ok: false, err: 0, hs: {}, url: 'https://s3.amazonaws.com/elevation-tiles-prod/terrarium/' + k + '.png' }; DEMC.set(k, d); img.crossOrigin = 'anonymous';
+    img.onload = () => { try { const c = document.createElement('canvas'); c.width = c.height = 256; const g = c.getContext('2d', { willReadFrequently: true }); g.drawImage(img, 0, 0); const px = g.getImageData(0, 0, 256, 256).data, e = new Float32Array(65536); for (let i = 0; i < 65536; i++) e[i] = px[i * 4] * 256 + px[i * 4 + 1] + px[i * 4 + 2] / 256 - 32768; d.e = e; d.ok = true; V.dirty = true; } catch (er) { d.err = 9; } };
+    img.onerror = () => { if (++d.err <= 2) setTimeout(() => { img.src = d.url + '?r=' + d.err; }, 600 * d.err); };
+    img.src = d.url; return d;
+  }
+  function hsCanvas(d, z, ty, lvl) {
+    if (d.hs[lvl]) return d.hs[lvl];
+    const zf = REL[lvl][0], e = d.e, W = 256, n = Math.PI - 2 * Math.PI * (ty + 0.5) / Math.pow(2, z), lat = Math.atan(Math.sinh(n)), mpp = 156543.03392 * Math.cos(lat) / Math.pow(2, z);
+    const az = 315 * RAD, al = 38 * RAD, Lx = Math.sin(az) * Math.cos(al), Ly = Math.cos(az) * Math.cos(al), Lz = Math.sin(al);
+    const cv = document.createElement('canvas'); cv.width = cv.height = W; const g = cv.getContext('2d'), im = g.createImageData(W, W), o = im.data, f = zf / (8 * mpp);
+    const at = (i, j) => e[(j < 0 ? 0 : j > W - 1 ? W - 1 : j) * W + (i < 0 ? 0 : i > W - 1 ? W - 1 : i)];
+    for (let j = 0; j < W; j++) for (let i = 0; i < W; i++) {
+      const a = at(i - 1, j - 1), b = at(i, j - 1), c = at(i + 1, j - 1), dd = at(i - 1, j), ff = at(i + 1, j), gg = at(i - 1, j + 1), h = at(i, j + 1), ii = at(i + 1, j + 1);
+      const p = ((c + 2 * ff + ii) - (a + 2 * dd + gg)) * f, q = ((gg + 2 * h + ii) - (a + 2 * b + c)) * f;   // p crece hacia el este, q hacia el sur
+      const hs = (-p * Lx + q * Ly + Lz) / Math.sqrt(p * p + q * q + 1), v = Math.max(0, Math.min(255, 128 + 190 * (hs - Lz))), k = (j * W + i) * 4;
+      o[k] = o[k + 1] = o[k + 2] = v; o[k + 3] = 255;
+    }
+    g.putImageData(im, 0, 0); d.hs[lvl] = cv; return cv;
+  }
+  // imagen de la teselas con el relieve ya mezclado (se calcula una sola vez por tesela)
+  function relImg(q, t) {
+    const lvl = V.opt.relieve; if (!lvl || !REL[lvl]) return t.img;
+    if (t.rel && t.rel[lvl]) return t.rel[lvl];
+    const z = q[0], zd = Math.min(z, 14), sh = z - zd, dx = q[1] >> sh, dy = q[2] >> sh, d = demTile(zd, dx, dy); if (!d.ok) return t.img;
+    const cv = document.createElement('canvas'); cv.width = cv.height = 256; const g = cv.getContext('2d'); g.drawImage(t.img, 0, 0, 256, 256);
+    const sz = 256 / (1 << sh), m = (1 << sh) - 1; g.globalCompositeOperation = 'overlay'; g.globalAlpha = REL[lvl][1]; g.imageSmoothingEnabled = true; g.imageSmoothingQuality = 'high';
+    g.drawImage(hsCanvas(d, zd, dy, lvl), (q[1] & m) * sz, (q[2] & m) * sz, sz, sz, 0, 0, 256, 256);
+    (t.rel = t.rel || {})[lvl] = cv; return cv;
+  }
   const wpx = (lng, lat, z) => { const s = 256 * Math.pow(2, z); return [(lng + 180) / 360 * s, merY(lat) * s]; };
   function tilesDe(cam) {   // teselas necesarias para una cámara (con giro): solo las que caen dentro del lienzo auxiliar
     const z = clamp(Math.floor(cam.zoom + 0.0001), 0, V.capa[1]), k = Math.pow(2, cam.zoom - z), c = wpx(cam.center[0], cam.center[1], z);
@@ -15660,7 +15775,8 @@ function trkTeselasRuta(ruta, buffer, z, tope) {
     V.ocupado = true; setUI();
     const pasos = clamp(Math.round(V.R.total / 150), 40, 170), plan = [0]; for (let i = 0; i <= pasos; i++) plan.push(T_IN + V.DD * i / pasos); plan.push(T_IN + V.DD + T_OUT);
     const pend = new Map();
-    plan.forEach(t => { const cam = camera(t).cam; tilesDe(cam).lista.forEach(q => { const t2 = tesela(q[0], q[1], q[2]); pend.set(q[0] + '/' + q[1] + '/' + q[2], t2); });
+    plan.forEach(t => { const cam = camera(t).cam; tilesDe(cam).lista.forEach(q => { const t2 = tesela(q[0], q[1], q[2]); pend.set(q[0] + '/' + q[1] + '/' + q[2], t2);
+        if (REL[V.opt.relieve]) { const zd = Math.min(q[0], 14), sh = q[0] - zd; pend.set('d' + zd + '/' + (q[1] >> sh) + '/' + (q[2] >> sh), demTile(zd, q[1] >> sh, q[2] >> sh)); } });
       const pz = Math.max(0, Math.floor(cam.zoom) - 1); const c = tilesDe(Object.assign({}, cam, { zoom: pz })); c.lista.forEach(q => tesela(q[0], q[1], q[2])); });
     const t0 = Date.now(), total = pend.size;
     while (Date.now() - t0 < 60000) {
@@ -15698,14 +15814,14 @@ function trkTeselasRuta(ruta, buffer, z, tope) {
     const gT = c.createLinearGradient(0, 0, 0, 190 * u); gT.addColorStop(0, 'rgba(0,0,0,.62)'); gT.addColorStop(1, 'rgba(0,0,0,0)'); c.fillStyle = gT; c.fillRect(0, 0, W, 190 * u);
     c.fillStyle = '#fff'; c.font = FONT('800', 40 * u); c.shadowColor = 'rgba(0,0,0,.5)'; c.shadowBlur = 6 * u; c.fillText(recortar(c, V.opt.titulo || R.nombre, W - 64 * u - 90 * u), 32 * u, 68 * u);
     c.font = FONT('500', 26 * u); c.fillStyle = '#e2e8f0'; c.fillText(new Date(R.fecha).toLocaleDateString('es-PE', { day: 'numeric', month: 'long', year: 'numeric' }), 32 * u, 108 * u); c.shadowBlur = 0;
-    if (cam.par) { const al = Math.max(0, Math.min(1, cam.kp * 6, (1 - cam.kp) * 6)); c.save(); c.globalAlpha = al; c.font = FONT('800', 34 * u); c.textAlign = 'center'; const tx = recortar(c, '📍 ' + cam.par.nombre, W - 120 * u), tw = c.measureText(tx).width + 56 * u, bx = (W - tw) / 2, by = H * 0.2; rrect(c, bx, by, tw, 66 * u, 33 * u); c.fillStyle = 'rgba(15,23,42,.8)'; c.fill(); c.fillStyle = '#fff'; c.fillText(tx, W / 2, by + 45 * u); c.restore(); }
+    if (cam.par) { const al = Math.max(0, Math.min(1, cam.kp * 6, (1 - cam.kp) * 6)); c.save(); c.globalAlpha = al; c.font = FONT('800', 34 * u); c.textAlign = 'center'; const tx = recortar(c, '📍 ' + cam.par.nombre + (cam.par.dur ? '  ·  ⏱ ' + fT(cam.par.dur * 60) : ''), W - 120 * u), tw = c.measureText(tx).width + 56 * u, bx = (W - tw) / 2, by = H * 0.2; rrect(c, bx, by, tw, 66 * u, 33 * u); c.fillStyle = 'rgba(15,23,42,.8)'; c.fill(); c.fillStyle = '#fff'; c.fillText(tx, W / 2, by + 45 * u); c.restore(); }
     if (kHud > 0) {
       c.globalAlpha = kHud;
       const gB = c.createLinearGradient(0, H - 185 * u, 0, H); gB.addColorStop(0, 'rgba(0,0,0,0)'); gB.addColorStop(1, 'rgba(0,0,0,.72)'); c.fillStyle = gB; c.fillRect(0, H - 185 * u, W, 185 * u);
       const items = [['DISTANCIA', trkFmtD(R.d[ip])]];
       items.push(['ALTITUD', R.altOK ? Math.round(R.lisa[ip]).toLocaleString('es-PE') + ' m' : '—']);
       items.push(['DESNIVEL +', R.altOK ? '+' + Math.round(R.cumSube[ip] * (R.escSube || 1)) + ' m' : '—']);
-      items.push([R.hayT ? 'TIEMPO' : 'TIEMPO (EST.)', (R.hayT ? '' : '≈ ') + fT(Math.max(0, R.hayT ? (R.t[ip] - R.t[0]) / 1000 : (S.tTotal || 0) * p))]);
+      items.push([R.hayT ? 'TIEMPO' : 'TIEMPO (EST.)', (R.hayT ? '' : '≈ ') + fT(Math.max(0, R.hayT ? (R.t[ip] - R.t[0]) / 1000 : (S.tTotal || 0) * p) + tParHasta(p))]);
       const cw = (W - 64 * u) / items.length; c.textAlign = 'center';
       items.forEach((it, i) => { const cx = 32 * u + cw * (i + .5); c.fillStyle = '#fff'; c.font = FONT('800', 22 * u); c.fillText(it[1], cx, H - 104 * u); c.fillStyle = '#cbd5e1'; c.font = FONT('600', 11.5 * u); c.fillText(it[0], cx, H - 86 * u); });
       c.textAlign = 'left'; perfilDibujar(c, 32 * u, H - 74 * u, W - 64 * u, 38 * u, p, u, color);
@@ -15721,19 +15837,23 @@ function trkTeselasRuta(ruta, buffer, z, tope) {
       c.fillText('N', Math.sin(a) * (r + 15 * u), -Math.cos(a) * (r + 15 * u)); c.restore();
     }
     if (V.opt.marca) { c.textAlign = 'right'; c.fillStyle = 'rgba(255,255,255,.85)'; c.font = FONT('700', 22 * u); c.shadowColor = 'rgba(0,0,0,.6)'; c.shadowBlur = 5 * u; c.fillText('🌍 GeoPortal', W - 28 * u, H - 28 * u); c.shadowBlur = 0; c.textAlign = 'left'; }
-    // tarjeta de estadísticas
+    // tarjeta de estadísticas (letras grandes; cada dato se ajusta al ancho de su casilla)
     if (kSt > 0) {
-      const k = ease(kSt), it = [];
-      if (S.tTotal > 0) it.push([S.estimado ? 'TIEMPO EST.' : 'TIEMPO TOTAL', (S.estimado ? '≈ ' : '') + fT(S.tTotal)]); it.push(['DISTANCIA', trkFmtD(S.dist)]);
+      const k = ease(kSt), it = [], tPar = tParTotal(), tMarcha = S.tTotal > 0 ? S.tTotal : 0;
+      if (tPar > 0) { it.push([S.estimado ? 'MARCHA EST.' : 'TIEMPO DE MARCHA', (S.estimado ? '≈ ' : '') + fT(tMarcha)]); it.push(['PARADAS', fT(tPar)]); it.push(['DURACIÓN TOTAL', fT(tMarcha + tPar)]); }
+      else if (S.tTotal > 0) it.push([S.estimado ? 'TIEMPO EST.' : 'TIEMPO TOTAL', (S.estimado ? '≈ ' : '') + fT(S.tTotal)]);
+      it.push(['DISTANCIA', trkFmtD(S.dist)]);
       if (S.sube != null) { it.push(['DESNIVEL +', '+' + Math.round(S.sube) + ' m']); it.push(['DESNIVEL −', '−' + Math.round(S.baja) + ' m']); it.push(['ALTITUD MÁX.', Math.round(S.altMax).toLocaleString('es-PE') + ' m']); it.push(['ALTITUD MÍN.', Math.round(S.altMin).toLocaleString('es-PE') + ' m']); }
       if (S.tMov > 0) it.push(['EN MOVIMIENTO', fT(S.tMov)]); if (S.vProm > 0) it.push([S.estimado ? 'VEL. EST.' : 'VEL. MEDIA', (S.vProm * 3.6).toFixed(1).replace('.', ',') + ' km/h']);
-      const cols = W > H * 1.3 ? 8 : 4, rows = Math.ceil(it.length / cols), cwid = Math.min(W - 24 * u, (cols === 8 ? 1500 : 690) * u), ph = R.altOK ? 46 * u : 0, nm = V.opt.nombre ? 30 * u : 0;
-      const hh = 44 * u + rows * 52 * u + ph + 10 * u + nm, cx = (W - cwid) / 2, cy = H - hh - 16 * u + (1 - k) * 60 * u;
-      c.globalAlpha = k; c.fillStyle = 'rgba(8,15,30,.80)'; rrect(c, cx, cy, cwid, hh, 16 * u); c.fill(); c.lineWidth = 1.5 * u; c.strokeStyle = color; c.stroke();
-      c.textAlign = 'center'; c.fillStyle = '#fff'; c.font = FONT('800', 20 * u); c.fillText('¡Recorrido completado!  ' + recortar(c, V.opt.titulo || R.nombre, cwid * 0.5), W / 2, cy + 30 * u);
-      it.forEach((q, i) => { const col = i % cols, row = (i / cols) | 0, x = cx + cwid * (col + .5) / cols, y = cy + 64 * u + row * 52 * u; c.fillStyle = '#fff'; c.font = FONT('800', 21 * u); c.fillText(q[1], x, y); c.fillStyle = '#94a3b8'; c.font = FONT('600', 11 * u); c.fillText(q[0], x, y + 16 * u); });
-      c.textAlign = 'left'; if (R.altOK) perfilDibujar(c, cx + 26 * u, cy + hh - ph - 8 * u - nm, cwid - 52 * u, ph - 8 * u, 1, u, color);
-      if (V.opt.nombre) { c.textAlign = 'center'; c.fillStyle = '#fff'; c.font = FONT('800', 18 * u); c.fillText(recortar(c, '👤 ' + V.opt.nombre, cwid - 60 * u), W / 2, cy + hh - 10 * u); c.textAlign = 'left'; }
+      const cols = W > H * 1.3 ? 4 : 3, rows = Math.ceil(it.length / cols), cwid = Math.min(W - 24 * u, (cols === 4 ? 1180 : 690) * u), fila = 86 * u, ph = R.altOK ? 58 * u : 0, nm = V.opt.nombre ? 40 * u : 0;
+      const hh = 62 * u + rows * fila + ph + 12 * u + nm, cx = (W - cwid) / 2, cy = H - hh - 16 * u + (1 - k) * 60 * u, cw1 = cwid / cols - 14 * u;
+      c.globalAlpha = k; c.fillStyle = 'rgba(8,15,30,.84)'; rrect(c, cx, cy, cwid, hh, 18 * u); c.fill(); c.lineWidth = 2 * u; c.strokeStyle = color; c.stroke();
+      c.textAlign = 'center'; c.fillStyle = '#fff'; c.font = FONT('800', 27 * u); c.fillText('¡Recorrido completado!  ' + recortar(c, V.opt.titulo || R.nombre, cwid * 0.45), W / 2, cy + 40 * u);
+      it.forEach((q, i) => { const col = i % cols, row = (i / cols) | 0, x = cx + cwid * (col + .5) / cols, y = cy + 62 * u + row * fila + 34 * u;
+        let px = 34 * u; c.font = FONT('800', px); while (c.measureText(q[1]).width > cw1 && px > 14 * u) { px -= 1; c.font = FONT('800', px); }
+        c.fillStyle = '#fff'; c.fillText(q[1], x, y); c.fillStyle = '#a5b4c8'; c.font = FONT('700', 14.5 * u); c.fillText(q[0], x, y + 22 * u); });
+      c.textAlign = 'left'; if (R.altOK) perfilDibujar(c, cx + 26 * u, cy + hh - ph - 10 * u - nm, cwid - 52 * u, ph - 8 * u, 1, u, color);
+      if (V.opt.nombre) { c.textAlign = 'center'; c.fillStyle = '#fff'; c.font = FONT('800', 23 * u); c.fillText(recortar(c, '👤 ' + V.opt.nombre, cwid - 60 * u), W / 2, cy + hh - 12 * u); c.textAlign = 'left'; }
       c.globalAlpha = 1;
     }
     c.restore();
@@ -15754,14 +15874,14 @@ function trkTeselasRuta(ruta, buffer, z, tope) {
     const T = tilesDe(cam), s = 256 * T.k;
     T.lista.forEach(q => {
       const dx = (q[3] * 256 - T.c[0]) * T.k, dy = (q[2] * 256 - T.c[1]) * T.k, t = tesela(q[0], q[1], q[2]);
-      if (t.ok) { try { c.drawImage(t.img, dx, dy, s + 0.8, s + 0.8); } catch (e) {} }
+      if (t.ok) { try { c.drawImage(relImg(q, t), dx, dy, s + 0.8, s + 0.8); } catch (e) {} }
       else if (q[0] > 0) { const pt = tesela(q[0] - 1, q[1] >> 1, q[2] >> 1); if (pt.ok) { try { c.drawImage(pt.img, (q[1] & 1) * 128, (q[2] & 1) * 128, 128, 128, dx, dy, s + 0.8, s + 0.8); } catch (e) {} } }
     });
     const zz = Math.pow(2, cam.zoom) * 256, cx = (cam.center[0] + 180) / 360 * zz, cy = merY(cam.center[1]) * zz;
     const S = (lng, lat) => [(lng + 180) / 360 * zz - cx, merY(lat) * zz - cy];
     const full = lineaPx(R, 1, S), done = lineaPx(R, p, S);
-    trazo(c, full, 7 * u, 'rgba(0,0,0,.55)'); trazo(c, full, 3.5 * u, 'rgba(255,255,255,.9)');
-    trazo(c, done, 11 * u, 'rgba(0,0,0,.5)'); trazo(c, done, 7 * u, color);
+    trazo(c, full, 3.6 * u, 'rgba(0,0,0,.45)'); trazo(c, full, 1.5 * u, 'rgba(255,255,255,.85)');
+    trazo(c, done, 5.6 * u, 'rgba(0,0,0,.45)'); trazo(c, done, 3.2 * u, color);
     const marca = (q, col, r) => { c.beginPath(); c.arc(q[0], q[1], r, 0, 6.2832); c.fillStyle = col; c.fill(); c.lineWidth = 3 * u; c.strokeStyle = '#fff'; c.stroke(); };
     (R.wpts || []).forEach(w => marca(S(w.lng, w.lat), '#f59e0b', 7 * u));
     marca(S(R.lng[0], R.lat[0]), '#16a34a', 11 * u); marca(S(R.lng[R.n - 1], R.lat[R.n - 1]), '#ef4444', 11 * u);
@@ -15781,6 +15901,7 @@ function trkTeselasRuta(ruta, buffer, z, tope) {
       if (sy < 0 || sy + sh > OH) continue;
       c.drawImage(V.off, OW / 2 - sw / 2, sy, sw, sh, 0, y, W, row + 0.5);
     }
+    { const gh = Math.max(40, H * 0.2), g = c.createLinearGradient(0, y0, 0, y0 + gh); g.addColorStop(0, 'rgba(16,21,28,.9)'); g.addColorStop(1, 'rgba(16,21,28,0)'); c.fillStyle = g; c.fillRect(0, y0, W, gh); }
   }
   function proyPunto(ox, oy) {   // punto del mapa plano girado (px respecto al pivote) -> pantalla
     const P = V.proy; if (!P) return null;
@@ -15906,25 +16027,35 @@ function trkTeselasRuta(ruta, buffer, z, tope) {
     for (const s of L) { const mv = Math.max(0, s.p - pp) * D; if (u < cur + mv) return { p: pp + (u - cur) / D, par: null, k: 0 }; cur += mv; if (u < cur + H) return { p: s.p, par: s, k: (u - cur) / H }; cur += H; pp = s.p; }
     return { p: Math.min(1, pp + (u - cur) / D), par: null, k: 0 };
   }
+  const tParTotal = () => (V.parL || []).reduce((s, x) => s + (x.dur || 0) * 60, 0), tParHasta = p => (V.parL || []).reduce((s, x) => s + (x.p <= p + 1e-9 ? (x.dur || 0) * 60 : 0), 0);
   function recalcPar() {
     V.parL = (V.cand || []).filter(x => x.on && x.p > 0.005 && x.p < 0.995).sort((a, b) => a.p - b.p);
     const sel = $('v-par-seg'); V.pausa = (sel && +sel.value) || 3; V.DD = V.D + V.parL.length * V.pausa; V.total = T_IN + V.DD + T_OUT + T_ST;
   }
   function candidatas(R, ruta) {
-    const L = [], mk = (lat, lng, nombre) => {
+    const L = [], mk = (lat, lng, nombre, dur) => {
       if (!isFinite(lat) || !isFinite(lng)) return; let best = 1e18, bi = 0; const kx = Math.cos(lat * Math.PI / 180) * 111320;
       for (let i = 0; i < R.n; i++) { const dx = (R.lng[i] - lng) * kx, dy = (R.lat[i] - lat) * 110540, d = dx * dx + dy * dy; if (d < best) { best = d; bi = i; } }
-      if (Math.sqrt(best) <= 300) L.push({ p: bi / (R.n - 1), nombre: String(nombre || 'Punto').slice(0, 30), on: false });
+      if (Math.sqrt(best) <= 300) L.push({ p: bi / (R.n - 1), nombre: String(nombre || 'Punto').slice(0, 30), on: dur >= 30, dur: dur || 0 });
     };
+    ((ruta && ruta.paradas) || []).forEach((w, i) => w && mk(w.lat, w.lng, w.nombre || 'Parada ' + (i + 1), Math.round((w.dur || 0) / 60000)));
     ((ruta && ruta.wpts) || []).forEach(w => w && mk(w.lat, w.lng, w.nombre));
     try { drawItems.forEach(it => { if (it.tipo === 'marca' && it.coords) mk(it.coords[1], it.coords[0], it.nombre); }); } catch (e) {}
     L.sort((a, b) => a.p - b.p); return L.slice(0, 20);
   }
+  const DURS = [[0, '—'], [30, '30 min'], [60, '1 h'], [120, '2 h'], [240, '4 h'], [480, '8 h'], [720, '12 h'], [1440, '1 día'], [2880, '2 días'], [4320, '3 días']];
   function parRender() {
     const c = $('v-par-lista'); if (!c) return; const L = V.cand || [];
     c.innerHTML = L.length ? '' : '<div style="font-size:11.5px;color:#94a3b8;margin:4px 0">Sin paradas. Mueve la barra de tiempo hasta un punto de la ruta y pulsa «➕ Parada aquí».</div>';
-    L.forEach((x, i) => { const l = document.createElement('label'); l.style.cssText = 'display:flex;flex-direction:row;gap:8px;align-items:center;font-size:13px;color:#e2e8f0;margin:3px 0'; const k = document.createElement('input'); k.type = 'checkbox'; k.checked = !!x.on; k.onchange = () => { x.on = k.checked; recalcPar(); V.dirty = true; setUI(); };
-      const t = document.createElement('span'); t.textContent = '📍 ' + x.nombre + ' · km ' + ((V.R ? V.R.total : 0) * x.p / 1000).toFixed(1); l.appendChild(k); l.appendChild(t); c.appendChild(l); });
+    L.forEach((x, i) => { const l = document.createElement('div'); l.style.cssText = 'display:flex;flex-direction:row;gap:6px;align-items:center;font-size:13px;color:#e2e8f0;margin:4px 0;flex-wrap:wrap'; const k = document.createElement('input'); k.type = 'checkbox'; k.checked = !!x.on; k.onchange = () => { x.on = k.checked; recalcPar(); V.dirty = true; setUI(); };
+      const t = document.createElement('span'); t.style.cssText = 'flex:1;min-width:120px'; t.textContent = '📍 ' + x.nombre + ' · km ' + ((V.R ? V.R.total : 0) * x.p / 1000).toFixed(1);
+      const s = document.createElement('select'); s.title = 'Tiempo real que dura la parada (descanso, campamento…)'; s.style.cssText = 'background:#1e293b;color:#fff;border:1px solid #334155;border-radius:8px;padding:4px;font-size:12.5px';
+      const L2 = DURS.slice(); if (x.dur && !L2.some(d => d[0] === x.dur)) L2.push([x.dur, fT(x.dur * 60)]); L2.sort((a, b) => a[0] - b[0]);
+      s.innerHTML = L2.map(d => '<option value="' + d[0] + '"' + (d[0] === (x.dur || 0) ? ' selected' : '') + '>' + (d[0] ? '⏱ ' : '') + d[1] + '</option>').join('');
+      s.onchange = () => { x.dur = +s.value; recalcPar(); V.dirty = true; setUI(); };
+      l.appendChild(k); l.appendChild(t); l.appendChild(s);
+      if (x.manual) { const b = document.createElement('button'); b.type = 'button'; b.textContent = '✕'; b.title = 'Quitar esta parada'; b.style.cssText = 'padding:3px 8px'; b.onclick = () => { V.cand.splice(i, 1); recalcPar(); parRender(); V.dirty = true; }; l.appendChild(b); }
+      c.appendChild(l); });
   }
   // ---------- Música de fondo ----------
   function sintetizar(ac, estilo) {
@@ -15992,7 +16123,7 @@ function trkTeselasRuta(ruta, buffer, z, tope) {
   async function compartir() {
     try { const f = new File([V.blob], slug(V.R.nombre) + '_video.' + V.ext, { type: V.blob.type }); if (navigator.canShare && navigator.canShare({ files: [f] })) await navigator.share({ files: [f], title: V.R.nombre }); else descargar(); } catch (e) { if (e && e.name !== 'AbortError') descargar(); }
   }
-  function opcionesDeUI() { const o = V.opt; o.fmt = $('v-fmt').value; o.dur = +$('v-dur').value; o.base = $('v-base').value; o.color = $('v-col').value; o.vista = $('v-vista').value; o.marca = $('v-marca').checked; o.nombre = ($('v-nombre').value || '').trim(); o.titulo = ($('v-titulo').value || '').trim(); }
+  function opcionesDeUI() { const o = V.opt; o.fmt = $('v-fmt').value; o.dur = +$('v-dur').value; o.base = $('v-base').value; o.color = $('v-col').value; o.vista = $('v-vista').value; o.relieve = $('v-rel').value; o.marca = $('v-marca').checked; o.nombre = ($('v-nombre').value || '').trim(); o.titulo = ($('v-titulo').value || '').trim(); }
 
   function construirUI() {
     if (V.ui) return; V.ui = true;
@@ -16034,10 +16165,11 @@ function trkTeselasRuta(ruta, buffer, z, tope) {
   <label>Mapa<select id="v-base"><option value="sat">Satélite</option><option value="topo">Topográfico</option></select></label>
   <label>Color de la ruta<select id="v-col"><option value="naranja">Naranja</option><option value="amarillo">Amarillo</option><option value="rosa">Rosa</option><option value="cian">Cian</option><option value="rojo">Rojo</option></select></label>
   <label style="grid-column:1/3">Vista de la cámara<select id="v-vista"><option value="3d">3D inclinada: sigue la ruta y gira con el rumbo</option><option value="plana">Plana: norte arriba, seguimiento suave</option></select></label>
+  <label style="grid-column:1/3">Relieve del terreno<select id="v-rel"><option value="no">Sin sombreado</option><option value="suave">Suave</option><option value="marcado" selected>Marcado (recomendado)</option><option value="fuerte">Muy marcado</option></select></label>
   <label style="grid-column:1/3">Título del video (por defecto, el nombre de la ruta)<input id="v-titulo" type="text" maxlength="50" placeholder="Ej. Ascenso al nevado" style="background:#1e293b;color:#fff;border:1px solid #334155;border-radius:8px;padding:7px;font-size:14px"></label>
   <label style="grid-column:1/3">Tu nombre (se muestra al final del video)<input id="v-nombre" type="text" maxlength="40" placeholder="Ej. Lenin Rojas" style="background:#1e293b;color:#fff;border:1px solid #334155;border-radius:8px;padding:7px;font-size:14px"></label>
   <label>Marca<span style="display:flex;gap:6px;align-items:center;font-size:13px;color:#e2e8f0"><input type="checkbox" id="v-marca" checked> Mostrar «GeoPortal»</span></label>
-  <div style="grid-column:1/3"><div style="font-size:12.5px;font-weight:700;color:#e2e8f0">📌 Paradas en la ruta</div><div style="font-size:11.5px;color:#94a3b8">La cámara se detiene y muestra el nombre (descanso, cumbre…). Marca las que quieras.</div><div id="v-par-lista"></div>
+  <div style="grid-column:1/3"><div style="font-size:12.5px;font-weight:700;color:#e2e8f0">📌 Paradas en la ruta</div><div style="font-size:11.5px;color:#94a3b8">La cámara se detiene y muestra el nombre (descanso, cumbre…). Marca las que quieras y, si fue un descanso largo o un campamento, indica cuánto duró (horas o días): se suma al tiempo total del video.</div><div id="v-par-lista"></div>
    <div style="display:flex;gap:6px;align-items:center;margin-top:6px"><button type="button" id="v-par-add">➕ Parada aquí</button><span style="font-size:12px;color:#94a3b8">Pausa</span><select id="v-par-seg" style="background:#1e293b;color:#fff;border:1px solid #334155;border-radius:8px;padding:6px;font-size:13px"><option value="2">2 s</option><option value="3" selected>3 s</option><option value="5">5 s</option></select></div></div>
   <label style="grid-column:1/3">🎵 Música de fondo<select id="v-mus"><option value="">Sin música</option><option value="amb">Ambiental suave (incluida)</option><option value="ave">Aventura rítmica (incluida)</option><option value="url">Desde un enlace en línea…</option><option value="arch">Desde un archivo de mi equipo…</option></select></label>
   <div id="v-mus-x" style="grid-column:1/3;display:none"><input id="v-mus-url" type="text" placeholder="https://…/musica.mp3 (enlace directo)" style="width:100%;box-sizing:border-box;background:#1e293b;color:#fff;border:1px solid #334155;border-radius:8px;padding:7px;font-size:14px"><input id="v-mus-file" type="file" accept="audio/*" style="width:100%;margin-top:6px;font-size:12px;color:#e2e8f0"><div style="font-size:11.5px;color:#94a3b8;margin-top:4px">Música libre: <a href="https://pixabay.com/music/" target="_blank" rel="noopener" style="color:#7dd3fc">Pixabay</a> · <a href="https://freemusicarchive.org/" target="_blank" rel="noopener" style="color:#7dd3fc">Free Music Archive</a> · <a href="https://www.youtube.com/audiolibrary" target="_blank" rel="noopener" style="color:#7dd3fc">YouTube Audio Library</a>. Usa música con licencia: Instagram puede silenciar canciones con derechos de autor.</div></div></div></details>
@@ -16053,9 +16185,9 @@ function trkTeselasRuta(ruta, buffer, z, tope) {
     $('v-par-seg').onchange = () => { recalcPar(); V.dirty = true; setUI(); };
     $('v-mus').onchange = () => { const m = $('v-mus').value; $('v-mus-x').style.display = (m === 'url' || m === 'arch') ? 'block' : 'none'; $('v-mus-url').style.display = m === 'url' ? '' : 'none'; $('v-mus-file').style.display = m === 'arch' ? '' : 'none'; };
     $('v-par-add').onclick = () => { if (V.ocupado || V.rec || !V.R) return; V.playing = false; const p = camera(V.tt).p; if (p < 0.01 || p > 0.99) { estado('Mueve la barra de tiempo hasta el punto de la ruta donde quieres la parada.', true); return; }
-      const nombre = (prompt('Nombre de la parada', 'Descanso') || '').trim().slice(0, 30); if (!nombre) return; V.cand.push({ p: p, nombre: nombre, on: true }); recalcPar(); parRender(); V.dirty = true; estado('Parada «' + nombre + '» agregada (km ' + (V.R.total * p / 1000).toFixed(1) + ').'); };
+      const nombre = (prompt('Nombre de la parada', 'Descanso') || '').trim().slice(0, 30); if (!nombre) return; V.cand.push({ p: p, nombre: nombre, on: true, dur: 0, manual: true }); recalcPar(); parRender(); V.dirty = true; estado('Parada «' + nombre + '» agregada (km ' + (V.R.total * p / 1000).toFixed(1) + ').'); };
     $('v-nombre').oninput = () => { opcionesDeUI(); try { localStorage.setItem('geoportal_vid_nombre', V.opt.nombre); } catch (e) {} V.dirty = true; V.pend = true; };
-    ['v-fmt', 'v-dur', 'v-base', 'v-col', 'v-marca', 'v-vista'].forEach(id => $(id).onchange = () => { opcionesDeUI(); if (V.R && V.R.S) { V.playing = false; crearMapa(); } });
+    ['v-fmt', 'v-dur', 'v-base', 'v-col', 'v-marca', 'v-vista', 'v-rel'].forEach(id => $(id).onchange = () => { opcionesDeUI(); if (V.R && V.R.S) { V.playing = false; crearMapa(); } });
     // arrastrar = girar/inclinar la cámara (solo en la vista previa)
     let px = null, py = null, ult = 0;
     V.comp.addEventListener('pointerdown', e => { px = e.clientX; py = e.clientY; try { V.comp.setPointerCapture(e.pointerId); } catch (x) {} const n = Date.now(); if (n - ult < 320) { V.dB = 0; V.dP = 0; V.dirty = true; } ult = n; });
