@@ -3634,7 +3634,9 @@ window.generarPoligonosVertices = idx => {
       const v0 = String(p0[k] == null ? '' : p0[k]).trim(); if (!v0) return;
       if (g.pts.every(f => String((f.properties || {})[k] == null ? '' : f.properties[k]).trim() === v0)) pr[k] = p0[k];
     });
-    const ft0 = { type: 'Feature', geometry: { type: 'Polygon', coordinates: [ring] }, properties: pr }; if (g.pts[0]._color) ft0._color = g.pts[0]._color;   // mismo color que sus puntos
+    const hojaP = String(g.pts[0].properties.HOJA || '').trim(), colP = (g.pts.find(f => f._color) || {})._color;   // mismo color y misma carpeta (hoja) que sus puntos
+    if (hojaP) { pr.HOJA = hojaP; pr._carpeta = hojaP; }
+    const ft0 = { type: 'Feature', geometry: { type: 'Polygon', coordinates: [ring] }, properties: pr }; if (colP) ft0._color = colP;
     polys.push(ft0);
   });
   if (!polys.length) { alert('No se pudo generar ningún polígono: se necesitan al menos 3 vértices por polígono.' + (omit.length ? '\nOmitidos: ' + omit.join(', ') : '')); return; }
@@ -3920,7 +3922,7 @@ function arbolCarpetasHTML(ul, idx) {
   const render = (obj, nivel) => Object.keys(obj).map(k => {
     const nd = obj[k], sub = render(nd.kids, nivel + 1), all = todos(nd), ids = all.map(f => ix.get(f));
     const items = nd.items.map(f => {
-      const nm = f.properties.name || f.properties.Name || '•', gt = f.geometry && f.geometry.type, ic = ul.esMonit ? (/Line/.test(gt) ? '― ' : (/Polygon/.test(gt) ? '▱ ' : '')) : '';
+      const nm = f.properties.name || f.properties.Name || f.properties.NOMBRE || '•', gt = f.geometry && f.geometry.type, ic = ul.esMonit ? (/Line/.test(gt) ? '― ' : (/Polygon/.test(gt) ? '▱ ' : '')) : '';
       return '<div style="padding:1px 0 1px ' + ((nivel + 1) * 16) + 'px; font-size:11px; color:#475569; display:flex; align-items:center; gap:4px;"><input type="checkbox" ' + (f._oculto ? '' : 'checked') + ' onchange="alternarFeatureI(' + idx + ',' + ix.get(f) + ',this.checked)" style="margin:0;">' + (ul.esMonit && f._color ? dot(f._color) : '') + ic + esc(nm) + '</div>';
     }).join('');
     const c0 = all[0] && all[0]._color ? dot(all[0]._color) : '';
