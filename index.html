@@ -3922,7 +3922,7 @@ function arbolCarpetasHTML(ul, idx) {
       const nm = f.properties.name || f.properties.Name || '•', gt = f.geometry && f.geometry.type, ic = ul.esMonit ? (/Line/.test(gt) ? '― ' : (/Polygon/.test(gt) ? '▱ ' : '')) : '';
       return '<div style="padding:1px 0 1px ' + ((nivel + 1) * 16) + 'px; font-size:11px; color:#475569; display:flex; align-items:center; gap:4px;"><input type="checkbox" ' + (f._oculto ? '' : 'checked') + ' onchange="alternarFeatureI(' + idx + ',' + ix.get(f) + ',this.checked)" style="margin:0;">' + (ul.esMonit && f._color ? dot(f._color) : '') + ic + esc(nm) + '</div>';
     }).join('');
-    const c0 = ul.esMonit && all[0] && all[0]._color ? dot(all[0]._color) : '';
+    const c0 = all[0] && all[0]._color ? dot(all[0]._color) : '';
     return '<details style="margin-left:' + (nivel * 8) + 'px;"><summary style="cursor:pointer; font-size:12px; font-weight:500; padding:2px 0;"><input type="checkbox" ' + (all.every(f => !f._oculto) ? 'checked' : '') + ' onclick="event.stopPropagation(); alternarCarpetaI(' + idx + ',this,[' + ids.join(',') + '])" style="margin:0 4px 0 0; vertical-align:middle;">' + c0 + '📁 ' + esc(k) + ' <span style="color:#94a3b8; font-size:10px;">' + all.length + '</span></summary>' + sub + items + '</details>';
   }).join('');
   return '<div style="margin:2px 0 2px 12px;">' + render(tree, 0) + '</div>';
@@ -4765,7 +4765,11 @@ async function procesarArchivoLocal(file) {
             } catch (e) {}
           });
           const colorCapa = colorAleatorioCapa();
-          const colorDe = () => colorCapa;
+          // Excel con varias hojas: cada hoja lleva su propio color (mapa, lista de capas y KMZ)
+          { const hs = []; geojsonFeatureCol.features.forEach(ft => { const h = ft.properties && ft.properties._carpeta && ft.properties.HOJA; if (h && hs.indexOf(h) < 0) hs.push(h); });
+            if (hs.length > 1 && ['xlsx', 'xls'].indexOf(ext) >= 0) { const pal = (typeof _COL_MONIT_BASE !== 'undefined' && _COL_MONIT_BASE.length) ? _COL_MONIT_BASE : ['#dc2626', '#2563eb', '#16a34a', '#ea580c', '#7c3aed', '#0891b2', '#db2777', '#ca8a04'];
+              geojsonFeatureCol.features.forEach(ft => { const i = hs.indexOf(ft.properties && ft.properties.HOJA); if (i >= 0) ft._color = pal[i % pal.length]; }); } }
+          const colorDe = ft => (ft && ft._color) || colorCapa;
           const layer = L.geoJSON(geojsonFeatureCol, {
             pane: 'p_add',
             pointToLayer: (f, ll) => {
