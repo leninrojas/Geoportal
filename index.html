@@ -3634,11 +3634,12 @@ window.generarPoligonosVertices = idx => {
       const v0 = String(p0[k] == null ? '' : p0[k]).trim(); if (!v0) return;
       if (g.pts.every(f => String((f.properties || {})[k] == null ? '' : f.properties[k]).trim() === v0)) pr[k] = p0[k];
     });
-    polys.push({ type: 'Feature', geometry: { type: 'Polygon', coordinates: [ring] }, properties: pr });
+    const ft0 = { type: 'Feature', geometry: { type: 'Polygon', coordinates: [ring] }, properties: pr }; if (g.pts[0]._color) ft0._color = g.pts[0]._color;   // mismo color que sus puntos
+    polys.push(ft0);
   });
   if (!polys.length) { alert('No se pudo generar ningún polígono: se necesitan al menos 3 vértices por polígono.' + (omit.length ? '\nOmitidos: ' + omit.join(', ') : '')); return; }
   const color = colorAleatorioCapa(), fc = { type: 'FeatureCollection', features: polys };
-  const layer = L.geoJSON(fc, { pane: 'p_add', style: () => ({ color, weight: 2, fillColor: color, fillOpacity: 0.35 }),
+  const layer = L.geoJSON(fc, { pane: 'p_add', style: f => { const c = f._color || color; return { color: c, weight: 2, fillColor: c, fillOpacity: 0.35 }; },
     onEachFeature: (ft, l) => { l.bindTooltip(String(ft.properties.NOMBRE), { permanent: true, direction: 'center', className: 'etiqueta-usuario' }); l.on('click', ev => { L.DomEvent.stopPropagation(ev); identificarMultiCapas(ev.latlng); }); } }).addTo(map);
   userLayers.push({ name: base + ' · Polígonos', color, layer, features: polys, geojson: fc, extArchivo: 'xlsx' });
   ul.polisHechos = true; map.fitBounds(layer.getBounds(), { padding: [40, 40], maxZoom: 17 });
