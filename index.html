@@ -722,6 +722,18 @@
     #trk-flot canvas { height:105px; }
     #tk-toast { top:60px; }
   }
+
+  /* v14 · destello con nombre y mover puntos */
+  .dest-est { overflow:visible; }
+  .dest-aro { position:absolute; left:-17px; top:-17px; width:34px; height:34px; border:3px solid #2563eb; border-radius:50%; background:rgba(37,99,235,.14); animation:destPulso 1.1s ease-out infinite; }
+  @keyframes destPulso { 0% { transform:scale(.55); opacity:1; } 100% { transform:scale(1.5); opacity:.15; } }
+  .dest-nom { position:absolute; left:24px; top:-13px; white-space:nowrap; background:#1e3a8a; color:#fff; font:700 12.5px/1.1 Arial,sans-serif; padding:5px 8px; border-radius:6px; box-shadow:0 1px 5px rgba(0,0,0,.45); }
+  .mv-pt { overflow:visible; }
+  .mv-pt div { width:22px; height:22px; border-radius:50%; border:3px solid #f59e0b; background:rgba(245,158,11,.25); box-shadow:0 0 0 2px #fff, 0 1px 4px rgba(0,0,0,.5); cursor:grab; box-sizing:border-box; }
+  .leaflet-tooltip.mv-lbl { background:#0f172a; color:#fff; border:0; font:700 12px Arial,sans-serif; padding:3px 7px; border-radius:5px; }
+  .leaflet-tooltip.mv-lbl::before { display:none; }
+  #mv-barra { position:fixed; top:12px; left:50%; transform:translateX(-50%); z-index:2500; display:flex; align-items:center; gap:10px; padding:8px 12px; color:#fff; font:600 13px Arial,sans-serif; border-radius:10px; box-shadow:0 3px 12px rgba(0,0,0,.4); max-width:92vw; }
+  #mv-barra button { border:0; background:#fff; color:#0f172a; font-weight:700; padding:5px 12px; border-radius:6px; cursor:pointer; }
 </style>
 </head>
 <body>
@@ -1521,6 +1533,13 @@
         <button class="btn sec" id="sa-limpiar-aoi" type="button" style="margin-top:0; font-size:11.5px; padding:6px;">🧹 Quitar</button>
       </div>
       <select id="sa-capa-poli" style="width:100%; margin-top:8px; padding:6px; font-size:12px; border:1px solid var(--border-color); border-radius:4px;"><option value="">— usar un polígono ya cargado —</option></select>
+      <div id="sa-aoi-est" style="display:flex; align-items:center; gap:10px; flex-wrap:wrap; margin-top:6px; font-size:11.5px; color:#334155;">
+        <label style="display:flex; align-items:center; gap:4px; cursor:pointer;"><input type="checkbox" id="sa-aoi-fill"> Relleno</label>
+        <label style="display:flex; align-items:center; gap:4px; cursor:pointer;"><input type="checkbox" id="sa-aoi-borde" checked> Borde</label>
+        <input type="color" id="sa-aoi-col" value="#0284c7" title="Color del borde" style="width:30px; height:24px; padding:0; border:1px solid #cbd5e1; border-radius:4px; background:none; cursor:pointer;">
+        <select id="sa-aoi-w" title="Grosor del borde" style="padding:3px; font-size:11.5px; border:1px solid var(--border-color); border-radius:4px;"><option value="1">1 px</option><option value="2">2 px</option><option value="2.5" selected>2,5 px</option><option value="4">4 px</option><option value="6">6 px</option></select>
+        <select id="sa-aoi-dash" title="Tipo de línea" style="padding:3px; font-size:11.5px; border:1px solid var(--border-color); border-radius:4px;"><option value="0">Continuo</option><option value="1" selected>Discontinuo</option></select>
+      </div>
       <div id="sa-aoi-info" style="font-size:12px; color:#334155; margin-top:4px;"></div>
       <div id="sa-dl-basemap-wrap" style="display:none; margin-top:6px;">
         <div style="display:flex; gap:6px; align-items:center; flex-wrap:wrap;">
@@ -1686,6 +1705,7 @@
       </div>
       <label style="display:flex; align-items:center; gap:6px; font-size:12px; cursor:pointer; margin-top:6px;"><input type="checkbox" id="sa-dem-suave" checked> Suavizar las curvas</label>
       <button class="btn sec" id="sa-dl-curvas" type="button" style="font-size:12px; padding:7px;">📦 Curvas de nivel (.zip)</button>
+      <button class="btn sec" id="sa-dl-penshp" type="button" style="font-size:12px; padding:7px;" title="Polígonos de pendiente en clases (D.S. 017-2009-AG) con simbología para QGIS y ArcGIS Pro">📦 Pendiente en clases (.zip)</button>
       <button class="btn sec" id="sa-dl-dempng" type="button" style="font-size:11.5px; padding:6px;">🖼 PNG de la vista actual</button>
       <button class="btn sec" id="sa-dl-demrep" type="button" style="font-size:11.5px; padding:6px;">📄 Informe técnico (Word)</button>
       <button class="btn sec" id="sa-dem-quitar" type="button" style="font-size:11.5px; padding:6px;">🧹 Quitar resultado del mapa</button>
@@ -3030,15 +3050,13 @@ function buscarLocal(q) {
 }
 
 let buscarMarca = null;
-function buscarIrA(ft) {
+function buscarIrA(ft, nombre) {
   const b = L.geoJSON(ft).getBounds();
   if (!b.isValid()) return;
   if (ft.geometry.type.indexOf('Point') >= 0) map.setView(b.getCenter(), Math.max(map.getZoom(), 16));
   else map.fitBounds(b, { padding: [40, 40], maxZoom: 17 });
-  if (buscarMarca) map.removeLayer(buscarMarca);
-  buscarMarca = L.circleMarker(b.getCenter(), { pane: 'p_hl', radius: 14, color: '#2563eb', weight: 3, fillOpacity: 0, interactive: false }).addTo(map);
-  const m = buscarMarca;
-  setTimeout(() => { if (m && map.hasLayer(m)) map.removeLayer(m); }, 3500);
+  let et = nombre; if (!et) { try { et = obtenerEtiquetaPunto(ft.properties || {}); } catch (e) { et = ''; } }
+  destelloEstacion(b.getCenter(), et);
 }
 
 // ---- Buscador flotante: capas del mapa + coordenadas + direcciones/lugares (OpenStreetMap) + voz ----
@@ -3084,7 +3102,7 @@ async function buscarDireccion(qIn) {
   const locales = buscarLocal(q);
   if (locales.length) {
     encabezado('En las capas del mapa');
-    locales.forEach(x => item(x.nombre, x.capa, () => buscarIrA(x.ft)));
+    locales.forEach(x => item(x.nombre, x.capa, () => buscarIrA(x.ft, x.nombre)));
   }
   // 2) Direcciones y lugares (se prioriza Perú)
   try {
@@ -4483,6 +4501,10 @@ function tieneAltitud(ul) {
   });
 }
 const _tienePuntos = ul => !!ul && !ul.isDibujo && (ul.features || []).some(f => f.geometry && f.geometry.type === 'Point');
+const _tienePoligonos = ul => !!ul && !ul.isDibujo && (ul.features || []).some(f => f.geometry && /Polygon/.test(f.geometry.type));
+window.alternarRellenoCapa = idx => { const ul = userLayers[idx]; if (!ul || !ul.layer) return; ul.sinRelleno = !ul.sinRelleno;
+  ul.layer.eachLayer(l => { const g = l.feature && l.feature.geometry; if (!g || !/Polygon/.test(g.type) || !l.setStyle) return; if (l._fo0 === undefined) l._fo0 = (l.options.fillOpacity === undefined ? 0.2 : l.options.fillOpacity); l.setStyle(ul.sinRelleno ? { fill: false, fillOpacity: 0 } : { fill: true, fillOpacity: l._fo0 }); });
+  try { actualizarAddLista(); } catch (e) {} };
 function altitudActiva(ul) { if (ul.conAltitud !== undefined) return ul.conAltitud; if (ul._sinAlt === undefined) ul._sinAlt = !tieneAltitud(ul); return ul._sinAlt; }
 window.alternarAltitudCapa = idx => {
   const ul = userLayers[idx]; if (!ul) return; ul.conAltitud = !altitudActiva(ul);
@@ -5107,6 +5129,8 @@ function actualizarAddLista() {
             </details>
             <div style="display:flex; gap:4px; margin:2px 0 4px 20px; flex-wrap:wrap;">
               ${(_tienePuntos(ul) || ul.srcLayer) ? '<button class="btn sec" style="width:auto; padding:2px 6px; font-size:10px; border-radius:3px;" type="button" title="Editar atributos y coordenadas de los puntos (se recalculan Este/Norte/Zona y Longitud/Latitud)" onclick="abrirEditor(' + idx + ')">✏️ Editar puntos</button>' : ''}
+              ${(_tienePuntos(ul) || ul.srcLayer) ? '<button class="btn sec" style="width:auto; padding:2px 6px; font-size:10px; border-radius:3px;' + ((typeof MV !== 'undefined' && MV.ul && MV.ul === (ul.srcLayer || ul)) ? ' background:#fef3c7; border-color:#f59e0b; color:#92400e;' : '') + '" type="button" title="Arrastra los puntos directamente en el mapa, sin abrir el editor" onclick="alternarMoverPuntos(' + idx + ')">✥ Mover puntos</button>' : ''}
+              ${_tienePoligonos(ul) ? '<button class="btn sec" style="width:auto; padding:2px 6px; font-size:10px; border-radius:3px;" type="button" title="Mostrar u ocultar el relleno de los polígonos (queda solo el borde)" onclick="alternarRellenoCapa(' + idx + ')">▨ Relleno: ' + (ul.sinRelleno ? 'NO' : 'SÍ') + '</button>' : ''}
               ${ul.esSondajes ? '<button class="btn sec" style="width:auto; padding:2px 6px; font-size:10px; border-radius:3px;" type="button" onclick="generarProyeccionesSondajes(' + idx + ')">📐 Sondajes</button>' : ''}
               ${ul.vertCampo && !ul.polisHechos ? '<button class="btn sec" style="width:auto; padding:2px 6px; font-size:10px; border-radius:3px;" type="button" title="Une los vértices (' + esc(ul.vertCampo) + ') en orden y genera uno o más polígonos" onclick="generarPoligonosVertices(' + idx + ')">⬠ Polígono</button>' : ''}
               ${ul.monit && !ul.monitHecho ? '<button class="btn sec" style="width:auto; padding:2px 6px; font-size:10px; border-radius:3px;" type="button" title="Crea las capas Estaciones, Transectos y Parcelas según el campo ' + esc(ul.monit.tipo) + '" onclick="generarMonitoreo(' + idx + ')">🧬 Monitoreo</button>' : ''}
@@ -5281,7 +5305,7 @@ window.abrirEditor = idx => {
   box.addEventListener('click', ev => {
     const b = ev.target.closest('button[data-b]'), tr = ev.target.closest('tr'), ul = edUL(); if (!b || !tr || !ul) return;
     const f = ul.features[parseInt(tr.dataset.i, 10)]; if (!f) return;
-    if (b.dataset.b === 'zoom') { map.setView([f.geometry.coordinates[1], f.geometry.coordinates[0]], Math.max(map.getZoom(), 17)); }
+    if (b.dataset.b === 'zoom') { map.setView([f.geometry.coordinates[1], f.geometry.coordinates[0]], Math.max(map.getZoom(), 17)); destelloEstacion([f.geometry.coordinates[1], f.geometry.coordinates[0]], etiquetaDePunto(ul, f)); }
     else if (b.dataset.b === 'del') {
       if (!confirm('¿Eliminar este punto de la capa?')) return;
       const l = _registroCapas(ul).get(f); if (l) { try { ul.layer.removeLayer(l); } catch (e) {} }
@@ -5297,6 +5321,58 @@ window.abrirEditor = idx => {
   edT('ed-shp').onclick = () => { if (ED.t) edRegenerar(); exportarCapaProy(ED.idx); };
   edT('ed-xls').onclick = () => { if (ED.t) edRegenerar(); descargarExcelCapa(ED.idx); };
 })();
+
+// =============================================================================
+// DESTELLO CON NOMBRE DE LA ESTACIÓN + MOVER PUNTOS ARRASTRANDO (sin abrir el editor)
+// =============================================================================
+var DEST = { m: null, t: 0 };
+function destelloEstacion(ll, texto) {
+  try { if (DEST.m) map.removeLayer(DEST.m); } catch (e) {} clearTimeout(DEST.t);
+  const t = String(texto == null ? '' : texto).replace(/[<>&"]/g, '').slice(0, 70);
+  const m = L.marker(ll, { pane: 'p_hl', interactive: false, keyboard: false, icon: L.divIcon({ className: 'dest-est', html: '<div class="dest-aro"></div>' + (t ? '<div class="dest-nom">' + t + '</div>' : ''), iconSize: [0, 0] }) }).addTo(map);
+  DEST.m = m; DEST.t = setTimeout(() => { try { map.removeLayer(m); } catch (e) {} if (DEST.m === m) DEST.m = null; }, 9000);
+}
+function etiquetaDePunto(ul, f) { try { return String(ul.etqSoloPerf ? etiquetaPerforacion(f.properties || {}, f, ul.extArchivo) : obtenerEtiquetaPunto(f.properties || {})) || ''; } catch (e) { return ''; } }
+var MV = { ul: null, grp: null };
+function mvBarra(txt, ok) {
+  let b = document.getElementById('mv-barra');
+  if (!b) { b = document.createElement('div'); b.id = 'mv-barra'; b.innerHTML = '<span id="mv-txt"></span><button type="button" id="mv-fin">Listo</button>'; document.body.appendChild(b); b.querySelector('#mv-fin').onclick = () => mvApagar(); }
+  document.getElementById('mv-txt').textContent = txt; b.style.background = ok ? '#065f46' : '#0f172a';
+}
+function mvApagar() {
+  if (MV.grp) { try { map.removeLayer(MV.grp); } catch (e) {} }
+  MV.grp = null; MV.ul = null; map.off('moveend', mvPintar);
+  const b = document.getElementById('mv-barra'); if (b) b.remove();
+  try { actualizarAddLista(); } catch (e) {}
+}
+function mvPintar() {
+  if (!MV.ul || !MV.grp) return; MV.grp.clearLayers();
+  const ul = MV.ul, bb = map.getBounds().pad(0.1);
+  if (!map.hasLayer(ul.layer)) { mvBarra('✥ La capa está oculta: actívala para mover sus puntos.'); return; }
+  const pts = ul.features.filter(f => f.geometry && f.geometry.type === 'Point' && bb.contains([f.geometry.coordinates[1], f.geometry.coordinates[0]]));
+  if (pts.length > 300) { mvBarra('✥ Hay ' + pts.length + ' puntos a la vista: acerca el mapa (máx. 300) para moverlos.'); return; }
+  mvBarra(pts.length ? '✥ Arrastra cada punto naranja a su nueva posición · ' + pts.length + ' a la vista' : '✥ No hay puntos de esta capa a la vista: acerca o desplaza el mapa.');
+  pts.forEach(f => {
+    const c = f.geometry.coordinates, m = L.marker([c[1], c[0]], { pane: 'p_hl', draggable: true, keyboard: false, zIndexOffset: 2000, icon: L.divIcon({ className: 'mv-pt', html: '<div></div>', iconSize: [22, 22], iconAnchor: [11, 11] }) });
+    const et = etiquetaDePunto(ul, f); if (et) m.bindTooltip(et, { permanent: true, direction: 'right', offset: [14, 0], className: 'mv-lbl' });
+    m.on('dragend', () => {
+      const ll = m.getLatLng(), prev = [f.geometry.coordinates[1], f.geometry.coordinates[0]];
+      ED.idx = userLayers.indexOf(ul);
+      if (edPonerLL(ul, f, ll.lng, ll.lat)) {
+        edMarcar(); const pe = document.getElementById('pnl-edit'); if (pe && pe.classList.contains('on')) { try { edRender(); } catch (e) {} }
+        const u = edUtm(f); mvBarra('✓ ' + (et || 'Punto') + ' movido · E ' + u.e.toFixed(1) + ' · N ' + u.n.toFixed(1) + ' (Zona ' + edZona(u.ep) + ')', true); setTimeout(() => { if (MV.ul === ul) mvPintar(); }, 1800);
+      } else { m.setLatLng(prev); mvBarra('⚠ No se pudo mover el punto: se restauró su posición.'); }
+    });
+    MV.grp.addLayer(m);
+  });
+}
+window.alternarMoverPuntos = idx => {
+  let ul = userLayers[idx]; if (!ul) return; if (ul.srcLayer && userLayers.indexOf(ul.srcLayer) >= 0) ul = ul.srcLayer;
+  if (MV.ul === ul) { mvApagar(); return; }
+  mvApagar(); MV.ul = ul; MV.grp = L.layerGroup().addTo(map); map.on('moveend', mvPintar); mvPintar();
+  try { actualizarAddLista(); } catch (e) {}
+};
+document.addEventListener('keydown', ev => { if (ev.key === 'Escape' && MV.ul) mvApagar(); });
 
 window.eliminarCapaUsuario = idx => {
   if (userLayers[idx]) {
@@ -10670,6 +10746,18 @@ async function construirXlsxPerfil(JSZipRef, spec) {
     try { avInfoAOI(); ecoInfoAOI(); } catch (e) {} const b = T('sa-dl-basemap-wrap'); if (b) b.style.display = 'none'; resetSelPoli(); msg('Área de estudio y resultados quitados.');
   }
   const msg = (t, err) => { const m = T('sa-msg'); m.textContent = t || ''; m.style.color = err ? '#dc2626' : '#16a34a'; ['av', 'eco'].forEach(p => { const e = T(p + '-aoi-msg'); if (e) { e.textContent = t || ''; e.style.color = err ? '#dc2626' : '#16a34a'; } }); };
+  const AOI_EST = (() => { const d = { relleno: false, borde: true, color: '#0284c7', peso: 2.5, dash: true }; try { return Object.assign(d, JSON.parse(localStorage.getItem('geo_aoi_est') || '{}')); } catch (e) { return d; } })();
+  function aoiEstiloObj() { return { color: AOI_EST.color, weight: AOI_EST.peso, dashArray: AOI_EST.dash ? '7 5' : null, fillColor: AOI_EST.color, fill: !!AOI_EST.relleno, fillOpacity: AOI_EST.relleno ? 0.15 : 0, stroke: !!AOI_EST.borde, opacity: 1 }; }
+  window.aoiEstiloObj = aoiEstiloObj;
+  function aoiEstiloAplicar() {
+    AOI_EST.relleno = T('sa-aoi-fill').checked; AOI_EST.borde = T('sa-aoi-borde').checked; AOI_EST.color = T('sa-aoi-col').value; AOI_EST.peso = parseFloat(T('sa-aoi-w').value) || 2.5; AOI_EST.dash = T('sa-aoi-dash').value === '1';
+    try { localStorage.setItem('geo_aoi_est', JSON.stringify(AOI_EST)); } catch (e) {}
+    if (capaAOI) capaAOI.setStyle(aoiEstiloObj()); userLayers.forEach(u => { if (u.esAOI && u.layer && u.layer.setStyle) u.layer.setStyle(aoiEstiloObj()); });
+  }
+  function aoiEstiloIniciar() {
+    if (!T('sa-aoi-fill')) return; T('sa-aoi-fill').checked = !!AOI_EST.relleno; T('sa-aoi-borde').checked = !!AOI_EST.borde; T('sa-aoi-col').value = AOI_EST.color; T('sa-aoi-w').value = String(AOI_EST.peso); T('sa-aoi-dash').value = AOI_EST.dash ? '1' : '0';
+    ['sa-aoi-fill', 'sa-aoi-borde', 'sa-aoi-col', 'sa-aoi-w', 'sa-aoi-dash'].forEach(id => { T(id).onchange = aoiEstiloAplicar; });
+  }
   function fijarAOI(anillos) {
     let a = 1e9, b = 1e9, c = -1e9, d = -1e9; anillos.forEach(r => r.forEach(p => { a = Math.min(a, p[0]); c = Math.max(c, p[0]); b = Math.min(b, p[1]); d = Math.max(d, p[1]); }));
     const km2 = PLANO.area({ type: 'Feature', geometry: { type: 'Polygon', coordinates: anillos }, properties: {} }) / 1e6;
@@ -10678,7 +10766,7 @@ async function construirXlsxPerfil(JSZipRef, spec) {
       try { quitarResultado(); AV.res = null; T('av-res').innerHTML = ''; ECO.R = null; ECO.cache = null; T('eco-res').innerHTML = ''; } catch (e) {}
     }
     if (capaAOI) map.removeLayer(capaAOI);
-    capaAOI = L.polygon(anillos.map(r => r.map(p => [p[1], p[0]])), { pane: 'p_hl', color: '#0284c7', weight: 2.5, fillColor: '#38bdf8', fillOpacity: 0.08, dashArray: '7 5', interactive: false }).addTo(map);
+    capaAOI = L.polygon(anillos.map(r => r.map(p => [p[1], p[0]])), Object.assign({ pane: 'p_hl', interactive: false }, aoiEstiloObj())).addTo(map);
     T('sa-aoi-info').innerHTML = 'Área de estudio: <b>' + fmtN(km2, 2) + ' km²</b> (' + fmtN(km2 * 100, 0) + ' ha)';
     T('sa-aoi-info').style.color = km2 > 6000 ? '#b45309' : '#334155';
     if (km2 > 6000) T('sa-aoi-info').innerHTML += '<br>Es muy grande: se procesará a menor resolución.';
@@ -10975,6 +11063,56 @@ async function construirXlsxPerfil(JSZipRef, spec) {
     const desc = 'Bandas: ' + K.map((k, i) => (i + 1) + '=' + NOM_BANDA[k]).join(' ') + '. Reflectancia x 10000 (0 = sin dato). ' + sinTildes(R.ft.linea);
     descargarBlob(new Blob([escribirGeoTiff({ w: G.w, h: G.h, x0: G.x0, y0: G.y0, res: G.res, epsg: G.epsg, nb: K.length, bits: 16, fmt: 1, nodata: 0, datos: d, desc: desc })], { type: 'image/tiff' }), nombreImg() + '_multibanda.tif');
   }
+  // =====================================================================
+  //  SIMBOLOGÍA PARA SIG: archivos de estilo con los MISMOS colores que el mapa del geoportal
+  //  QGIS (.qml) · ArcGIS Pro (.lyrx) · OGC/GeoServer (.sld). clases: [{ v: valor del campo, etq: texto, col: '#rrggbb', w?: grosor, dash?: bool }]
+  // =====================================================================
+  function stRGB(c) {
+    c = String(c || '#888888').trim(); let m = /^#([0-9a-f]{3})$/i.exec(c); if (m) c = '#' + m[1].split('').map(x => x + x).join('');
+    m = /^#([0-9a-f]{6})/i.exec(c); if (m) return [parseInt(m[1].slice(0, 2), 16), parseInt(m[1].slice(2, 4), 16), parseInt(m[1].slice(4, 6), 16)];
+    m = /rgba?\(\s*(\d+)[,\s]+(\d+)[,\s]+(\d+)/i.exec(c); return m ? [+m[1], +m[2], +m[3]] : [136, 136, 136];
+  }
+  const stHex = c => '#' + stRGB(c).map(v => v.toString(16).padStart(2, '0')).join('');
+  const xmlQ = s => String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+  function estiloQML(campo, clases, geom) {
+    const O = (n, v) => '<Option name="' + n + '" value="' + xmlQ(v) + '" type="QString"/>';
+    const cat = clases.map((c, i) => '<category render="true" symbol="' + i + '" value="' + xmlQ(c.v) + '" label="' + xmlQ(c.etq) + '"/>').join('');
+    const sym = clases.map((c, i) => { const q = stRGB(c.col), col = q[0] + ',' + q[1] + ',' + q[2] + ',255';
+      if (geom === 'line') return '<symbol type="line" name="' + i + '" alpha="1" clip_to_extent="1" force_rhr="0"><layer class="SimpleLine" enabled="1" locked="0" pass="0"><Option type="Map">' + O('capstyle', 'round') + O('joinstyle', 'round') + O('line_color', col) + O('line_style', c.dash ? 'dash' : 'solid') + O('line_width', c.w || 0.8) + O('line_width_unit', 'MM') + '</Option></layer></symbol>';
+      return '<symbol type="fill" name="' + i + '" alpha="1" clip_to_extent="1" force_rhr="0"><layer class="SimpleFill" enabled="1" locked="0" pass="0"><Option type="Map">' + O('color', col) + O('joinstyle', 'bevel') + O('offset', '0,0') + O('outline_color', '35,35,35,255') + O('outline_style', 'solid') + O('outline_width', '0.2') + O('outline_width_unit', 'MM') + O('style', 'solid') + '</Option></layer></symbol>'; }).join('');
+    return '<!DOCTYPE qgis PUBLIC \'http://mrcc.com/qgis.dtd\' \'SYSTEM\'>\n<qgis version="3.28.0-Firenze" styleCategories="Symbology">\n<renderer-v2 type="categorizedSymbol" attr="' + xmlQ(campo) + '" symbollevels="0" enableorderby="0" forceraster="0">\n<categories>' + cat + '</categories>\n<symbols>' + sym + '</symbols>\n</renderer-v2>\n<blendMode>0</blendMode>\n<featureBlendMode>0</featureBlendMode>\n<layerOpacity>1</layerOpacity>\n</qgis>\n';
+  }
+  function estiloQMLRaster(clases) {   // ráster de clases (valores enteros): paleta de colores con las etiquetas
+    const ent = clases.map(c => '<paletteEntry value="' + xmlQ(c.v) + '" color="' + stHex(c.col) + '" label="' + xmlQ(c.etq) + '" alpha="255"/>').join('');
+    return '<!DOCTYPE qgis PUBLIC \'http://mrcc.com/qgis.dtd\' \'SYSTEM\'>\n<qgis version="3.28.0-Firenze" styleCategories="Symbology">\n<pipe>\n<rasterrenderer type="paletted" band="1" opacity="1" alphaBand="-1" nodataColor="">\n<rasterTransparency/>\n<colorPalette>' + ent + '</colorPalette>\n</rasterrenderer>\n<brightnesscontrast brightness="0" contrast="0" gamma="1"/>\n<huesaturation colorizeOn="0" grayscaleMode="0" saturation="0" colorizeRed="255" colorizeGreen="128" colorizeBlue="128" colorizeStrength="100"/>\n<rasterresampler maxOversampling="2"/>\n</pipe>\n<blendMode>0</blendMode>\n</qgis>\n';
+  }
+  function estiloSLD(nombre, campo, clases, geom) {
+    const reglas = clases.map(c => { const h = stHex(c.col), sim = geom === 'line'
+        ? '<LineSymbolizer><Stroke><CssParameter name="stroke">' + h + '</CssParameter><CssParameter name="stroke-width">' + (c.w ? c.w * 2 : 1.5) + '</CssParameter>' + (c.dash ? '<CssParameter name="stroke-dasharray">6 4</CssParameter>' : '') + '</Stroke></LineSymbolizer>'
+        : '<PolygonSymbolizer><Fill><CssParameter name="fill">' + h + '</CssParameter><CssParameter name="fill-opacity">1</CssParameter></Fill><Stroke><CssParameter name="stroke">#232323</CssParameter><CssParameter name="stroke-width">0.4</CssParameter></Stroke></PolygonSymbolizer>';
+      return '<Rule><Name>' + xmlQ(c.v) + '</Name><Title>' + xmlQ(c.etq) + '</Title><ogc:Filter><ogc:PropertyIsEqualTo><ogc:PropertyName>' + xmlQ(campo) + '</ogc:PropertyName><ogc:Literal>' + xmlQ(c.v) + '</ogc:Literal></ogc:PropertyIsEqualTo></ogc:Filter>' + sim + '</Rule>'; }).join('\n');
+    return '<?xml version="1.0" encoding="UTF-8"?>\n<StyledLayerDescriptor version="1.0.0" xmlns="http://www.opengis.net/sld" xmlns:ogc="http://www.opengis.net/ogc" xmlns:xlink="http://www.w3.org/1999/xlink" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">\n<NamedLayer><Name>' + xmlQ(nombre) + '</Name><UserStyle><Name>' + xmlQ(nombre) + '</Name><FeatureTypeStyle>\n' + reglas + '\n</FeatureTypeStyle></UserStyle></NamedLayer>\n</StyledLayerDescriptor>\n';
+  }
+  function estiloLYRX(nombre, campo, clases, geom) {   // ArcGIS Pro (JSON); se usa con «Aplicar simbología desde capa»
+    const col = (c, a) => { const q = stRGB(c); return { type: 'CIMRGBColor', values: [q[0], q[1], q[2], a == null ? 100 : a] }; };
+    const stroke = (c, w) => ({ type: 'CIMSolidStroke', enable: true, capStyle: 'Round', joinStyle: 'Round', lineStyle3D: 'Strip', miterLimit: 10, width: w, height3D: 1, anchor3D: 'Center', color: col(c) });
+    const sim = c => geom === 'line'
+      ? { type: 'CIMSymbolReference', symbol: { type: 'CIMLineSymbol', symbolLayers: [Object.assign(stroke(c.col, (c.w || 0.8) * 2), c.dash ? { effects: [{ type: 'CIMGeometricEffectDashes', dashTemplate: [6, 4], lineDashEnding: 'NoConstraint', offsetAlongLine: 0, controlPointEnding: 'NoConstraint' }] } : {})], haloSize: 1, scaleX: 1, angleAlignment: 'Map' } }
+      : { type: 'CIMSymbolReference', symbol: { type: 'CIMPolygonSymbol', symbolLayers: [stroke('#6e6e6e', 0.5), { type: 'CIMSolidFill', enable: true, color: col(c.col) }], angleAlignment: 'Map' } };
+    const cl = clases.map(c => ({ type: 'CIMUniqueValueClass', editable: true, label: c.etq, patch: 'Default', symbol: sim(c), values: [{ type: 'CIMUniqueValue', fieldValues: [String(c.v)] }], visible: true }));
+    const uri = 'CIMPATH=capa/' + nombre.replace(/[^A-Za-z0-9_]/g, '_') + '.xml';
+    const def = { type: 'CIMFeatureLayer', name: nombre, uRI: uri, sourceModifiedTime: { type: 'TimeInstant' }, useSourceMetadata: true, description: nombre, layerType: 'Operational', showLegends: true, visibility: true, displayCacheType: 'Permanent', maxDisplayCacheAge: 5, showPopups: true, serviceLayerID: -1, refreshRate: -1, refreshRateUnit: 'esriTimeUnitsSeconds', blendingMode: 'Alpha', autoGenerateFeatureTemplates: true, featureElevationExpression: '0',
+      featureTable: { type: 'CIMFeatureTable', displayField: campo, editable: true, dataConnection: { type: 'CIMStandardDataConnection', workspaceConnectionString: 'DATABASE=.', workspaceFactory: 'Shapefile', dataset: nombre, datasetType: 'esriDTFeatureClass' }, studyAreaSpatialRel: 'esriSpatialRelUndefined', searchOrder: 'esriSearchOrderSpatial' },
+      htmlPopupEnabled: true, selectable: true, featureCacheType: 'Session',
+      renderer: { type: 'CIMUniqueValueRenderer', defaultLabel: '<all other values>', defaultSymbol: sim({ col: '#d4d4d4' }), defaultSymbolPatch: 'Default', fields: [campo], groups: [{ type: 'CIMUniqueValueGroup', classes: cl, heading: campo }], useDefaultSymbol: false, polygonSymbolColorTarget: 'Fill' },
+      scaleSymbols: true, snappable: true };
+    return JSON.stringify({ type: 'CIMLayerDocument', version: '2.9.0', build: 32739, layers: [uri], layerDefinitions: [def] }, null, 2);
+  }
+  // agrega al .zip los archivos de simbología de UNA capa vectorial: base.qml, base.sld, base.lyrx (+ LEEME)
+  function estiloZip(z, base, campo, clases, geom) {
+    geom = geom || 'poly'; z.file(base + '.qml', estiloQML(campo, clases, geom)); z.file(base + '.sld', estiloSLD(base, campo, clases, geom)); z.file(base + '.lyrx', estiloLYRX(base, campo, clases, geom));
+    z.file('LEEME_SIMBOLOGIA.txt', 'SIMBOLOGÍA (mismos colores que el geoportal)\r\n\r\nQGIS: con el .shp y el .qml de igual nombre en la misma carpeta, QGIS aplica el estilo al abrir la capa. Si no, clic derecho en la capa > Propiedades > Simbología > Estilo > Cargar estilo > elige el .qml.\r\nArcGIS Pro: agrega el .shp, abre Simbología > menú ≡ > Importar simbología (o geoproceso «Aplicar simbología desde capa») y elige el .lyrx. El campo de clases es «' + campo + '».\r\nOtros programas (GeoServer, etc.): usa el .sld.\r\nArcMap 10.x no abre .lyrx ni .qml: usa el campo COLOR (código hex) o la tabla de clases del informe para asignar los colores.\r\n\r\nLos colores salen de la leyenda del geoportal; en pantalla el mapa se ve algo más claro por la transparencia de la imagen.\r\n');
+  }
   async function exportarShp() {
     if (!R) return; msg('Generando shapefile…'); await new Promise(r => setTimeout(r, 20));
     try {
@@ -11004,15 +11142,15 @@ async function construirXlsxPerfil(JSZipRef, spec) {
       if (T('sa-shp-modo').value === 'clase') {
         R.etq.forEach((e, k) => { const partes = []; let area = 0;
           polAj.filter(pa => pa.clase === k).forEach(pa => { const rs = unir(pa); area += aPoly(rs); fin(rs).forEach(r => partes.push(r)); });
-          if (partes.length) polis.push({ partes: partes, attrs: [k + 1, e, k, area / 10000, R.def.n, R.ft.tipo, fch, modoSuav === 'ninguno' ? 'Ninguno' : (modoSuav === 'ligero' ? 'Ligero' : 'Moderado')] }); });
+          if (partes.length) polis.push({ partes: partes, attrs: [k + 1, e, k, area / 10000, R.def.n, R.ft.tipo, fch, modoSuav === 'ninguno' ? 'Ninguno' : (modoSuav === 'ligero' ? 'Ligero' : 'Moderado'), stHex(R.cols[k])] }); });
       } else {
-        polAj.forEach(pa => { const rs = unir(pa); polis.push({ partes: fin(rs), attrs: [polis.length + 1, R.etq[pa.clase], pa.clase, aPoly(rs) / 10000, R.def.n, R.ft.tipo, fch, modoSuav === 'ninguno' ? 'Ninguno' : (modoSuav === 'ligero' ? 'Ligero' : 'Moderado')] }); });
+        polAj.forEach(pa => { const rs = unir(pa); polis.push({ partes: fin(rs), attrs: [polis.length + 1, R.etq[pa.clase], pa.clase, aPoly(rs) / 10000, R.def.n, R.ft.tipo, fch, modoSuav === 'ninguno' ? 'Ninguno' : (modoSuav === 'ligero' ? 'Ligero' : 'Moderado'), stHex(R.cols[pa.clase])] }); });
       }
       if (!polis.length) throw new Error('No hay polígonos para exportar.');
-      const campos = [{ n: 'ID', t: 'N', l: 10, d: 0 }, { n: 'CLASE', t: 'C', l: 40 }, { n: 'COD', t: 'N', l: 4, d: 0 }, { n: 'AREA_HA', t: 'N', l: 16, d: 4 }, { n: 'INDICE', t: 'C', l: 10 }, { n: 'SENSOR', t: 'C', l: 24 }, { n: 'FECHA', t: 'C', l: 23 }, { n: 'SUAVIZ', t: 'C', l: 10 }];
+      const campos = [{ n: 'ID', t: 'N', l: 10, d: 0 }, { n: 'CLASE', t: 'C', l: 40 }, { n: 'COD', t: 'N', l: 4, d: 0 }, { n: 'AREA_HA', t: 'N', l: 16, d: 4 }, { n: 'INDICE', t: 'C', l: 10 }, { n: 'SENSOR', t: 'C', l: 24 }, { n: 'FECHA', t: 'C', l: 23 }, { n: 'SUAVIZ', t: 'C', l: 10 }, { n: 'COLOR', t: 'C', l: 8 }];
       const s = escribirShapefile(polis, campos, wgs ? WKT_WGS84 : wktUTM(G.epsg)), b = nombreBase() + '_clases' + (wgs ? '_WGS84' : '_UTM' + (G.epsg % 100) + 'S'), z = new JSZip();
       z.file(b + '.shp', s.shp); z.file(b + '.shx', s.shx); z.file(b + '.dbf', s.dbf); z.file(b + '.prj', s.prj); z.file(b + '.cpg', s.cpg);
-      descargarBlob(new Blob([await z.generateAsync({ type: 'uint8array' })], { type: 'application/zip' }), b + '.zip'); msg('Shapefile listo (' + polis.length.toLocaleString('es-PE') + ' polígonos' + (aoiPx ? ', borde exacto al área de estudio (malla ×' + F + ')' : ', SIN recorte: no hay área de estudio') + (cambioMax ? '; suavizado ' + modoSuav + ': el área por clase cambió como máximo ' + cambioMax.toFixed(2) + ' %' : '') + ').');
+      estiloZip(z, b, 'COD', R.etq.map((e, k) => ({ v: k, etq: e, col: R.cols[k] })), 'poly'); descargarBlob(new Blob([await z.generateAsync({ type: 'uint8array' })], { type: 'application/zip' }), b + '.zip'); msg('Shapefile listo (' + polis.length.toLocaleString('es-PE') + ' polígonos' + (aoiPx ? ', borde exacto al área de estudio (malla ×' + F + ')' : ', SIN recorte: no hay área de estudio') + (cambioMax ? '; suavizado ' + modoSuav + ': el área por clase cambió como máximo ' + cambioMax.toFixed(2) + ' %' : '') + ').');
     } catch (e) { console.error(e); msg('No se pudo generar el shapefile: ' + e.message, true); }
   }
   function exportarPNG(vista) {
@@ -11219,6 +11357,21 @@ async function construirXlsxPerfil(JSZipRef, spec) {
       descargarBlob(new Blob([await zp.generateAsync({ type: 'uint8array' })], { type: 'application/zip' }), b + '.zip'); msg('Curvas de nivel listas (' + polis.length.toLocaleString('es-PE') + ' líneas, cada ' + inter + ' m).');
     } catch (e) { console.error(e); msg('No se pudieron generar las curvas: ' + e.message, true); }
   }
+  async function exportarPenClases() {
+    if (!D) return; msg('Generando la pendiente en clases…'); await new Promise(r => setTimeout(r, 20));
+    try {
+      const G = D.G, cortes = [2, 4, 8, 15, 25, 50, 75], med = [1, 3, 6, 11.5, 20, 37.5, 62.5, 75];
+      const etq = ['Plana (0 – 2 %)', 'Ligeramente inclinada (2 – 4 %)', 'Moderadamente inclinada (4 – 8 %)', 'Fuertemente inclinada (8 – 15 %)', 'Moderadamente empinada (15 – 25 %)', 'Empinada (25 – 50 %)', 'Muy empinada (50 – 75 %)', 'Extremadamente empinada (> 75 %)'];
+      const cols = med.map(v => '#' + colorRampa('temp', v / 60).map(x => Math.round(x).toString(16).padStart(2, '0')).join(''));   // el color que el mapa muestra en el centro de cada rango
+      const cls = clasificarValores(D.pen, cortes), pol = poligonizarClases(cls, G.w, G.h, etq.length), pxU = q => [G.x0 + q[0] * G.res, G.y0 - q[1] * G.res], aRing = q => { let t = 0; for (let k = 0; k < q.length - 1; k++) t += q[k][0] * q[k + 1][1] - q[k + 1][0] * q[k][1]; return t / 2; }, polis = [];
+      pol.forEach(pa => { const rs = [pa.ext].concat(pa.holes).map(q => q.map(pxU)).map((q, i) => { if ((i === 0) !== (aRing(q) < 0)) q.reverse(); return q; }); const a = Math.abs(aRing(rs[0])) - rs.slice(1).reduce((t, q) => t + Math.abs(aRing(q)), 0); polis.push({ partes: rs, attrs: [polis.length + 1, asc(etq[pa.clase]), pa.clase, a / 10000, stHex(cols[pa.clase])] }); });
+      if (!polis.length) throw new Error('No hay polígonos para exportar.');
+      const campos = [{ n: 'ID', t: 'N', l: 10, d: 0 }, { n: 'CLASE', t: 'C', l: 40 }, { n: 'COD', t: 'N', l: 4, d: 0 }, { n: 'AREA_HA', t: 'N', l: 16, d: 4 }, { n: 'COLOR', t: 'C', l: 8 }], s = escribirShapefile(polis, campos, wktUTM(G.epsg)), b = nombreDEM() + '_pendiente_clases_UTM' + (G.epsg % 100) + 'S', z = new JSZip();
+      z.file(b + '.shp', s.shp); z.file(b + '.shx', s.shx); z.file(b + '.dbf', s.dbf); z.file(b + '.prj', s.prj); z.file(b + '.cpg', s.cpg);
+      estiloZip(z, b, 'COD', etq.map((e, k) => ({ v: k, etq: e, col: cols[k] })), 'poly');
+      descargarBlob(new Blob([await z.generateAsync({ type: 'uint8array' })], { type: 'application/zip' }), b + '.zip'); msg('Pendiente en clases lista (' + polis.length.toLocaleString('es-PE') + ' polígonos, 8 clases, con simbología).');
+    } catch (e) { console.error(e); msg('No se pudo generar la pendiente en clases: ' + e.message, true); }
+  }
   function exportarPNGDEM() {
     if (!D) return; const v = demVista(), t = { sombra: 'Sombreado del terreno', elev: 'Altitud (msnm) con sombreado', pend: 'Pendiente (%)' }[v];
     pngConLeyenda(lienzoDEM(v), t + ' — ' + D.F.nombre, D.res + ' m · altitud ' + fmtN(D.st.min, 0) + ' a ' + fmtN(D.st.max, 0) + ' msnm · ' + D.F.nota, [], nombreDEM() + '_' + v + '.png');
@@ -11326,11 +11479,11 @@ async function construirXlsxPerfil(JSZipRef, spec) {
     const r = AV.res; if (!r) return; avMsg('Generando shapefile…'); await avCede();
     try {
       const G = r.G, pol = poligonizarClases(r.cls, G.w, G.h, r.etq.length), pxU = q => [G.x0 + q[0] * G.res, G.y0 - q[1] * G.res], aRing = q => { let t = 0; for (let k = 0; k < q.length - 1; k++) t += q[k][0] * q[k + 1][1] - q[k + 1][0] * q[k][1]; return t / 2; }, polis = [];
-      pol.forEach(pa => { if (r.shpOmitir && r.shpOmitir.indexOf(pa.clase) >= 0) return; const rs = [pa.ext].concat(pa.holes).map(q => q.map(pxU)).map((q, i) => { if ((i === 0) !== (aRing(q) < 0)) q.reverse(); return q; }); const a = Math.abs(aRing(rs[0])) - rs.slice(1).reduce((t, q) => t + Math.abs(aRing(q)), 0); polis.push({ partes: rs, attrs: [polis.length + 1, asc(r.etq[pa.clase]).slice(0, 40), pa.clase, a / 10000, asc(r.titulo).slice(0, 30)] }); });
+      pol.forEach(pa => { if (r.shpOmitir && r.shpOmitir.indexOf(pa.clase) >= 0) return; const rs = [pa.ext].concat(pa.holes).map(q => q.map(pxU)).map((q, i) => { if ((i === 0) !== (aRing(q) < 0)) q.reverse(); return q; }); const a = Math.abs(aRing(rs[0])) - rs.slice(1).reduce((t, q) => t + Math.abs(aRing(q)), 0); polis.push({ partes: rs, attrs: [polis.length + 1, asc(r.etq[pa.clase]).slice(0, 40), pa.clase, a / 10000, asc(r.titulo).slice(0, 30), stHex(r.cols[pa.clase] || '#ffffff')] }); });
       if (!polis.length) throw new Error('No hay polígonos para exportar.');
-      const campos = [{ n: 'ID', t: 'N', l: 10, d: 0 }, { n: 'CLASE', t: 'C', l: 40 }, { n: 'COD', t: 'N', l: 4, d: 0 }, { n: 'AREA_HA', t: 'N', l: 16, d: 4 }, { n: 'PROCESO', t: 'C', l: 30 }], s = escribirShapefile(polis, campos, wktUTM(G.epsg)), b = r.nombre + '_UTM' + (G.epsg % 100) + 'S', z = new JSZip();
+      const campos = [{ n: 'ID', t: 'N', l: 10, d: 0 }, { n: 'CLASE', t: 'C', l: 40 }, { n: 'COD', t: 'N', l: 4, d: 0 }, { n: 'AREA_HA', t: 'N', l: 16, d: 4 }, { n: 'PROCESO', t: 'C', l: 30 }, { n: 'COLOR', t: 'C', l: 8 }], s = escribirShapefile(polis, campos, wktUTM(G.epsg)), b = r.nombre + '_UTM' + (G.epsg % 100) + 'S', z = new JSZip();
       z.file(b + '.shp', s.shp); z.file(b + '.shx', s.shx); z.file(b + '.dbf', s.dbf); z.file(b + '.prj', s.prj); z.file(b + '.cpg', s.cpg);
-      descargarBlob(new Blob([await z.generateAsync({ type: 'uint8array' })], { type: 'application/zip' }), b + '.zip'); avMsg('Shapefile listo (' + polis.length.toLocaleString('es-PE') + ' polígonos).');
+      estiloZip(z, b, 'COD', r.etq.map((e, k) => ({ v: k, etq: e, col: r.cols[k] || '#ffffff' })), 'poly'); descargarBlob(new Blob([await z.generateAsync({ type: 'uint8array' })], { type: 'application/zip' }), b + '.zip'); avMsg('Shapefile listo (' + polis.length.toLocaleString('es-PE') + ' polígonos, con archivos de simbología).');
     } catch (e) { console.error(e); avMsg('No se pudo generar el shapefile: ' + e.message, true); }
   }
   async function avInforme() {
@@ -12144,7 +12297,12 @@ async function construirXlsxPerfil(JSZipRef, spec) {
     '<button class="btn sec" id="hi-plant" type="button" style="margin:6px 0 0; font-size:11.5px; padding:6px;">⬇ Plantilla de pozos y manantiales (Excel)</button>' +
     gxT('Interpolación') + gxFl(gxSe('hi-met', 'Método', [['krig', 'Kriging ordinario'], ['idw', 'Distancia inversa (IDW)']], 'krig'), gxIn('hi-p', 'Potencia (IDW)', 2)) +
     gxFl(gxIn('hi-nv', 'Pozos vecinos', 12), gxIn('hi-res', 'Celda (m, 0 = auto)', 0)) + gxCk('hi-tend', 'Quitar la tendencia regional (recomendado)', true) +
-    gxT('Curvas') + gxFl(gxIn('hi-eq', 'Equidistancia (m, 0 = auto)', 0), gxIn('hi-mae', 'Maestra cada', 5)) + gxFl(gxIn('hi-dmax', 'Límite desde pozos (m, 0 = auto)', 0), gxIn('hi-sua', 'Suavizado (0-3)', 1)) + gxCk('hi-flech', 'Dibujar flechas de flujo', true);
+    gxT('Curvas') + gxFl(gxIn('hi-eq', 'Equidistancia (m, 0 = auto)', 0), gxIn('hi-mae', 'Maestra cada', 5)) + gxFl(gxIn('hi-dmax', 'Límite desde pozos (m, 0 = auto)', 0), gxIn('hi-sua', 'Suavizado (0-3)', 1)) + gxCk('hi-flech', 'Dibujar flechas de flujo', true) +
+    gxT('Zonas de recarga, tránsito y descarga') + gxCk('hi-zon', 'Clasificar el nivel del agua en 3 zonas (6 clases)', true) +
+    '<div id="hi-zon-w">' + gxFl(gxTx('hi-zcor', 'Cortes de clase (m s. n. m., 7 valores de menor a mayor)', '4000, 4100, 4300, 4350, 4450, 4500, 4650')) +
+    gxFl(gxSe('hi-zmod', 'Si los pozos no caen en esos rangos', [['auto', 'Ajustar los cortes a mis datos (recomendado)'], ['exacto', 'Usar mis rangos tal cual']], 'auto')) +
+    '<label style="font-size:11px; color:#64748b; display:block; margin-top:6px;">Área de estudio (opcional; polígonos)</label><select id="hi-zaoi" style="' + gxEst + '"><option value="">— solo el área de los pozos —</option>' + gxOpcCapas(/Polygon/).replace(/<option value="">[^<]*<\/option>/, '') + '</select>' +
+    '<div class="nota" style="margin:6px 0 0;">Recarga: 4500–4650 y 4450–4500 · Tránsito y recarga: 4350–4450 y 4300–4350 · Descarga: 4100–4300 y 4000–4100 (rangos referenciales). Con un área de estudio, la zonificación cubre todo el polígono (extrapola fuera del alcance de los pozos).</div></div>';
   AV_HTML.tsusc = () => gxT('Factores del terreno (DEM Copernicus)') +
     gxFila('ts-pen', 'Pendiente (°)', 40, '5, 15, 25, 45', false) + gxFila('ts-cau', 'Cercanía a cauces (m)', 15, '30, 100, 250, 500', true) + gxFila('ts-rel', 'Relieve local 150 m (m)', 10, '10, 25, 50, 100', false) +
     gxT('Capas propias (polígonos con calificación 1 a 5, o texto con tabla)') + [1, 2, 3].map(k => gxCapaFactor(k)).join('') +
@@ -12340,7 +12498,77 @@ async function construirXlsxPerfil(JSZipRef, spec) {
   function gxInitHisohip() {
     const sel = () => { const prof = T('hi-tipo').value === 'prof'; T('hi-fz-w').style.display = prof ? 'block' : 'none'; };
     gxEnlazar('hi-capa', 'hi-campo', false, true); gxEnlazar('hi-capa', 'hi-zc', true, true); gxEnlazar('hi-man', 'hi-manc', true, true); T('hi-tipo').onchange = sel; sel();
+    const zt = () => { T('hi-zon-w').style.display = T('hi-zon').checked ? 'block' : 'none'; }; T('hi-zon').onchange = zt; zt();
     T('hi-plant').onclick = () => { const ws = XLSX.utils.aoa_to_sheet([['POZO', 'ESTE', 'NORTE', 'ZONA', 'COTA_TERRENO', 'NIVEL_ESTATICO', 'COTA_AGUA', 'FECHA'], ['P-01', 350000, 8650000, 18, 3820.5, 12.4, 3808.1, '2026-05-10'], ['P-02', 350420, 8650310, 18, 3815.2, 9.8, 3805.4, '2026-05-10']]), wb = XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb, ws, 'Pozos'); XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet([['NOMBRE', 'ESTE', 'NORTE', 'ZONA', 'COTA_AGUA', 'FECHA'], ['M-01', 351200, 8651100, 18, 3902.0, '2026-05-10'], ['M-02', 351800, 8651900, 18, '', '2026-05-10']]), 'Manantiales'); XLSX.writeFile(wb, 'Plantilla_Hidroisohipsas.xlsx'); };
+  }
+  // ---- Zonas de recarga, tránsito y descarga (clasificación de la superficie piezométrica) ----
+  const GX_ZON = [{ zc: 1, zona: 'Zona de recarga', col: '#15803d' }, { zc: 1, zona: 'Zona de recarga', col: '#86efac' }, { zc: 2, zona: 'Zona de tránsito y recarga', col: '#fde047' }, { zc: 2, zona: 'Zona de tránsito y recarga', col: '#fb923c' }, { zc: 3, zona: 'Zona de descarga', col: '#60a5fa' }, { zc: 3, zona: 'Zona de descarga', col: '#1d4ed8' }];   // de MAYOR a menor cota
+  const GX_ZCOL = ['', '#22c55e', '#facc15', '#2563eb'], GX_ZNOM = ['', 'Zona de recarga', 'Zona de tránsito y recarga', 'Zona de descarga'];
+  const gxFR = v => fmtN(v, Number.isInteger(v) ? 0 : 1);
+  function gxZonPoligonos(cls, G, w, h, anillosA) {
+    const F = G.res >= 20 ? 16 : G.res >= 8 ? 8 : 4; let aoiPx;
+    if (anillosA) aoiPx = anillosA.map(r => { const q = r.map(pt => gxPx(G, pt)), f = q[0], l = q[q.length - 1]; if (f[0] !== l[0] || f[1] !== l[1]) q.push([f[0], f[1]]); return q; }); else aoiPx = [[[0, 0], [w, 0], [w, h], [0, h], [0, 0]]];
+    const pol0 = poligonizarRecortado(cls, w, h, 6, aoiPx, F), pol = suavizarBordesPol(pol0, w, F, 'moderado');
+    return ajustarAlContorno(pol, aoiPx, F);
+  }
+  function gxZonificar(grid, w, h, G, txt, modo, anillosA) {
+    const n = w * h, c0 = String(txt || '').split(/[;\s]+|,\s*/).filter(x => x !== '').map(x => parseFloat(x.replace(',', '.')));
+    if (c0.length !== 7 || c0.some(v => !isFinite(v))) throw new Error('Escribe 7 cortes de clase de menor a mayor, separados por comas (por ejemplo 4000, 4100, 4300, 4350, 4450, 4500, 4650).');
+    const cr = c0.slice().sort((a, b) => a - b); if (cr.some((v, i) => i && v <= cr[i - 1])) throw new Error('Los cortes de clase deben ser distintos.');
+    let dentro = null; if (anillosA) { dentro = new Uint8Array(n); gxRellenarPoli(anillosA.map(r => r.map(p => gxPx(G, p))), w, h, 1, dentro); }
+    const gz = new Float32Array(n).fill(NaN); let nv = 0, lo = 1e18, hi = -1e18;
+    for (let p = 0; p < n; p++) { const v = grid[p]; if (v === v && (!dentro || dentro[p])) { gz[p] = v; nv++; if (v < lo) lo = v; if (v > hi) hi = v; } }
+    if (nv < 20) throw new Error('No hay suficientes celdas con cota del agua dentro del área elegida.');
+    const zonaDe = (v, c) => v < c[2] ? 3 : (v < c[4] ? 2 : 1), frac = c => { const k = [0, 0, 0, 0]; for (let p = 0; p < n; p++) { const v = gz[p]; if (v === v) k[zonaDe(v, c)]++; } return [k[1] / nv, k[2] / nv, k[3] / nv]; };
+    let cortes = cr, ajustado = false; const f0 = frac(cr);
+    if (modo === 'auto' && Math.min(f0[0], f0[1], f0[2]) < 0.02) {
+      const dec = (hi - lo) >= 20 ? 0 : 1, m10 = Math.pow(10, dec), e = v => Math.round(v * m10) / m10; let nc = cr.map(v => lo + (v - cr[0]) / (cr[6] - cr[0]) * (hi - lo)); nc = nc.map((v, i) => i === 0 ? Math.floor(v * m10) / m10 : (i === 6 ? Math.ceil(v * m10) / m10 : e(v)));
+      if (nc.some((v, i) => i && v <= nc[i - 1])) nc = cr.map(v => Number((lo + (v - cr[0]) / (cr[6] - cr[0]) * (hi - lo)).toFixed(2)));
+      cortes = nc; ajustado = true;
+    }
+    const cls = new Uint8Array(n).fill(255); for (let p = 0; p < n; p++) { const v = gz[p]; if (v !== v) continue; let k = 0; for (let i = 1; i <= 5; i++) if (v >= cortes[i]) k++; cls[p] = 5 - k; }
+    const rango = j => [cortes[5 - j], cortes[6 - j]], etq = GX_ZON.map((z, j) => { const r = rango(j); return z.zona + ' · ' + gxFR(r[0]) + ' – ' + gxFR(r[1]) + ' m s. n. m.'; });
+    // polígonos (borde suavizado entre clases, sin huecos ni solapes) y áreas
+    const pol = gxZonPoligonos(cls, G, w, h, anillosA), ar = r => { let t = 0; for (let k = 0; k < r.length - 1; k++) t += r[k][0] * r[k + 1][1] - r[k + 1][0] * r[k][1]; return t / 2; }, haPx = G.res * G.res / 10000;
+    const ha = [0, 0, 0, 0, 0, 0]; pol.forEach(pa => { ha[pa.clase] += (Math.abs(ar(pa.ext)) - pa.holes.reduce((t, q) => t + Math.abs(ar(q)), 0)) * haPx; });
+    const tot = ha.reduce((t, v) => t + v, 0) || 1, haZ = [0, 0, 0, 0]; ha.forEach((v, j) => { haZ[GX_ZON[j].zc] += v; });
+    const feat = [], lineasPx = [];
+    for (let k = 0; k < 6; k++) { const ps = pol.filter(pa => pa.clase === k); if (!ps.length) continue; const r = rango(k);
+      feat.push({ type: 'Feature', geometry: { type: 'MultiPolygon', coordinates: ps.map(pa => [pa.ext].concat(pa.holes).map(q => q.map(t => gxLL(G, t[0], t[1])))) }, properties: { ZONA: GX_ZON[k].zona, ZONA_COD: GX_ZON[k].zc, CLASE: etq[k], COD: k + 1, COTA_MIN: r[0], COTA_MAX: r[1], AREA_HA: Number(ha[k].toFixed(3)), COLOR: GX_ZON[k].col } }); }
+    // isolíneas conceptuales: los límites entre clases; los de zona (recarga | tránsito | descarga) se marcan como principales
+    const lv = cortes.slice(1, 6), LIM = ['Descarga (baja / media)', 'Descarga / Tránsito y recarga', 'Tránsito y recarga (baja / alta)', 'Tránsito y recarga / Recarga', 'Recarga (media / alta)'], fl = [];
+    curvasNivel(gz, w, h, lv).filter(q => q.pts.length >= 3).forEach(q => { let p = suavizarLinea(q.pts, q.cerrada, 2); p = simplificarLinea(p, 0.25); const ix = lv.findIndex(x => Math.abs(x - q.z) < 1e-6); if (ix < 0 || p.length < 2) return; const zona = ix === 1 || ix === 3;
+      fl.push({ type: 'Feature', geometry: { type: 'LineString', coordinates: p.map(t => gxLL(G, t[0], t[1])) }, properties: { COTA_M: Number(q.z.toFixed(2)), TIPO: zona ? 'Limite de zona' : 'Limite de clase', LIMITE: LIM[ix] } }); lineasPx.push(p); });
+    const rows = GX_ZON.map((z, j) => { const r = rango(j); return '<tr style="border-top:1px solid #e2e8f0;"><td style="padding:3px;"><span style="display:inline-block;width:11px;height:11px;border-radius:2px;background:' + z.col + ';border:1px solid #888;vertical-align:-1px;"></span> ' + z.zona.replace('Zona de ', '') + '</td><td style="padding:3px;white-space:nowrap;">' + gxFR(r[0]) + ' – ' + gxFR(r[1]) + '</td><td style="padding:3px;text-align:right;">' + fmtN(ha[j], 1) + '</td><td style="padding:3px;text-align:right;">' + fmtN(ha[j] / tot * 100, 1) + ' %</td></tr>'; }).join('');
+    const html = gxT('Zonas de recarga, tránsito y descarga') + (ajustado ? gxAviso('Los rangos de referencia (' + gxFR(cr[0]) + ' – ' + gxFR(cr[6]) + ' m) no representan las tres zonas con la cota de tus pozos (' + gxFR(lo) + ' – ' + gxFR(hi) + ' m): se ajustaron en la misma proporción a <b>' + cortes.map(gxFR).join(' · ') + '</b>. Si quieres tus rangos tal cual, elige «Usar mis rangos tal cual».') : '') +
+      '<table style="width:100%; border-collapse:collapse; font-size:11.5px;"><thead><tr><th style="text-align:left;padding:3px;border-bottom:1px solid #94a3b8;color:#1e3a8a;">Clase</th><th style="text-align:left;padding:3px;border-bottom:1px solid #94a3b8;color:#1e3a8a;">m s. n. m.</th><th style="text-align:right;padding:3px;border-bottom:1px solid #94a3b8;color:#1e3a8a;">ha</th><th style="text-align:right;padding:3px;border-bottom:1px solid #94a3b8;color:#1e3a8a;">%</th></tr></thead><tbody>' + rows + '</tbody></table>' +
+      '<div style="margin-top:6px; font-size:11.5px; color:#334155;"><b>Recarga</b> ' + fmtN(haZ[1] / tot * 100, 1) + ' % · <b>Tránsito y recarga</b> ' + fmtN(haZ[2] / tot * 100, 1) + ' % · <b>Descarga</b> ' + fmtN(haZ[3] / tot * 100, 1) + ' % del área zonificada.</div>';
+    const leyenda = '<div style="font-weight:700;color:#1e3a8a;">Zonas del nivel del agua</div>' + GX_ZON.map((z, j) => { const r = rango(j); return '<div style="margin-top:2px;"><span style="display:inline-block;width:12px;height:12px;background:' + z.col + ';border:1px solid #888;vertical-align:-2px;"></span> ' + z.zona.replace('Zona de ', '') + ' · ' + gxFR(r[0]) + ' – ' + gxFR(r[1]) + ' m</div>'; }).join('') + '<div style="margin-top:4px;font-size:10.5px;color:#475569;">Línea gruesa discontinua: límite de zona</div>';
+    const secDoc = { h: 'Zonas de recarga, tránsito y descarga', p: 'La superficie piezométrica se clasificó en tres zonas hidrogeológicas conceptuales (' + (ajustado ? 'con cortes ajustados proporcionalmente a la cota de los pozos' : 'con los cortes de referencia indicados') + '). Corresponden a ' + fmtN(haZ[1] / tot * 100, 1) + ' % de recarga, ' + fmtN(haZ[2] / tot * 100, 1) + ' % de tránsito y recarga y ' + fmtN(haZ[3] / tot * 100, 1) + ' % de descarga. Son rangos referenciales que deben validarse con la geología y los manantiales.',
+      tabla: { cab: ['Clase', 'Rango (m s. n. m.)', 'Hectáreas', '% del área'], filas: GX_ZON.map((z, j) => { const r = rango(j); return [z.zona, gxFR(r[0]) + ' – ' + gxFR(r[1]), fmtN(ha[j], 1), fmtN(ha[j] / tot * 100, 1) + ' %']; }), sw: GX_ZON.map(z => z.col), anchos: [3600, 2338, 1850, 1850] } };
+    return { cls: cls, cortes: cortes, ajustado: ajustado, pol: pol, ha: ha, haZ: haZ, tot: tot, etq: etq, rango: rango, fcPol: { type: 'FeatureCollection', features: feat }, fcLin: { type: 'FeatureCollection', features: fl }, lineasPx: lineasPx, html: html, leyenda: leyenda, secDoc: secDoc,
+      txtParam: (ajustado ? 'Cortes ajustados a los datos: ' : 'Cortes: ') + cortes.map(gxFR).join(' · ') + ' m s. n. m. (6 clases, 3 zonas)' };
+  }
+  async function gxZonasZip(ZN, G, w, h, nombre) {
+    try {
+      avMsg('Generando el paquete de zonas…'); await avCede();
+      const z = new JSZip(), n = w * h, b = nombre + '_zonas_UTM' + (G.epsg % 100) + 'S', wkt = wktUTM(G.epsg), c6 = new Uint8Array(n), c3 = new Uint8Array(n);
+      for (let p = 0; p < n; p++) { const k = ZN.cls[p]; if (k !== 255) { c6[p] = k + 1; c3[p] = GX_ZON[k].zc; } }
+      const cl6 = ZN.etq.map((e, k) => ({ v: k + 1, etq: e, col: GX_ZON[k].col })), cl3 = [1, 2, 3].map(q => ({ v: q, etq: GX_ZNOM[q], col: GX_ZCOL[q] }));
+      z.file(b + '_clases.tif', escribirGeoTiff({ w: w, h: h, x0: G.x0, y0: G.y0, res: G.res, epsg: G.epsg, tipo: 'u8', datos: c6, desc: 'Zonas del nivel del agua (6 clases; 1 = mayor cota; 0 = sin dato)', nodata: 0 })); z.file(b + '_clases.qml', estiloQMLRaster(cl6));
+      z.file(b + '_3zonas.tif', escribirGeoTiff({ w: w, h: h, x0: G.x0, y0: G.y0, res: G.res, epsg: G.epsg, tipo: 'u8', datos: c3, desc: 'Zonas: 1 recarga, 2 transito y recarga, 3 descarga (0 = sin dato)', nodata: 0 })); z.file(b + '_3zonas.qml', estiloQMLRaster(cl3));
+      const pxU = q => [G.x0 + q[0] * G.res, G.y0 - q[1] * G.res], aR = q => { let t = 0; for (let k = 0; k < q.length - 1; k++) t += q[k][0] * q[k + 1][1] - q[k + 1][0] * q[k][1]; return t / 2; }, polis = [];
+      for (let k = 0; k < 6; k++) { const ps = ZN.pol.filter(pa => pa.clase === k); if (!ps.length) continue; const partes = []; ps.forEach(pa => [pa.ext].concat(pa.holes).forEach((q0, i) => { const q = q0.map(pxU); if ((i === 0) !== (aR(q) < 0)) q.reverse(); partes.push(q); })); const r = ZN.rango(k);
+        polis.push({ partes: partes, attrs: [polis.length + 1, asc(GX_ZON[k].zona), GX_ZON[k].zc, asc(ZN.etq[k]).slice(0, 48), k + 1, r[0], r[1], ZN.ha[k], GX_ZON[k].col] }); }
+      const campos = [{ n: 'ID', t: 'N', l: 10, d: 0 }, { n: 'ZONA', t: 'C', l: 32 }, { n: 'ZONA_COD', t: 'N', l: 2, d: 0 }, { n: 'CLASE', t: 'C', l: 48 }, { n: 'COD', t: 'N', l: 2, d: 0 }, { n: 'COTA_MIN', t: 'N', l: 10, d: 1 }, { n: 'COTA_MAX', t: 'N', l: 10, d: 1 }, { n: 'AREA_HA', t: 'N', l: 16, d: 4 }, { n: 'COLOR', t: 'C', l: 8 }], s = escribirShapefile(polis, campos, wkt);
+      z.file(b + '.shp', s.shp); z.file(b + '.shx', s.shx); z.file(b + '.dbf', s.dbf); z.file(b + '.prj', s.prj); z.file(b + '.cpg', s.cpg); estiloZip(z, b, 'COD', cl6, 'poly');
+      const bl = b.replace('_zonas_', '_isolineas_conceptuales_'), lin = ZN.fcLin.features.map((f, i) => { const xy = ZN.lineasPx[i].map(pxU); let L = 0; for (let k = 0; k < xy.length - 1; k++) L += Math.hypot(xy[k + 1][0] - xy[k][0], xy[k + 1][1] - xy[k][1]); return { partes: [xy], attrs: [i + 1, f.properties.COTA_M, f.properties.TIPO, asc(f.properties.LIMITE).slice(0, 40), L] }; });
+      if (lin.length) { const cL = [{ n: 'ID', t: 'N', l: 10, d: 0 }, { n: 'COTA_M', t: 'N', l: 10, d: 1 }, { n: 'TIPO', t: 'C', l: 20 }, { n: 'LIMITE', t: 'C', l: 40 }, { n: 'LONG_M', t: 'N', l: 14, d: 1 }], sl = escribirShapefile(lin, cL, wkt, 3);
+        z.file(bl + '.shp', sl.shp); z.file(bl + '.shx', sl.shx); z.file(bl + '.dbf', sl.dbf); z.file(bl + '.prj', sl.prj); z.file(bl + '.cpg', sl.cpg);
+        estiloZip(z, bl, 'TIPO', [{ v: 'Limite de zona', etq: 'Límite de zona (recarga / tránsito / descarga)', col: '#111827', w: 1.2, dash: true }, { v: 'Limite de clase', etq: 'Límite entre clases', col: '#6b7280', w: 0.5, dash: true }], 'line'); }
+      z.file('LEEME.txt', 'ZONAS DEL NIVEL DEL AGUA (recarga, tránsito y descarga)\r\n\r\n' + ZN.txtParam + '\r\n\r\n' + ZN.etq.map((e, k) => (k + 1) + ' = ' + asc(e)).join('\r\n') + '\r\n\r\nArchivos:\r\n- ' + b + '_clases.tif: ráster de 6 clases (1 = mayor cota).\r\n- ' + b + '_3zonas.tif: ráster de 3 zonas (1 recarga, 2 tránsito y recarga, 3 descarga).\r\n- ' + b + '.shp: polígonos de las 6 clases (campos ZONA, CLASE, COD, COTA_MIN, COTA_MAX, AREA_HA, COLOR).\r\n- ' + bl + '.shp: isolíneas conceptuales (límites de zona y de clase).\r\n- .qml / .lyrx / .sld: simbología con los mismos colores del geoportal (ver LEEME_SIMBOLOGIA.txt).\r\n\r\nSon rangos referenciales y una clasificación conceptual: valídala con la geología, los manantiales y el relieve.\r\n');
+      descargarBlob(new Blob([await z.generateAsync({ type: 'uint8array' })], { type: 'application/zip' }), b + '.zip'); avMsg('Paquete de zonas listo (TIF + shapefiles + simbología).');
+    } catch (e) { console.error(e); avMsg('No se pudo generar el paquete de zonas: ' + e.message, true); }
   }
   async function hIsohip() {
     const ul = userLayers[parseInt(T('hi-capa').value, 10)]; if (!ul) throw new Error('Elige la capa de puntos con los pozos o piezómetros (cárgala en Add Data).');
@@ -12352,6 +12580,9 @@ async function construirXlsxPerfil(JSZipRef, spec) {
     if (ulM) gxFeats(ulM).forEach((f, i) => { if (f.geometry && f.geometry.type === 'Point') X.push({ ll: f.geometry.coordinates.slice(0, 2), tipo: 'Manantial', v: campoM ? num((f.properties || {})[campoM]) : NaN, id: (f.properties || {}).NOMBRE || (f.properties || {}).Name || (f.properties || {}).ID || 'M-' + (i + 1) }); });
     if (ulL) gxFeats(ulL).forEach((f, i) => { if (!f.geometry || !/Polygon/.test(f.geometry.type)) return; const co = f.geometry.type === 'Polygon' ? f.geometry.coordinates : f.geometry.coordinates[0], ce = turf.centroid(turf.polygon(co)).geometry.coordinates; X.push({ ll: ce, tipo: 'Laguna', co: co, v: NaN, id: (f.properties || {}).NOM_LAG || (f.properties || {}).NOMBRE || (f.properties || {}).Name || 'L-' + (i + 1) }); });
     let a = 1e9, b = 1e9, c = -1e9, d = -1e9; W.concat(X).forEach(q => { a = Math.min(a, q.ll[0]); c = Math.max(c, q.ll[0]); b = Math.min(b, q.ll[1]); d = Math.max(d, q.ll[1]); });
+    const zonOn = !!(T('hi-zon') && T('hi-zon').checked), ulA = zonOn ? userLayers[parseInt(T('hi-zaoi').value, 10)] : null; let anillosA = null;
+    if (ulA) { anillosA = []; gxFeats(ulA).forEach(f => { const g = f.geometry; if (!g) return; if (g.type === 'Polygon') g.coordinates.forEach(r => anillosA.push(r)); else if (g.type === 'MultiPolygon') g.coordinates.forEach(pp => pp.forEach(r => anillosA.push(r))); });
+      if (!anillosA.length) anillosA = null; else anillosA.forEach(r => r.forEach(p => { a = Math.min(a, p[0]); c = Math.max(c, p[0]); b = Math.min(b, p[1]); d = Math.max(d, p[1]); })); }
     const mx = Math.max((c - a) * 0.12, 0.002), my = Math.max((d - b) * 0.12, 0.002), rect = [[[a - mx, b - my], [c + mx, b - my], [c + mx, d + my], [a - mx, d + my], [a - mx, b - my]]];
     const cy = (b + d) / 2, ext = Math.max((c - a + 2 * mx) * 111320 * Math.cos(cy * Math.PI / 180), (d - b + 2 * my) * 110570); let res = gxNum('hi-res', 0); if (!(res > 0)) { const r0 = ext / 160; res = [5, 10, 20, 25, 50, 100, 200, 250, 500, 1000].find(s => s >= r0) || 1000; }
     const ctx = gxCtx(rect, res, 3e5, 0), G = ctx.G, w = G.w, h = G.h, n = ctx.n;
@@ -12368,7 +12599,8 @@ async function construirXlsxPerfil(JSZipRef, spec) {
     const opt = { metodo: T('hi-met').value, p: Math.max(0.5, gxNum('hi-p', 2)), nv: Math.max(4, Math.round(gxNum('hi-nv', 12))), rad: 0, tend: T('hi-tend').checked };
     avMsg('Ajustando el modelo de interpolación…'); await avCede(); const M = gxModeloInterp(pts, opt), cv = pts.length <= 150 ? gxValidacionCruzada(pts, opt) : null;
     let nn = 0; pts.forEach((p, i) => { let m = 1e18; pts.forEach((q, j) => { if (i !== j) m = Math.min(m, Math.hypot(p.x - q.x, p.y - q.y)); }); nn += m; }); nn /= pts.length; const diag = Math.hypot(w * G.res, h * G.res);
-    let dmax = gxNum('hi-dmax', 0); if (!(dmax > 0)) dmax = Math.max(3 * nn, 0.2 * diag);
+    let dmax = gxNum('hi-dmax', 0); if (!(dmax > 0)) dmax = anillosA ? 1e18 : Math.max(3 * nn, 0.2 * diag);
+    const dmaxTxt = dmax > 1e17 ? 'sin límite (cubre el área de estudio)' : fmtN(dmax, 0) + ' m';
     const grid = new Float32Array(n).fill(NaN); let hechos = 0;
     for (let j = 0; j < h; j++) { for (let i = 0; i < w; i++) { const x = G.x0 + (i + 0.5) * G.res, y = G.y0 - (j + 0.5) * G.res; let dm = 1e18; for (let k = 0; k < pts.length; k++) { const dd = Math.hypot(pts[k].x - x, pts[k].y - y); if (dd < dm) dm = dd; } if (dm > dmax) continue; grid[j * w + i] = M.est(x, y).v; }
       if (++hechos % 8 === 0) { avMsg('Interpolando… ' + Math.round(100 * j / h) + ' %'); await avCede(); if (AV.cancel) throw new Error('Proceso cancelado.'); } }
@@ -12383,21 +12615,28 @@ async function construirXlsxPerfil(JSZipRef, spec) {
     if (T('hi-flech').checked) for (let j = Math.floor(st / 2) + 1; j < h - 1; j += st) for (let i = Math.floor(st / 2) + 1; i < w - 1; i += st) { const p = j * w + i, e = grid[p + 1], o = grid[p - 1], nn2 = grid[p - w], ss = grid[p + w]; if (e !== e || o !== o || nn2 !== nn2 || ss !== ss) continue; const ge = (e - o) / (2 * G.res), gn = (nn2 - ss) / (2 * G.res), m = Math.hypot(ge, gn); if (m < 1e-7) continue;
       const ux = -ge / m, uy = gn / m, L0 = st * 0.7, cx = i + 0.5, cy2 = j + 0.5, x1 = cx - ux * L0 / 2, y1 = cy2 - uy * L0 / 2, x2 = cx + ux * L0 / 2, y2 = cy2 + uy * L0 / 2, ah = L0 * 0.28, ang = Math.atan2(uy, ux), p1 = [x2 - ah * Math.cos(ang - 0.45), y2 - ah * Math.sin(ang - 0.45)], p2 = [x2 - ah * Math.cos(ang + 0.45), y2 - ah * Math.sin(ang + 0.45)];
       flechas.push({ type: 'Feature', geometry: { type: 'MultiLineString', coordinates: [[[x1, y1], [x2, y2]], [p1, [x2, y2], p2]].map(l => l.map(t => gxLL(G, t[0], t[1]))) }, properties: { AZIMUT: Math.round((Math.atan2(ux, -uy) * 180 / Math.PI + 360) % 360), GRADIENTE: Number(m.toFixed(5)) } }); }
+    const ZN = zonOn ? gxZonificar(grid, w, h, G, T('hi-zcor').value, T('hi-zmod').value, anillosA) : null;
     gxQuitarCapas();
     const uC = gxCapa('Hidroisohipsas (eq. ' + fmtN(eq, 2) + ' m)', { type: 'FeatureCollection', features: fl }, { color: '#1d4ed8', relleno: 0, estilo: ft => ({ weight: ft.properties.TIPO === 'Maestra' ? 2.4 : 1.1, color: ft.properties.TIPO === 'Maestra' ? '#1e3a8a' : '#3b82f6' }), etiqueta: ft => ft.properties.TIPO === 'Maestra' ? fmtN(ft.properties.COTA_M, eq < 1 ? 1 : 0) : '' });
     if (flechas.length) gxCapa('Dirección del flujo subterráneo', { type: 'FeatureCollection', features: flechas }, { color: '#dc2626', relleno: 0, estilo: () => ({ weight: 1.8 }) });
     gxCapa('Puntos de control (cota del agua)', { type: 'FeatureCollection', features: pts.map(p => ({ type: 'Feature', geometry: { type: 'Point', coordinates: p.q.ll }, properties: { POZO: p.q.id, TIPO: p.q.tipo || 'Pozo', COTA_AGUA: Number(p.v.toFixed(2)), NIVEL_ESTATICO: (tipo === 'prof' && p.q.v !== null) ? p.q.v : null, COTA_TERRENO: (tipo === 'prof' && p.q.zt !== null) ? Number(p.q.zt.toFixed(2)) : null } })) }, { color: '#0f172a', relleno: 1, etiqueta: ft => fmtN(ft.properties.COTA_AGUA, 1), permanente: true, punto: () => ({ radius: 4 }) });
-    const cvR = lienzoMapa(G, ctx.bbLL, p => { const v = grid[p]; if (v !== v) return null; const c = gxRampa((v - hmin) / (hmax - hmin || 1)); return [c[0], c[1], c[2], 190]; }, null); ponerOverlay(cvR, ctx.bbLL);
-    ponerLeyenda('<div style="font-weight:700;color:#1e3a8a;">Cota del agua subterránea</div><div style="margin:4px 0;height:10px;width:170px;border:1px solid #888;background:linear-gradient(to right,' + GX_RAMPA.join(',') + ');"></div><div style="display:flex;justify-content:space-between;width:170px;font-size:11px;"><span>' + fmtN(hmin, 1) + '</span><span>' + fmtN(hmax, 1) + ' m</span></div>'); gxZoom([uC]);
+    if (ZN) {
+      const uZ = gxCapa('Zonas de recarga, tránsito y descarga', ZN.fcPol, { color: '#15803d', relleno: 0.6, estilo: ft => ({ fillColor: ft.properties.COLOR, color: '#374151', weight: 0.6, fillOpacity: 0.6 }) }); try { alternarVisCapa(userLayers.indexOf(uZ), false); } catch (e) {}
+      if (ZN.fcLin.features.length) gxCapa('Isolíneas conceptuales (límites de zona)', ZN.fcLin, { color: '#111827', relleno: 0, estilo: ft => ft.properties.TIPO === 'Limite de zona' ? { weight: 3, color: '#111827', dashArray: '9 6' } : { weight: 1.3, color: '#6b7280', dashArray: '5 5' }, etiqueta: ft => ft.properties.TIPO === 'Limite de zona' ? fmtN(ft.properties.COTA_M, 0) + ' m' : '' });
+    }
+    const cvR = lienzoMapa(G, ctx.bbLL, ZN ? (p => { const k = ZN.cls[p]; if (k === 255) return null; const c = stRGB(GX_ZON[k].col); return [c[0], c[1], c[2], 190]; }) : (p => { const v = grid[p]; if (v !== v) return null; const c = gxRampa((v - hmin) / (hmax - hmin || 1)); return [c[0], c[1], c[2], 190]; }), null); ponerOverlay(cvR, ctx.bbLL);
+    ponerLeyenda(ZN ? ZN.leyenda : '<div style="font-weight:700;color:#1e3a8a;">Cota del agua subterránea</div><div style="margin:4px 0;height:10px;width:170px;border:1px solid #888;background:linear-gradient(to right,' + GX_RAMPA.join(',') + ');"></div><div style="display:flex;justify-content:space-between;width:170px;font-size:11px;"><span>' + fmtN(hmin, 1) + '</span><span>' + fmtN(hmax, 1) + ' m</span></div>'); gxZoom([uC]);
     const f = (v, d) => gxF(v, d), nMae = fl.filter(q => q.properties.TIPO === 'Maestra').length;
-    const par = [['Pozos usados', String(nPz)], ...(nMan ? [['Manantiales usados', String(nMan)]] : []), ...(nLag ? [['Lagunas usadas', nLag + ' (cota = mediana del DEM dentro del espejo de agua)']] : []), ['Método', M.metodo === 'krig' ? 'Kriging ordinario (variograma esférico: pepita ' + f(M.vario.c0, 3) + ', meseta ' + f(M.vario.c0 + M.vario.c, 3) + ', alcance ' + f(M.vario.a, 0) + ' m)' : 'Distancia inversa ponderada (potencia ' + opt.p + ')' + (opt.metodo === 'krig' ? ' · no se pudo ajustar un variograma con estos datos' : '')], ['Vecinos por celda', String(opt.nv)], ['Tendencia regional', M.tend ? 'Quitada (plano: ' + f(Math.hypot(M.tend.gx, M.tend.gy) * 100, 3) + ' %)' : 'No'], ['Celda', G.res + ' m'], ['Alcance desde un pozo', fmtN(dmax, 0) + ' m'], ['Equidistancia', fmtN(eq, 2) + ' m (maestra cada ' + mae + ')'], ['Rango de la cota', f(hmin, 2) + ' – ' + f(hmax, 2) + ' m s. n. m.'], ['Gradiente hidráulico medio', f(gMed, 5) + ' m/m (' + f(gMed * 100, 2) + ' %)'], ['Dirección media del flujo', f(azM, 0) + '° (' + dirTxt + ')']].concat(cv ? [['Validación cruzada (n = ' + cv.n + ')', 'RMSE ' + f(cv.rmse, 2) + ' m · error medio ' + f(cv.me, 2) + ' m · MAE ' + f(cv.mae, 2) + ' m · R² ' + f(cv.r2, 2)]] : []);
+    const par = [['Pozos usados', String(nPz)], ...(nMan ? [['Manantiales usados', String(nMan)]] : []), ...(nLag ? [['Lagunas usadas', nLag + ' (cota = mediana del DEM dentro del espejo de agua)']] : []), ['Método', M.metodo === 'krig' ? 'Kriging ordinario (variograma esférico: pepita ' + f(M.vario.c0, 3) + ', meseta ' + f(M.vario.c0 + M.vario.c, 3) + ', alcance ' + f(M.vario.a, 0) + ' m)' : 'Distancia inversa ponderada (potencia ' + opt.p + ')' + (opt.metodo === 'krig' ? ' · no se pudo ajustar un variograma con estos datos' : '')], ['Vecinos por celda', String(opt.nv)], ['Tendencia regional', M.tend ? 'Quitada (plano: ' + f(Math.hypot(M.tend.gx, M.tend.gy) * 100, 3) + ' %)' : 'No'], ['Celda', G.res + ' m'], ['Alcance desde un pozo', dmaxTxt], ['Equidistancia', fmtN(eq, 2) + ' m (maestra cada ' + mae + ')'], ['Rango de la cota', f(hmin, 2) + ' – ' + f(hmax, 2) + ' m s. n. m.'], ['Gradiente hidráulico medio', f(gMed, 5) + ' m/m (' + f(gMed * 100, 2) + ' %)'], ['Dirección media del flujo', f(azM, 0) + '° (' + dirTxt + ')']].concat(cv ? [['Validación cruzada (n = ' + cv.n + ')', 'RMSE ' + f(cv.rmse, 2) + ' m · error medio ' + f(cv.me, 2) + ' m · MAE ' + f(cv.mae, 2) + ' m · R² ' + f(cv.r2, 2)]] : []);
+    if (ZN) par.push(['Zonificación del nivel del agua', ZN.txtParam]);
     T('av-res').innerHTML = gxCaja('<b>' + fl.length + ' curvas</b> (' + nMae + ' maestras) cada ' + fmtN(eq, 2) + ' m. Gradiente medio <b>' + f(gMed * 100, 2) + ' %</b>, flujo hacia el <b>' + dirTxt + '</b> (' + f(azM, 0) + '°).' + (cv ? ' Error de validación (RMSE): <b>' + f(cv.rmse, 2) + ' m</b>.' : '')) + gxTabla(['Parámetro', 'Valor'], par.map(q => [q[0], '<span style="text-align:left;">' + escS(q[1]) + '</span>'])) +
-      '<div style="display:flex; gap:6px; flex-wrap:wrap; margin-top:10px;">' + gxBtn('hi-doc', '📄 Informe (Word)') + gxBtn('hi-csv', '📑 Pozos y cotas (CSV)') + gxBtn('hi-tif', '🗺 GeoTIFF (cota del agua)') + '</div><div class="nota" style="margin:8px 0 0;">Las curvas, flechas y pozos quedaron en <b>Add Data</b> (descarga en KMZ, Shapefile o Excel).</div>';
+      (ZN ? ZN.html : '') + '<div style="display:flex; gap:6px; flex-wrap:wrap; margin-top:10px;">' + (ZN ? gxBtn('hi-zip', '📦 Zonas: TIF + SHP + isolíneas + estilos', false) : '') + gxBtn('hi-doc', '📄 Informe (Word)') + gxBtn('hi-csv', '📑 Pozos y cotas (CSV)') + gxBtn('hi-tif', '🗺 GeoTIFF (cota del agua)') + '</div><div class="nota" style="margin:8px 0 0;">Las curvas, flechas y pozos quedaron en <b>Add Data</b> (descarga en KMZ, Shapefile o Excel).</div>';
     const r = { titulo: 'Hidroisohipsas del nivel freático', subtitulo: pts.length + ' pozos · ' + (M.metodo === 'krig' ? 'kriging ordinario' : 'IDW'), nombre: 'HIDROISOHIPSAS_' + new Date().toISOString().slice(0, 10).replace(/-/g, ''), canvas: cvR,
       resumenDoc: 'Se interpoló la superficie piezométrica con ' + pts.length + ' pozos mediante ' + (M.metodo === 'krig' ? 'kriging ordinario' : 'distancia inversa ponderada') + (M.tend ? ' (previa remoción de la tendencia regional)' : '') + ' y se trazaron las hidroisohipsas cada ' + fmtN(eq, 2) + ' m. La cota del agua varía de ' + f(hmin, 1) + ' a ' + f(hmax, 1) + ' m s. n. m.; el gradiente hidráulico medio es ' + f(gMed * 100, 2) + ' % y el flujo subterráneo se dirige hacia el ' + dirTxt + '.',
-      secciones: [{ h: 'Parámetros del modelo', tabla: { cab: ['Parámetro', 'Valor'], anchos: [3200, 6438], filas: par } }, { h: 'Puntos de control utilizados', tabla: { cab: ['Punto', 'Tipo', 'Este (m)', 'Norte (m)', 'Cota del agua (m s. n. m.)'], anchos: [1900, 1500, 1900, 1900, 2438], filas: pts.map(p => [String(p.q.id), p.q.tipo || 'Pozo', fmtN(p.x, 1), fmtN(p.y, 1), f(p.v, 2)]) } }, { h: 'Referencias', lista: ['Davis, J. (2002). Statistics and Data Analysis in Geology. Wiley (interpolación y kriging).', 'Matheron, G. (1963). Principles of geostatistics. Economic Geology 58.', 'Shepard, D. (1968). A two-dimensional interpolation function for irregularly-spaced data. ACM National Conference.', 'Autoridad Nacional del Agua. Protocolo nacional para el monitoreo de aguas subterráneas.'] }],
-      limites: ['La superficie piezométrica solo es válida si las mediciones corresponden a la misma campaña y al mismo acuífero (libre o confinado).', 'Con pocos pozos o mal distribuidos, las curvas lejos de ellos son una extrapolación: se limitan a ' + fmtN(dmax, 0) + ' m de un pozo.', 'Los manantiales y las lagunas solo son válidos como control si están conectados al acuífero libre (no colgados ni estacionales); la cota de una laguna es la mediana del DEM sobre su espejo de agua.', 'Las curvas deben contrastarse con la geología, los manantiales y el relieve antes de usarse en un modelo hidrogeológico.'] };
+      secciones: [...(ZN ? [ZN.secDoc] : []), { h: 'Parámetros del modelo', tabla: { cab: ['Parámetro', 'Valor'], anchos: [3200, 6438], filas: par } }, { h: 'Puntos de control utilizados', tabla: { cab: ['Punto', 'Tipo', 'Este (m)', 'Norte (m)', 'Cota del agua (m s. n. m.)'], anchos: [1900, 1500, 1900, 1900, 2438], filas: pts.map(p => [String(p.q.id), p.q.tipo || 'Pozo', fmtN(p.x, 1), fmtN(p.y, 1), f(p.v, 2)]) } }, { h: 'Referencias', lista: ['Davis, J. (2002). Statistics and Data Analysis in Geology. Wiley (interpolación y kriging).', 'Matheron, G. (1963). Principles of geostatistics. Economic Geology 58.', 'Shepard, D. (1968). A two-dimensional interpolation function for irregularly-spaced data. ACM National Conference.', 'Autoridad Nacional del Agua. Protocolo nacional para el monitoreo de aguas subterráneas.'] }],
+      limites: ['La superficie piezométrica solo es válida si las mediciones corresponden a la misma campaña y al mismo acuífero (libre o confinado).', 'Con pocos pozos o mal distribuidos, las curvas lejos de ellos son una extrapolación: se limitan a ' + dmaxTxt + ' de un pozo.', 'Los manantiales y las lagunas solo son válidos como control si están conectados al acuífero libre (no colgados ni estacionales); la cota de una laguna es la mediana del DEM sobre su espejo de agua.', 'Las curvas deben contrastarse con la geología, los manantiales y el relieve antes de usarse en un modelo hidrogeológico.'] };
     T('hi-doc').onclick = () => gxWord(r);
+    if (ZN) T('hi-zip').onclick = () => gxZonasZip(ZN, G, w, h, r.nombre);
     T('hi-csv').onclick = () => gxBajar(r.nombre + '_pozos.csv', gxCsv([['PUNTO', 'TIPO', 'ESTE_M', 'NORTE_M', 'COTA_AGUA']].concat(pts.map(p => [p.q.id, p.q.tipo || 'Pozo', p.x.toFixed(1), p.y.toFixed(1), p.v.toFixed(3)]))));
     T('hi-tif').onclick = () => descargarBlob(new Blob([escribirGeoTiff({ w: w, h: h, x0: G.x0, y0: G.y0, res: G.res, epsg: G.epsg, tipo: 'f32', datos: grid, desc: 'Cota del agua subterranea (m s.n.m.)', nodata: 'nan' })], { type: 'image/tiff' }), r.nombre + '.tif');
     avMsg('Listo: ' + fl.length + ' hidroisohipsas.');
@@ -12885,6 +13124,7 @@ async function construirXlsxPerfil(JSZipRef, spec) {
 
 
 
+
   async function avEjecutar() {
     if (AV.corriendo) return; AV.corriendo = true; AV.cancel = false; T('av-run').disabled = true; T('av-cancel').style.display = 'block'; if (!GX_KEEP.has(AV.modo)) { quitarResultado(); AV.res = null; } T('av-res').innerHTML = '';
     try { await Object.assign({ cambios: avCambios, quema: avQuema, hidro: avHidro, minero: avMinero, multi: avMulti, clas: avClasificar, radar: avRadar }, GX_RUN)[AV.modo](); }
@@ -12920,7 +13160,7 @@ async function construirXlsxPerfil(JSZipRef, spec) {
   T('sa-dem-fuente').addEventListener('change', () => { const f = DEMS[T('sa-dem-fuente').value]; T('sa-dem-local').style.display = (f.key === 'local' || f.key === 'mdt') ? 'block' : 'none'; T('sa-dem-nota').textContent = f.nota; T('sa-dem-nota').hidden = false; if (f.key === 'local' || f.key === 'mdt') T('sa-dem-archivo').onchange = () => { const a = T('sa-dem-archivo').files[0]; T('sa-dem-arch-info').textContent = a ? a.name + ' · ' + fmtN(a.size / 1048576, 0) + ' MB' : ''; }; });
   T('sa-sensor').onchange = actualizarSensor; T('sa-indice').onchange = actualizarCortes; T('sa-producto').onchange = actualizarProducto; T('sa-producto').addEventListener('change', () => { if (!corriendo) quitarResultado(); }); T('sa-dem-fuente').onchange = actualizarProducto;
   T('sa-run').onclick = () => T('sa-producto').value === 'dem' ? procesarDEM() : procesar(); T('sa-cancel').onclick = () => { cancelar = true; msg('Cancelando…'); };
-  T('sa-quitar').onclick = () => { quitarResultado(); msg(''); }; T('sa-dem-quitar').onclick = () => { quitarResultado(); msg(''); };
+  T('sa-quitar').onclick = () => { quitarResultado(); msg(''); }; aoiEstiloIniciar(); T('sa-dem-quitar').onclick = () => { quitarResultado(); msg(''); };
   const op1 = () => { if (overlay) overlay.setOpacity(parseFloat(T('sa-opac').value)); }; T('sa-opac').oninput = op1; T('sa-dem-opac').oninput = () => { T('sa-opac').value = T('sa-dem-opac').value; op1(); };
   document.querySelectorAll('input[name="sa-ver"]').forEach(r => r.addEventListener('change', cambiarVista)); T('sa-dem-ver').onchange = cambiarVistaDEM;
   T('sa-dl-tif').onclick = exportarTif; T('sa-dl-clases').onclick = exportarClases; T('sa-dl-shp').onclick = exportarShp; T('sa-dl-png').onclick = () => exportarPNG('indice'); T('sa-dl-informe').onclick = exportarInformeSat;
@@ -13027,7 +13267,7 @@ async function construirXlsxPerfil(JSZipRef, spec) {
   T('sa-dl-pen').onclick = () => D && tifDEM(D.pen, 'f32', '_pendiente_pct', 'Pendiente (%) calculada con el metodo de Horn sobre ' + D.F.nombre, 'nan');
   T('sa-dl-ori').onclick = () => D && tifDEM(D.ori, 'f32', '_orientacion', 'Orientacion (grados desde el norte, -1 = plano) sobre ' + D.F.nombre, 'nan');
   T('sa-dl-som').onclick = () => D && tifDEM(D.som, 'u8', '_sombreado', 'Sombreado (azimut 315, altura 45) sobre ' + D.F.nombre + ' (0 = sin dato)', '0');
-  T('sa-dl-curvas').onclick = exportarCurvas; T('sa-dl-dempng').onclick = exportarPNGDEM; T('sa-dl-demrep').onclick = exportarInformeDEM;
+  T('sa-dl-curvas').onclick = exportarCurvas; T('sa-dl-penshp').onclick = exportarPenClases; T('sa-dl-dempng').onclick = exportarPNGDEM; T('sa-dl-demrep').onclick = exportarInformeDEM;
   document.querySelectorAll('[data-pnl="sat"]').forEach(b => b.addEventListener('click', () => setTimeout(poblarPoligonos, 0)));
   T('sa-capa-poli').addEventListener('focus', poblarPoligonos);
   new MutationObserver(() => { if (!T('pnl-sat').classList.contains('on')) { if (trazando && !window.pnlTrazoOculto) { detener(); } } else poblarPoligonos(); }).observe(T('pnl-sat'), { attributes: true, attributeFilter: ['class'] });
@@ -13399,7 +13639,7 @@ async function construirXlsxPerfil(JSZipRef, spec) {
   const nz = v => (v === v && isFinite(v)) ? v : -9999;
   function ecoColumnas(bof, hayInv) {
     const N = (n, l, d, f) => ({ n: n, t: 'N', l: l, d: d, f: f }), Cc = (n, l, f) => ({ n: n, t: 'C', l: l, f: f }), m = (k, esc) => r => nz(r.m[k] * (esc || 1));
-    const base = [N('ID', 10, 0, r => r.id), Cc('TIPO', 10, r => bof ? 'BOFEDAL' : 'LAGUNA')];
+    const base = [N('ID', 10, 0, r => r.id), Cc('TIPO', 10, r => bof ? 'BOFEDAL' : 'LAGUNA'), N('NIVEL', 3, 0, r => r.nivel)];
     if (bof) return base.concat([Cc('CONF', 8, r => ECO_CONF[r.nivel].toUpperCase()), N('PUNTAJE', 6, 1, m('sco', 100)), N('AREA_HA', 14, 3, r => r.ha), N('NDVI', 8, 3, m('ndvi')), N('NDMI', 8, 3, m('ndmi')), N('NDRE', 8, 3, m('ndre')), N('MNDWI', 8, 3, m('mndwi')), N('PERS_HUM', 6, 1, m('pers', 100)),
       N('PEND_DEG', 7, 1, m('pend')), N('TPI_M', 7, 2, m('tpi')), N('ALT_M', 8, 0, m('alt')), N('VV_DB', 8, 2, m('vv')), N('VH_DB', 8, 2, m('vh')), Cc('EN_INV', 4, r => hayInv ? (r.m.inv >= 0.5 ? 'SI' : 'NO') : 'SD'), Cc('VALIDAR', 12, r => 'PENDIENTE'), Cc('OBS', 60, r => '')]);
     return base.concat([Cc('PERSIST', 12, r => { const f = r.ex[0] / r.np; return f >= 0.8 ? 'ESTABLE' : f >= 0.5 ? 'VARIABLE' : 'MUY VARIAB'; }), Cc('CONF', 8, r => ECO_CONF[r.nivel].toUpperCase()), N('PUNTAJE', 6, 1, m('sco', 100)), N('AREA_HA', 14, 3, r => r.ha), N('AREA_PERM', 14, 3, r => r.ex[0] * r.hapx),
@@ -13490,7 +13730,7 @@ async function construirXlsxPerfil(JSZipRef, spec) {
       const polis = R.filas.map(r => ({ partes: [r.pl.ext].concat(r.pl.holes).map(q => q.map(pxU)).map((q, i) => { if ((i === 0) !== (aR(q) < 0)) q.reverse(); return q; }), attrs: R.cols.map(c => { const v = c.f(r); return c.t === 'C' ? asc(v).slice(0, c.l) : v; }) }));
       const campos = R.cols.map(c => c.t === 'C' ? { n: c.n, t: 'C', l: c.l } : { n: c.n, t: 'N', l: c.l, d: c.d }), s = escribirShapefile(polis, campos, wktUTM(G.epsg)), b = ecoBase(R) + '_UTM' + (G.epsg % 100) + 'S', z = new JSZip();
       z.file(b + '.shp', s.shp); z.file(b + '.shx', s.shx); z.file(b + '.dbf', s.dbf); z.file(b + '.prj', s.prj); z.file(b + '.cpg', s.cpg);
-      descargarBlob(new Blob([await z.generateAsync({ type: 'uint8array' })], { type: 'application/zip' }), b + '.zip'); ecoMsg('Shapefile listo (' + polis.length + ' polígonos, UTM).');
+      estiloZip(z, b, 'NIVEL', R.etq.map((e, k) => ({ v: k, etq: e, col: (R.colores || R.cols0)[k] })), 'poly'); descargarBlob(new Blob([await z.generateAsync({ type: 'uint8array' })], { type: 'application/zip' }), b + '.zip'); ecoMsg('Shapefile listo (' + polis.length + ' polígonos, UTM, con archivos de simbología).');
     } catch (e) { console.error(e); ecoMsg('No se pudo generar el shapefile: ' + e.message, true); }
   }
   function ecoGeoJSON() { const R = ECO.R; if (!R) return; const fs = ecoFeatures(R).map(f => ({ type: 'Feature', geometry: f.geometry, properties: Object.assign({ NOMBRE: f._nombre }, f.properties) })); descargarBlob(new Blob([JSON.stringify({ type: 'FeatureCollection', name: ecoBase(R), features: fs })], { type: 'application/geo+json' }), ecoBase(R) + '_WGS84.geojson'); ecoMsg('GeoJSON (WGS84) listo.'); }
@@ -13653,9 +13893,9 @@ async function construirXlsxPerfil(JSZipRef, spec) {
   });
 })();
 
-const MANUAL_VERSION = "24 de noviembre de 2026 · v13";
-const MANUAL = [{"id": "inicio", "icono": "🧭", "titulo": "Primeros pasos", "resumen": "Mapa 2D/3D con capas del portal, tus propios datos, herramientas de análisis y trekking.", "pasos": ["<b>Barra lateral:</b> busca un lugar y activa capas con su casilla.", "<b>Barra superior:</b> Leyenda, Add Data, Procesamiento, Teledetección, Terreno, Hidrología, Gestión territorial, Trekking, Vista 3D y Manual.", "<b>Mapa base:</b> globo arriba a la derecha.", "<b>Coordenadas:</b> la barra inferior muestra coordenadas y altitud bajo el cursor."], "probar": [["Abrir la Leyenda", "pnl:leyenda"]]}, {"id": "capas", "icono": "🗂️", "titulo": "Capas e identificación", "resumen": "Activa capas y consulta cada elemento con un clic.", "pasos": ["Marca la casilla de la capa. Si dice «Zoom n+», acércate.", "Haz clic sobre un elemento para ver sus atributos.", "En Leyenda ves los colores de las capas activas."], "probar": [["Abrir la Leyenda", "pnl:leyenda"]]}, {"id": "adddata", "icono": "📂", "titulo": "Add Data", "resumen": "Carga tus archivos o escribe coordenadas.", "pasos": ["Elige Excel, CSV, KML/KMZ, GeoJSON, GPX, ZIP (shapefile), DXF o DWG.", "Pestaña <b>Puntos</b>: escribe nombre, este, norte y zona.", "<b>CAD en PSAD56:</b> elige Datum PSAD56, carga el archivo y pulsa <b>🔁 Convertir esta capa a WGS84</b>.", "Cada capa se descarga en KMZ o Excel desde su menú ⋮ (también en shapefile, GeoJSON o DXF con proyección UTM).", "Los polígonos reciben AREA_HA y AREA_M2 automáticamente.", "<b>Monitoreo biológico:</b> descarga la plantilla, llena AVES, ANFIBIOS y MAMIFEROS y pulsa <b>🧬 Generar</b>: queda en 3 carpetas, cada una de un color.", "<b>Editar puntos:</b> en la lista de capas, pulsa «✏️ Editar puntos». Cambia atributos o coordenadas en la tabla (Este, Norte, Zona o Longitud, Latitud: las demás se recalculan), ubica el punto con un clic en el mapa (📍) o elimínalo. Los transectos, parcelas, polígonos y proyecciones de sondajes se actualizan solos, y luego descargas en KMZ, Shapefile o Excel.", "<b>Excel con varias pestañas:</b> cada pestaña es una carpeta con su propio color en el mapa, en la lista y en el KMZ. Las plantillas de monitoreo y de sondajes se descargan desde este mismo panel."], "probar": [["Abrir Add Data", "pnl:add"]]}, {"id": "consultas", "icono": "🔎", "titulo": "Consultas", "resumen": "Atributos, cruce espacial y distancias en un solo panel.", "pasos": ["<b>Atributos:</b> capa, campo, criterio y valor.", "<b>Cruce:</b> capa de entrada y capa de referencia.", "<b>Distancias:</b> distancia más corta a lagunas, humedales, etc.", "Descarga en Excel, CSV o KMZ."], "probar": [["Abrir Consultas", "pnl:query"]]}, {"id": "dibujar", "icono": "✏️", "titulo": "Dibujar", "resumen": "Marcas, rutas y polígonos como en Google Earth.", "pasos": ["Elige Marca, Ruta o Polígono y haz clic en el mapa (doble clic para terminar).", "Edita color, nombre y vértices con ✎.", "Descarga en KMZ, GeoJSON o Excel."], "probar": [["Abrir Dibujar", "pnl:draw"]]}, {"id": "satelite", "icono": "🛰️", "titulo": "Satélite y DEM", "resumen": "Índices (NDVI y otros), imagen satelital y DEM con curvas de nivel.", "pasos": ["Define el <b>área de estudio</b> (rectángulo, polígono o capa cargada): el panel se oculta mientras eliges y vuelve al terminar.", "Elige producto, satélite y fechas. Puedes rellenar vacíos con radar Sentinel-1.", "Pulsa Procesar y descarga GeoTIFF, imagen o curvas.", "Con <b>🧹 Quitar área y resultados</b> empiezas de cero."], "probar": [["Abrir Satélite y DEM", "pnl:sat"]]}, {"id": "perfil", "icono": "⛰️", "titulo": "Perfil topográfico", "resumen": "Perfil de una sección con DEM, curvas o relieve web.", "pasos": ["Pulsa <b>Trazar sección en el mapa</b> (clic = vértice, doble clic = terminar) o elige una línea cargada.", "Elige la fuente de altitud y pulsa Generar perfil.", "Descarga en PNG, DXF o Excel."], "probar": [["Abrir Perfil", "pnl:perfil"]]}, {"id": "hidrologia", "icono": "💧", "titulo": "Hidrología", "resumen": "Delimita cuencas, calcula sus parámetros y traza hidroisohipsas.", "pasos": ["<b>Cuenca y red de drenaje:</b> define el área de estudio, marca el punto de salida (opcional) y elige si subdividir: <b>Pfafstetter</b> (código oficial de la ANA) o por <b>área objetivo</b>. Cada unidad se clasifica en microcuenca, subcuenca o cuenca según su área.", "<b>Parámetros morfométricos:</b> forma, relieve, pendiente, orden de los ríos (Strahler), densidad de drenaje y tiempo de concentración, con curva hipsométrica y perfil del cauce.", "<b>Hidroisohipsas:</b> carga los pozos (descarga antes la plantilla), elige el campo del nivel y el método (kriging o IDW). Opcional: manantiales y lagunas como puntos de control. La plantilla Excel trae las hojas Pozos y Manantiales; las lagunas se cargan como polígonos (Shapefile .zip, KMZ o GeoJSON). Se generan las curvas, la dirección del flujo y el error de validación.", "Los resultados quedan en Add Data y el informe se descarga en Word."], "probar": [["Abrir Hidrología", "pnl:hid"]]}, {"id": "terreno", "icono": "🏔️", "titulo": "Terreno: susceptibilidad, cuenca visual y volumen", "resumen": "Perfil, DEM y tres análisis del relieve, en el menú Terreno.", "pasos": ["<b>Susceptibilidad (movimientos en masa):</b> combina pendiente, cercanía a cauces y relieve con tus capas (geología, cobertura) y pesos propios. Si cargas un inventario, valida con el AUC.", "<b>Cuenca visual:</b> marca uno o varios puntos de observación y obtén qué terreno se ve y desde cuántos puntos.", "<b>Volumen de desmonte:</b> dibuja el polígono, elige la superficie base y calcula el volumen sobre y bajo ella. Con Copernicus es referencial; usa un DEM de dron para cubicar."]}, {"id": "gestion", "icono": "🧭", "titulo": "Gestión territorial", "resumen": "Ficha de ubicación, matriz de exactitud, muestreo y láminas.", "pasos": ["<b>Ficha de ubicación:</b> coordenadas UTM de los vértices, distrito, área, altitud y cruce con las capas del portal, en Word.", "<b>Matriz de exactitud:</b> compara puntos de campo con el último mapa clasificado o con una capa y calcula exactitud global, kappa y exactitud por clase.", "<b>Diseño de muestreo:</b> aleatorio, sistemático o estratificado; descarga CSV o GPX para el GPS.", "<b>Lámina cartográfica:</b> elige uno o varios resultados de los procesos que ejecutaste (NDVI, pendiente, cuenca, etc.): la lámina los dibuja con su leyenda. Con «Fuera del área de estudio: Atenuar» (u «Ocultar») el área de estudio queda como borde y el resultado se ve completo; también puedes agregar tus capas, cuadrícula UTM o geográfica, norte y escala, y descargar en PNG o PDF."], "probar": [["Abrir Gestión territorial", "pnl:gest"]]}, {"id": "tiempo", "icono": "⏱️", "titulo": "Tiempo de recorrido", "resumen": "Distancia y tiempo de A a B de una ruta.", "pasos": ["Adjunta la ruta o elige una capa de líneas.", "Elige el modo (a pie, mula, vehículo…) y pulsa Calcular tiempo."], "probar": [["Abrir Tiempo", "pnl:tiempo"]]}, {"id": "regla", "icono": "📏", "titulo": "Regla", "resumen": "Mide distancias sobre el mapa.", "pasos": ["Haz clic para marcar puntos; se muestran tramos y total.", "Retroceso deshace, Supr limpia."], "probar": [["Abrir la Regla", "pnl:regla"]]}, {"id": "vista3d", "icono": "🌐", "titulo": "Vista 3D", "resumen": "El mapa en 3D con relieve.", "pasos": ["Pulsa Vista 3D. Arrastra para moverte, rueda para acercar.", "Mayús + rueda gira; Alt + rueda inclina."], "probar": [["Activar / desactivar 3D", "3d"]]}, {"id": "coordenadas", "icono": "📍", "titulo": "Coordenadas y UTM", "resumen": "Formato de coordenadas y cuadrícula UTM.", "pasos": ["Elige el formato en la barra inferior.", "Activa Zonas UTM y Cuadrantes para ver la cuadrícula."], "probar": [["Activar Zonas UTM", "zonas"], ["Activar Cuadrantes", "cuadr"]]}, {"id": "ubicacion", "icono": "🎯", "titulo": "Mi ubicación", "resumen": "Ubícate con el GPS o la red.", "pasos": ["Pulsa 📍 en el buscador. Si no es exacta, arrastra el punto azul.", "Guarda como marca o comparte con 📤."], "probar": [["Ubicarme ahora", "ubicacion"]]}, {"id": "trekking", "icono": "🥾", "titulo": "Trekking y video", "resumen": "Graba rutas, sigue una ruta meta y genera un video del recorrido.", "pasos": ["<b>Iniciar grabación</b> registra tu recorrido con GPS. Si <b>⏸ pausas</b> para un descanso o campamento (horas o días), la parada queda anotada con su duración.", "<b>Ruta meta:</b> carga un GPX, KML, KMZ o GeoJSON, trázala o usa una línea del mapa; muestra lo que falta para llegar. El resultado de la carga se ve debajo del botón.", "<b>Mis rutas:</b> repositorio de tus grabaciones y de las rutas que cargues. Filtra por Grabadas o Cargadas, agrega archivos, y úsalas cuando quieras (Ver, Seguir, Video, descargar). Se guardan en este equipo y navegador; descarga el GPX como respaldo.", "<b>Perfil de desnivel:</b> la ventana flotante se coloca al costado del panel de trekking para no taparlo.", "<b>🎬 Video:</b> elige formato, relieve del terreno (suave, marcado o muy marcado) y música; marca paradas e indica cuánto duraron (de 30 min a 3 días): se suman al tiempo total que aparece al final. Pulsa Generar."], "probar": [["Abrir Trekking", "pnl:trek"]], "tips": ["Si un GPX no carga, el mensaje indica el motivo (por ejemplo, que solo trae puntos sueltos)."]}];
-const MANUAL_NOV = {"id": "novedades", "icono": "🛠️", "titulo": "Novedades (solo administrador)", "resumen": "Cambios de esta versión.", "pasos": ["<b>Limpiar en todos los procesos:</b> botón «Limpiar resultados del mapa» en Satélite, Procesos y Ecosistemas, y enlace «quitar resultado» en la leyenda.", "<b>Video de trekking:</b> relieve sombreado a partir del DEM (3 niveles), cámara más inclinada, línea más fina y estadísticas finales más grandes.", "<b>Paradas de horas o días:</b> en el video cada parada tiene su duración real y se suma al tiempo total (formato «2 d 05 h»); las pausas de la grabación se anotan solas.", "<b>GPX:</b> lectura más tolerante (con prefijos, caracteres sueltos, archivos cortados o solo waypoints) y mensajes visibles en la pestaña Ruta meta.", "<b>Mis rutas:</b> repositorio de rutas grabadas y cargadas, con filtros y carga de varios archivos.", "<b>Perfil flotante:</b> se coloca al costado del panel de trekking."]};
+const MANUAL_VERSION = "25 de noviembre de 2026 · v14";
+const MANUAL = [{"id": "inicio", "icono": "🧭", "titulo": "Primeros pasos", "resumen": "Mapa 2D/3D con capas del portal, tus propios datos, herramientas de análisis y trekking.", "pasos": ["<b>Barra lateral:</b> busca un lugar y activa capas con su casilla.", "<b>Barra superior:</b> Leyenda, Add Data, Procesamiento, Teledetección, Terreno, Hidrología, Gestión territorial, Trekking, Vista 3D y Manual.", "<b>Mapa base:</b> globo arriba a la derecha.", "<b>Coordenadas:</b> la barra inferior muestra coordenadas y altitud bajo el cursor."], "probar": [["Abrir la Leyenda", "pnl:leyenda"]]}, {"id": "capas", "icono": "🗂️", "titulo": "Capas e identificación", "resumen": "Activa capas y consulta cada elemento con un clic.", "pasos": ["Marca la casilla de la capa. Si dice «Zoom n+», acércate.", "Haz clic sobre un elemento para ver sus atributos.", "En Leyenda ves los colores de las capas activas."], "probar": [["Abrir la Leyenda", "pnl:leyenda"]]}, {"id": "adddata", "icono": "📂", "titulo": "Add Data", "resumen": "Carga tus archivos o escribe coordenadas.", "pasos": ["Elige Excel, CSV, KML/KMZ, GeoJSON, GPX, ZIP (shapefile), DXF o DWG.", "Pestaña <b>Puntos</b>: escribe nombre, este, norte y zona.", "<b>CAD en PSAD56:</b> elige Datum PSAD56, carga el archivo y pulsa <b>🔁 Convertir esta capa a WGS84</b>.", "Cada capa se descarga en KMZ o Excel desde su menú ⋮ (también en shapefile, GeoJSON o DXF con proyección UTM).", "Los polígonos reciben AREA_HA y AREA_M2 automáticamente.", "<b>Monitoreo biológico:</b> descarga la plantilla, llena AVES, ANFIBIOS y MAMIFEROS y pulsa <b>🧬 Generar</b>: queda en 3 carpetas, cada una de un color.", "<b>Editar puntos:</b> en la lista de capas, pulsa «✏️ Editar puntos». Cambia atributos o coordenadas en la tabla (Este, Norte, Zona o Longitud, Latitud: las demás se recalculan), ubica el punto con un clic en el mapa (📍) o elimínalo. Los transectos, parcelas, polígonos y proyecciones de sondajes se actualizan solos, y luego descargas en KMZ, Shapefile o Excel.", "<b>✥ Mover puntos:</b> en la lista de capas pulsa «✥ Mover puntos» y arrastra cada punto naranja a su lugar, sin abrir el editor. Se actualizan Este/Norte/Zona y las capas derivadas. Pulsa «Listo» o Esc para terminar. Con la búsqueda o el botón de zoom de la tabla, la estación aparece con un aro y su nombre.", "<b>▨ Relleno:</b> en las capas de polígonos, el botón «Relleno: SÍ/NO» quita el difuminado y deja solo el borde.", "<b>Excel con varias pestañas:</b> cada pestaña es una carpeta con su propio color en el mapa, en la lista y en el KMZ. Las plantillas de monitoreo y de sondajes se descargan desde este mismo panel."], "probar": [["Abrir Add Data", "pnl:add"]]}, {"id": "consultas", "icono": "🔎", "titulo": "Consultas", "resumen": "Atributos, cruce espacial y distancias en un solo panel.", "pasos": ["<b>Atributos:</b> capa, campo, criterio y valor.", "<b>Cruce:</b> capa de entrada y capa de referencia.", "<b>Distancias:</b> distancia más corta a lagunas, humedales, etc.", "Descarga en Excel, CSV o KMZ."], "probar": [["Abrir Consultas", "pnl:query"]]}, {"id": "dibujar", "icono": "✏️", "titulo": "Dibujar", "resumen": "Marcas, rutas y polígonos como en Google Earth.", "pasos": ["Elige Marca, Ruta o Polígono y haz clic en el mapa (doble clic para terminar).", "Edita color, nombre y vértices con ✎.", "Descarga en KMZ, GeoJSON o Excel."], "probar": [["Abrir Dibujar", "pnl:draw"]]}, {"id": "satelite", "icono": "🛰️", "titulo": "Satélite y DEM", "resumen": "Índices (NDVI y otros), imagen satelital y DEM con curvas de nivel.", "pasos": ["Define el <b>área de estudio</b> (rectángulo, polígono o capa cargada): el panel se oculta mientras eliges y vuelve al terminar. Debajo eliges si lleva <b>relleno</b>, <b>borde</b>, su color, grosor y tipo de línea (por defecto solo borde).", "Elige producto, satélite y fechas. Puedes rellenar vacíos con radar Sentinel-1.", "Pulsa Procesar y descarga GeoTIFF, imagen o curvas.", "Los shapefiles de los resultados (índices, procesos, lagunas, bofedales y la <b>📦 Pendiente en clases</b>) salen en .zip con la simbología: <b>.qml</b> (QGIS), <b>.lyrx</b> (ArcGIS Pro) y <b>.sld</b>, con los mismos colores del mapa. Arrastra el .qml junto al .shp o impórtalo en la capa.", "Con <b>🧹 Quitar área y resultados</b> empiezas de cero."], "probar": [["Abrir Satélite y DEM", "pnl:sat"]]}, {"id": "perfil", "icono": "⛰️", "titulo": "Perfil topográfico", "resumen": "Perfil de una sección con DEM, curvas o relieve web.", "pasos": ["Pulsa <b>Trazar sección en el mapa</b> (clic = vértice, doble clic = terminar) o elige una línea cargada.", "Elige la fuente de altitud y pulsa Generar perfil.", "Descarga en PNG, DXF o Excel."], "probar": [["Abrir Perfil", "pnl:perfil"]]}, {"id": "hidrologia", "icono": "💧", "titulo": "Hidrología", "resumen": "Delimita cuencas, calcula sus parámetros y traza hidroisohipsas.", "pasos": ["<b>Cuenca y red de drenaje:</b> define el área de estudio, marca el punto de salida (opcional) y elige si subdividir: <b>Pfafstetter</b> (código oficial de la ANA) o por <b>área objetivo</b>. Cada unidad se clasifica en microcuenca, subcuenca o cuenca según su área.", "<b>Parámetros morfométricos:</b> forma, relieve, pendiente, orden de los ríos (Strahler), densidad de drenaje y tiempo de concentración, con curva hipsométrica y perfil del cauce.", "<b>Hidroisohipsas:</b> carga los pozos (descarga antes la plantilla), elige el campo del nivel y el método (kriging o IDW). Opcional: manantiales y lagunas como puntos de control. La plantilla Excel trae las hojas Pozos y Manantiales; las lagunas se cargan como polígonos (Shapefile .zip, KMZ o GeoJSON). Se generan las curvas, la dirección del flujo y el error de validación. Con <b>Clasificar en 3 zonas</b> (activa por defecto) el nivel se separa en recarga, tránsito y recarga, y descarga con tus cortes (4000, 4100, 4300, 4350, 4450, 4500, 4650: son referenciales). Si tus pozos no caen en esos rangos, los cortes se ajustan en la misma proporción a tus datos; elige «Usar mis rangos tal cual» para evitarlo. Puedes indicar un polígono como área de estudio.", "<b>📦 Zonas:</b> descarga un .zip con la clasificación en GeoTIFF (6 clases y 3 zonas), el shapefile de polígonos, las isolíneas conceptuales (límites de zona y de clase) y la simbología (.qml, .lyrx, .sld). Son una clasificación conceptual: valídala con la geología y los manantiales.", "Los resultados quedan en Add Data y el informe se descarga en Word."], "probar": [["Abrir Hidrología", "pnl:hid"]]}, {"id": "terreno", "icono": "🏔️", "titulo": "Terreno: susceptibilidad, cuenca visual y volumen", "resumen": "Perfil, DEM y tres análisis del relieve, en el menú Terreno.", "pasos": ["<b>Susceptibilidad (movimientos en masa):</b> combina pendiente, cercanía a cauces y relieve con tus capas (geología, cobertura) y pesos propios. Si cargas un inventario, valida con el AUC.", "<b>Cuenca visual:</b> marca uno o varios puntos de observación y obtén qué terreno se ve y desde cuántos puntos.", "<b>Volumen de desmonte:</b> dibuja el polígono, elige la superficie base y calcula el volumen sobre y bajo ella. Con Copernicus es referencial; usa un DEM de dron para cubicar."]}, {"id": "gestion", "icono": "🧭", "titulo": "Gestión territorial", "resumen": "Ficha de ubicación, matriz de exactitud, muestreo y láminas.", "pasos": ["<b>Ficha de ubicación:</b> coordenadas UTM de los vértices, distrito, área, altitud y cruce con las capas del portal, en Word.", "<b>Matriz de exactitud:</b> compara puntos de campo con el último mapa clasificado o con una capa y calcula exactitud global, kappa y exactitud por clase.", "<b>Diseño de muestreo:</b> aleatorio, sistemático o estratificado; descarga CSV o GPX para el GPS.", "<b>Lámina cartográfica:</b> elige uno o varios resultados de los procesos que ejecutaste (NDVI, pendiente, cuenca, etc.): la lámina los dibuja con su leyenda. Con «Fuera del área de estudio: Atenuar» (u «Ocultar») el área de estudio queda como borde y el resultado se ve completo; también puedes agregar tus capas, cuadrícula UTM o geográfica, norte y escala, y descargar en PNG o PDF."], "probar": [["Abrir Gestión territorial", "pnl:gest"]]}, {"id": "tiempo", "icono": "⏱️", "titulo": "Tiempo de recorrido", "resumen": "Distancia y tiempo de A a B de una ruta.", "pasos": ["Adjunta la ruta o elige una capa de líneas.", "Elige el modo (a pie, mula, vehículo…) y pulsa Calcular tiempo."], "probar": [["Abrir Tiempo", "pnl:tiempo"]]}, {"id": "regla", "icono": "📏", "titulo": "Regla", "resumen": "Mide distancias sobre el mapa.", "pasos": ["Haz clic para marcar puntos; se muestran tramos y total.", "Retroceso deshace, Supr limpia."], "probar": [["Abrir la Regla", "pnl:regla"]]}, {"id": "vista3d", "icono": "🌐", "titulo": "Vista 3D", "resumen": "El mapa en 3D con relieve.", "pasos": ["Pulsa Vista 3D. Arrastra para moverte, rueda para acercar.", "Mayús + rueda gira; Alt + rueda inclina."], "probar": [["Activar / desactivar 3D", "3d"]]}, {"id": "coordenadas", "icono": "📍", "titulo": "Coordenadas y UTM", "resumen": "Formato de coordenadas y cuadrícula UTM.", "pasos": ["Elige el formato en la barra inferior.", "Activa Zonas UTM y Cuadrantes para ver la cuadrícula."], "probar": [["Activar Zonas UTM", "zonas"], ["Activar Cuadrantes", "cuadr"]]}, {"id": "ubicacion", "icono": "🎯", "titulo": "Mi ubicación", "resumen": "Ubícate con el GPS o la red.", "pasos": ["Pulsa 📍 en el buscador. Si no es exacta, arrastra el punto azul.", "Guarda como marca o comparte con 📤."], "probar": [["Ubicarme ahora", "ubicacion"]]}, {"id": "trekking", "icono": "🥾", "titulo": "Trekking y video", "resumen": "Graba rutas, sigue una ruta meta y genera un video del recorrido.", "pasos": ["<b>Iniciar grabación</b> registra tu recorrido con GPS. Si <b>⏸ pausas</b> para un descanso o campamento (horas o días), la parada queda anotada con su duración.", "<b>Ruta meta:</b> carga un GPX, KML, KMZ o GeoJSON, trázala o usa una línea del mapa; muestra lo que falta para llegar. El resultado de la carga se ve debajo del botón.", "<b>Mis rutas:</b> repositorio de tus grabaciones y de las rutas que cargues. Filtra por Grabadas o Cargadas, agrega archivos, y úsalas cuando quieras (Ver, Seguir, Video, descargar). Se guardan en este equipo y navegador; descarga el GPX como respaldo.", "<b>Perfil de desnivel:</b> la ventana flotante se coloca al costado del panel de trekking para no taparlo.", "<b>🎬 Video:</b> elige formato, relieve del terreno (suave, marcado o muy marcado) y música; marca paradas e indica cuánto duraron (de 30 min a 3 días): se suman al tiempo total que aparece al final. Pulsa Generar."], "probar": [["Abrir Trekking", "pnl:trek"]], "tips": ["Si un GPX no carga, el mensaje indica el motivo (por ejemplo, que solo trae puntos sueltos)."]}];
+const MANUAL_NOV = {"id": "novedades", "icono": "🛠️", "titulo": "Novedades (solo administrador)", "resumen": "Cambios de esta versión.", "pasos": ["<b>Mover estaciones:</b> botón «✥ Mover puntos» en cada capa de puntos; se arrastran directo en el mapa y se recalculan las coordenadas y las capas derivadas.", "<b>Destello con nombre:</b> al ir a una estación desde la búsqueda o la tabla, el aro muestra el nombre de la estación (9 s).", "<b>Área de estudio:</b> relleno y borde opcionales (color, grosor, continuo/discontinuo); por defecto sin relleno. En las capas de polígonos, botón «▨ Relleno».", "<b>Hidroisohipsas por zonas:</b> 6 clases en recarga, tránsito y recarga, y descarga (cortes editables, ajuste automático a los datos, área de estudio opcional). Salida .zip con GeoTIFF (6 clases y 3 zonas), shapefile de polígonos, isolíneas conceptuales y simbología.", "<b>Simbología en la salida:</b> los shapefiles de índices (NDVI, etc.), procesos avanzados, lagunas y bofedales traen .qml (QGIS), .lyrx (ArcGIS Pro) y .sld con los colores del mapa, y un campo COLOR.", "<b>Pendiente en clases:</b> nuevo botón en Satélite y DEM (8 clases, D.S. 017-2009-AG) con simbología. Los .lyrx se generaron a mano y no se probaron en ArcGIS Pro."]};
 let manualSel = 0, manualTodo = false;
 const manualNorm = t => String(t || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
 const manualTexto = s => manualNorm([s.titulo, s.resumen].concat(s.pasos || [], s.tips || [], (s.tabla || []).map(r => r.join(' '))).join(' ').replace(/<[^>]+>/g, ' '));
@@ -16272,7 +16512,7 @@ window.limpiarResultadosGeo = () => {
 window.registrarAreaEstudio = (anillos, km2) => {   // el área de estudio definida en el mapa pasa a «Capas añadidas» (visible y descargable en KMZ/Excel)
   for (let i = userLayers.length - 1; i >= 0; i--) { if (userLayers[i].esAOI) { try { map.removeLayer(userLayers[i].layer); } catch (e) {} userLayers.splice(i, 1); } }
   const ft = { type: 'Feature', geometry: { type: 'Polygon', coordinates: anillos }, properties: { NOMBRE: 'Área de estudio', AREA_KM2: Number(km2.toFixed(4)), AREA_HA: Number((km2 * 100).toFixed(2)) } }, fc = { type: 'FeatureCollection', features: [ft] };
-  const layer = L.geoJSON(fc, { style: { color: '#0284c7', weight: 2.5, fillColor: '#38bdf8', fillOpacity: 0.12, dashArray: '7 5' } }).addTo(map);
+  const layer = L.geoJSON(fc, { style: window.aoiEstiloObj ? window.aoiEstiloObj() : { color: '#0284c7', weight: 2.5, fillOpacity: 0, dashArray: '7 5' } }).addTo(map);
   userLayers.push({ name: 'Área de estudio', color: '#0284c7', layer: layer, features: fc.features, geojson: fc, esAOI: true });
   actualizarAddLista();
 };
